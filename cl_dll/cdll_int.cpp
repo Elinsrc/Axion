@@ -27,11 +27,6 @@
 #include "VGUI_Panel.h"
 #include "VGUI_App.h"
 
-
-#if USE_DISCORD_RPC
-#include "discord_integration.h"
-#endif
-
 #if USE_IMGUI
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
@@ -183,10 +178,6 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 		fclose(file);
 		ClientCmd("exec customconfig.cfg");
 	}
-
-#if USE_DISCORD_RPC
-	discord_integration::initialize( );
-#endif
 
 	if( gEngfuncs.pfnGetCvarPointer( "cl_filterstuffcmd" ) == 0 )
 	{
@@ -361,9 +352,6 @@ int DLLEXPORT HUD_UpdateClientData( client_data_t *pcldata, float flTime )
 {
 	IN_Commands();
 
-#if USE_DISCORD_RPC
-	discord_integration::on_update_client_data( );
-#endif
 	return gHUD.UpdateClientData( pcldata, flTime );
 }
 
@@ -390,10 +378,6 @@ Called by engine every frame that client .dll is loaded
 
 void DLLEXPORT HUD_Frame( double time )
 {
-#if USE_DISCORD_RPC
-	discord_integration::on_frame( );
-#endif
-
 	GetClientVoiceMgr()->Frame(time);
 
 	if (!gViewPort)

@@ -48,7 +48,6 @@ project (AXION)
 option(USE_IMGUI "Enable IMGUI" ON)
 option(USE_NOIMGUI_MOTD "Prefer non-IMGUI MOTD when USE_IMGUI is enabled" OFF)
 option(USE_NOIMGUI_SCOREBOARD "Prefer non-IMGUI Scoreboard when USE_IMGUI is enabled" OFF)
-option(USE_DISCORD_RPC "Enable Discord_rpc" OFF)
 option(BUILD_SERVER "Build server dll" ON)
 
 
@@ -183,13 +182,6 @@ if(HAVE_TGMATH_H)
 endif()
 
 add_subdirectory(cl_dll)
-
-if(USE_DISCORD_RPC)
-	message(STATUS "Building discord_rpc enabled")
-	set(BUILD_EXAMPLES OFF CACHE BOOL "build discord-rpc examples" FORCE)
-	set(CLANG_FORMAT_SUFFIX "-dummy")
-	add_subdirectory(external/discord-rpc)
-endif()
 
 if(ANDROID)
 	set(BUILD_CLIENT OFF CACHE BOOL "Disable building client from HLSDK")

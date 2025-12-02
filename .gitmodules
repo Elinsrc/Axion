@@ -1,6 +1,3 @@
-[submodule "external/discord-rpc"]
-	path = external/discord-rpc
-	url = https://github.com/discord/discord-rpc
 [submodule "external/hlsdk-portable"]
 	path = external/hlsdk-portable
 	url = https://github.com/Elinsrc/hlsdk-portable

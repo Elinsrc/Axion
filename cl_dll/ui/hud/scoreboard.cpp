@@ -35,10 +35,6 @@ cvar_t *cl_scoreboard_bg;
 extern int blue_flag_player_index;
 extern int red_flag_player_index;
 
-#if USE_DISCORD_RPC
-#include "discord_integration.h"
-#endif
-
 DECLARE_COMMAND( m_Scoreboard, ShowScores )
 DECLARE_COMMAND( m_Scoreboard, HideScores )
 
@@ -498,10 +494,6 @@ int CHudScoreboard::MsgFunc_ScoreInfo( const char *pszName, int iSize, void *pbu
 		g_PlayerExtraInfo[cl].deaths = deaths;
 		g_PlayerExtraInfo[cl].playerclass = playerclass;
 		g_PlayerExtraInfo[cl].teamnumber = teamnumber;
-
-#if USE_DISCORD_RPC
-		discord_integration::on_player_count_update();
-#endif
 	}
 
 	return 1;

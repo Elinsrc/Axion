@@ -28,10 +28,6 @@ extern "C"
 #include <string.h>
 #include <ctype.h>
 
-#if USE_DISCORD_RPC
-#include "discord_integration.h"
-#endif
-
 #if USE_IMGUI
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
@@ -1280,10 +1276,6 @@ void ShutdownInput( void )
 void DLLEXPORT HUD_Shutdown( void )
 {
 	ShutdownInput();
-
-#if USE_DISCORD_RPC
-	discord_integration::shutdown();
-#endif
 
 #if USE_IMGUI
 #if __ANDROID__ || XASH_64BIT

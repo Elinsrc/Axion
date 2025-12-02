@@ -24,10 +24,6 @@
 #include "voice_status.h"
 #endif
 
-#if USE_DISCORD_RPC
-#include "discord_integration.h"
-#endif
-
 void Game_AddObjects( void );
 
 extern vec3_t v_origin;
@@ -167,12 +163,6 @@ void DLLEXPORT HUD_ProcessPlayerState( struct entity_state_s *dst, const struct 
 		g_iPlayerClass = dst->playerclass;
 		g_iTeamNumber = dst->team;
 
-#if USE_DISCORD_RPC
-		if (src->iuser1 != 0)
-			discord_integration::set_spectating(true);
-		else if (g_iUser1 != 0)
-			discord_integration::set_spectating(false);
-#endif
 		g_iUser1 = src->iuser1;
 		g_iUser2 = src->iuser2;
 		g_iUser3 = src->iuser3;

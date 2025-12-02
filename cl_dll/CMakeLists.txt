@@ -63,10 +63,6 @@ if (USE_IMGUI)
 	endif()
 endif()
 
-if(USE_DISCORD_RPC)
-	add_definitions(-DUSE_DISCORD_RPC)
-endif()
-
 set (CLDLL_SOURCES
 	${CMAKE_SOURCE_DIR}/dlls/wpn_shared/crossbow.cpp
 	${CMAKE_SOURCE_DIR}/dlls/wpn_shared/crowbar.cpp
@@ -183,11 +179,6 @@ else()
 		ui/hud/hud_crosshairs.cpp)
 endif()
 
-if (USE_DISCORD_RPC)
-	list(APPEND CLDLL_SOURCES
-		discord-rpc/discord_integration.cpp)
-endif()
-
 if (USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
     list(APPEND CLDLL_SOURCES
         rendering/gl_export.cpp
@@ -195,10 +186,6 @@ if (USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
 endif()
 
 include_directories (. hl/ events/ input/ rendering/ ui ui/hud ui/hud/OpenAG/ utils/ ${CMAKE_SOURCE_DIR}/dlls ${CMAKE_SOURCE_DIR}/dlls/wpn_shared ${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/engine ${CMAKE_SOURCE_DIR}/pm_shared ${CMAKE_SOURCE_DIR}/game_shared ${CMAKE_SOURCE_DIR}/public ${CMAKE_SOURCE_DIR}/utils/fake_vgui/include)
-
-if (USE_DISCORD_RPC)
-	include_directories(${CMAKE_SOURCE_DIR}/external/discord-rpc/include discord-rpc)
-endif()
 
 if(USE_VOICEMGR)
 	#	ui/VGUI/utils/voice_banmgr.cpp
@@ -220,10 +207,6 @@ if(WIN32)
     if (GOLDSOURCE_SUPPORT)
         target_link_libraries(${CLDLL_LIBRARY} winmm.lib)
     endif()
-endif()
-
-if(USE_DISCORD_RPC)
-	target_link_libraries(${CLDLL_LIBRARY} discord-rpc)
 endif()
 
 set_target_properties (${CLDLL_LIBRARY} PROPERTIES
