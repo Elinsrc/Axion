@@ -298,7 +298,7 @@ void CVoiceStatus::ImGui_DrawVoiceHUD()
     if (m_bTalking || m_bServerAcked)
     {
         int r, g, b;
-        UnpackRGB(r, g, b, RGB_YELLOWISH);
+        UnpackRGB(r, g, b, gHUD.m_iDefaultHUDColor);
 
         int xpos = ScreenWidth  - 40;
         int ypos = ScreenHeight - gHUD.m_iFontHeight*3 - 6;
@@ -392,7 +392,7 @@ int CVoiceStatus::Draw( float time )
     if (m_bTalking || m_bServerAcked)
     {
         int r, g, b;
-        UnpackRGB(r, g, b, RGB_YELLOWISH);
+        UnpackRGB(r, g, b, gHUD.m_iDefaultHUDColor);
 
         int xpos = ScreenWidth  - 40;
         int ypos = ScreenHeight - gHUD.m_iFontHeight * 3 - 6;
