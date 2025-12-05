@@ -4,6 +4,9 @@
 #include "imgui_viewport.h"
 #include "imgui_ScorePanel.h"
 
+extern int blue_flag_player_index;
+extern int red_flag_player_index;
+
 CImGuiScoreboard m_iScoreboard;
 
 bool CImGuiScoreboard::m_ShowWindow = false;
@@ -20,6 +23,10 @@ void CImGuiScoreboard::Initialize()
 
 void CImGuiScoreboard::VidInitialize()
 {
+	int iSprite = 0;
+	iSprite = gHUD.GetSpriteIndex( "icon_ctf_score" );
+	m_IconFlagScore.spr = gHUD.GetSprite( iSprite );
+	m_IconFlagScore.rc = gHUD.GetSpriteRect( iSprite );
 }
 
 void CImGuiScoreboard::Terminate()
@@ -407,6 +414,8 @@ void CImGuiScoreboard::DrawScoreboard()
 						1.0f
 					);
 
+					float textH = ImGui::GetTextLineHeight();
+
 					// PLAYER BG
 					ImVec2 row_min = ImGui::GetCursorScreenPos();
 					row_min.x = win_pos.x + ImGui::GetStyle().WindowPadding.x;
@@ -419,6 +428,29 @@ void CImGuiScoreboard::DrawScoreboard()
 					else if ( m_iSortedRows[row] == m_iLastKilledBy && m_fLastKillTime && m_fLastKillTime > gHUD.m_flTime )
 					{
 						draw_list->AddRectFilled(row_min, row_max,IM_COL32(255, 0, 0,(int)(70.0f * (m_fLastKillTime - gHUD.m_flTime) / 10.0f)),4.0f);
+					}
+
+					// FLAG
+					if (blue_flag_player_index == m_iSortedRows[row] || red_flag_player_index == m_iSortedRows[row])
+					{
+						float sprW = (float)(m_IconFlagScore.rc.right  - m_IconFlagScore.rc.left);
+						float sprH = (float)(m_IconFlagScore.rc.bottom - m_IconFlagScore.rc.top);
+
+						float iconH = textH;
+						float iconW = (sprH > 0) ? iconH * (sprW / sprH) : iconH;
+
+						int r, g, b;
+
+						if (blue_flag_player_index == m_iSortedRows[row])
+						{
+							r = 80;  g = 160; b = 255;
+						}
+						else
+						{
+							r = 255; g = 80;  b = 80;
+						}
+
+						m_ImguiUtils.ImGuiSpriteIcon(m_IconFlagScore.spr, m_IconFlagScore.rc, win_pos.x - iconW - 6.0f, row_min.y, iconW, iconH, textH, r, g, b, 255);
 					}
 
 					// NAME

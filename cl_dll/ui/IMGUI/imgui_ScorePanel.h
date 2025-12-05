@@ -46,6 +46,14 @@ public:
     int m_iLastKilledBy;
     int m_fLastKillTime;
 
+private:
+    typedef struct
+    {
+        HSPRITE spr;
+        wrect_t rc;
+    }icon_flagstatus_t;
+
+    icon_flagstatus_t m_IconFlagScore;
 };
 
 extern CImGuiScoreboard m_iScoreboard;
