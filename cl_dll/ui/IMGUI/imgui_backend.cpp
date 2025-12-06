@@ -76,7 +76,11 @@ void CImGuiBackend::NewFrame()
 
     io.FontGlobalScale = ui_scale;
 
-    io.DisplaySize = ImVec2((float)ScreenWidth, (float)ScreenHeight);
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
+
+    io.DisplaySize = ImVec2(viewport[2], viewport[3]);
+
     io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 }
 

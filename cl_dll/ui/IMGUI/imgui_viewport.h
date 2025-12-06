@@ -5,6 +5,22 @@
 #include "imgui_ScorePanel.h"
 #include "imgui_MOTD.h"
 
+#if __ANDROID__ || XASH_64BIT
+#include "gl_export.h"
+#else
+#if _WIN32
+#include <winsani_in.h>
+#include <windows.h>
+#include <winsani_out.h>
+#include <GL/gl.h>
+#ifdef PlaySound
+#undef PlaySound
+#endif
+#elif __linux__
+#include <GL/gl.h>
+#endif
+#endif
+
 class CImGuiViewport
 {
 public:
@@ -12,6 +28,20 @@ public:
 
     CImGuiViewport();
     ~CImGuiViewport();
+
+    int scrWidth() const
+    {
+        GLint viewport[4];
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        return viewport[2];
+    }
+
+    int scrHeight() const
+    {
+        GLint viewport[4];
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        return viewport[3];
+    }
 
     void Initialize();
     void ShowScoreBoard();

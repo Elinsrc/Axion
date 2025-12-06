@@ -263,8 +263,8 @@ void CImGuiScoreboard::DrawScoreboard()
 
 	float padding_y = 20.f;
 	float sb_width = 700.f;
-	float sb_height = ScreenHeight - 2 * padding_y;
-	float sb_x = (ScreenWidth - sb_width) / 2;
+	float sb_height = g_ImGuiViewport.scrHeight() - 2 * padding_y;
+	float sb_x = (g_ImGuiViewport.scrWidth() - sb_width) / 2;
 	float sb_y = padding_y;
 
 	ImGui::SetNextWindowPos(ImVec2(sb_x, sb_y));

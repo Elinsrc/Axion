@@ -260,7 +260,7 @@ void CVoiceStatus::ImGui_DrawVoiceHUD()
         float border = 2.0f;
 
         float bg_w = textWidth + iconW + border * 3.0f;
-        float bg_x = (float)ScreenWidth - bg_w - 8.0f;
+        float bg_x = g_ImGuiViewport.scrWidth() - bg_w - 8.0f;
         float bg_y = y;
 
         ImU32 bgColor;

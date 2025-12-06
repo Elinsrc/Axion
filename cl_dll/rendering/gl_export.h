@@ -12,6 +12,8 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 */
+#ifndef GL_EXPORT_H
+#define GL_EXPORT_H
 
 #include "hud.h"
 #include <stdbool.h>
@@ -35,26 +37,6 @@ typedef struct {
 } dllfunc_t;
 
 extern render_api_t gRenderAPI;
-
-typedef unsigned int GLenum;
-typedef unsigned char GLboolean;
-typedef unsigned int GLbitfield;
-typedef void GLvoid;
-typedef signed char GLbyte;
-typedef short GLshort;
-typedef int GLint;
-typedef unsigned char GLubyte;
-typedef unsigned short GLushort;
-typedef unsigned int GLuint;
-typedef int GLsizei;
-typedef float GLfloat;
-typedef float GLclampf;
-typedef double GLdouble;
-typedef double GLclampd;
-typedef int GLintptrARB;
-typedef int GLsizeiptrARB;
-typedef char GLcharARB;
-typedef unsigned int GLhandleARB;
 
 typedef unsigned int GLenum;
 typedef unsigned char GLboolean;
@@ -1472,3 +1454,4 @@ EXTERN void (APIENTRY *glAlphaToCoverageDitherControlNV)(GLenum mode);
 
 bool GL_Init(void);
 void GL_Shutdown(void);
+#endif // GL_EXPORT_H

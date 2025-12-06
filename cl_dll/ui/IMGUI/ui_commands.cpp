@@ -3,6 +3,7 @@
 #include "hud.h"
 #include "keydefs.h"
 #include "cl_util.h"
+#include "imgui_viewport.h"
 
 bool CImGuiCommands::m_ShowCommands = false;
 
@@ -34,11 +35,11 @@ void CImGuiCommands::Draw()
 
     ImVec2 size = ImGui::GetWindowSize();
 
-    if (size.x > ScreenWidth)
-        size.x = (float)ScreenWidth;
+    if (size.x > g_ImGuiViewport.scrWidth())
+        size.x = g_ImGuiViewport.scrWidth();
 
-    if (size.y > ScreenHeight)
-        size.y = (float)ScreenHeight;
+    if (size.y > g_ImGuiViewport.scrHeight())
+        size.y = g_ImGuiViewport.scrHeight();
 
     ImGui::SetWindowSize(size);
 
@@ -50,11 +51,11 @@ void CImGuiCommands::Draw()
     if (pos.y < 0)
         pos.y = 0;
 
-    if (pos.x + size.x > ScreenWidth)
-        pos.x = ScreenWidth - size.x;
+    if (pos.x + size.x > g_ImGuiViewport.scrWidth())
+        pos.x = g_ImGuiViewport.scrWidth() - size.x;
 
-    if (pos.y + size.y > ScreenHeight)
-        pos.y = ScreenHeight - size.y;
+    if (pos.y + size.y > g_ImGuiViewport.scrHeight())
+        pos.y = g_ImGuiViewport.scrHeight() - size.y;
 
     ImGui::SetWindowPos(pos);
 

@@ -42,7 +42,7 @@ void CImGuiMOTD::Draw()
     if (windowWidth < btnWidth + padding.x * 2)
         windowWidth = btnWidth + padding.x * 2;
 
-    ImVec2 center((float)ScreenWidth * 0.5f, (float)ScreenHeight * 0.5f);
+    ImVec2 center(g_ImGuiViewport.scrWidth() * 0.5f, g_ImGuiViewport.scrHeight() * 0.5f);
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(windowWidth, windowHeight));
 

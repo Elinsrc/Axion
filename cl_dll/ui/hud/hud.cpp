@@ -478,9 +478,9 @@ void CHud::Init( void )
 	m_Jumpspeed.Init();
 #if !USE_IMGUI
 	m_Crosshairs.Init();
+	m_Debug.Init();
 #endif
 	m_Watermark.Init();
-	m_Debug.Init();
 	m_StrafeGuide.Init();
 	m_Rainbow.Init();
 	m_Countdown.Init();
@@ -699,9 +699,9 @@ void CHud::VidInit( void )
 	m_Jumpspeed.VidInit();
 #if !USE_IMGUI
 	m_Crosshairs.VidInit();
+	m_Debug.VidInit();
 #endif
 	m_Watermark.VidInit();
-	m_Debug.VidInit();
 	m_StrafeGuide.VidInit();
 	m_Countdown.VidInit();
 	m_Settings.VidInit();

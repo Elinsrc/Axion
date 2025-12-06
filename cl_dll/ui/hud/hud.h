@@ -103,9 +103,9 @@ struct HUDLIST
 #include "hud_jumpspeed.h"
 #if !USE_IMGUI
 #include "hud_crosshairs.h"
+#include "hud_debug.h"
 #endif
 #include "hud_watermark.h"
-#include "hud_debug.h"
 #include "hud_strafeguide.h"
 #include "rainbow.h"
 #include "hud_countdown.h"
@@ -695,9 +695,9 @@ public:
 	CHudJumpspeed   m_Jumpspeed;
 #if !USE_IMGUI
 	CHudCrosshairs	m_Crosshairs;
+	CHudDebug	m_Debug;
 #endif
 	CHudWatermark	m_Watermark;
-	CHudDebug	m_Debug;
 	CHudStrafeGuide	m_StrafeGuide;
 	CRainbow m_Rainbow;
 	CHudCountdown	m_Countdown;

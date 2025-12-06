@@ -171,7 +171,7 @@ void CHudDeathNotice::ImGui_DeathNotice()
 
 		bool highlight = (rgDeathNoticeList[i].iKillerKilledLocal != 0);
 
-		float x = (float)ScreenWidth - victimWidth - iconWidth - 10.0f;
+		float x = g_ImGuiViewport.scrWidth() - victimWidth - iconWidth - 10.0f;
 		if (!rgDeathNoticeList[i].iSuicide)
 			x -= 5.0f + killerWidth;
 

@@ -2,6 +2,7 @@
 #include "cl_util.h"
 #include "imgui.h"
 #include "ui_crosshairs.h"
+#include "imgui_viewport.h"
 
 cvar_t* cl_cross;
 cvar_t* cl_cross_color;
@@ -63,8 +64,8 @@ void CImGuiCrosshairs::Draw()
     sscanf(cl_cross_circle_color->string, "%d %d %d", &circle_r, &circle_g, &circle_b);
     ImU32 circleColor = IM_COL32(circle_r, circle_g, circle_b, (int)alpha);
 
-    float xPos = ScreenWidth * 0.5f;
-    float yPos = ScreenHeight * 0.5f;
+    float xPos = g_ImGuiViewport.scrWidth() * 0.5f;
+    float yPos = g_ImGuiViewport.scrHeight() * 0.5f;
 
     float size   = cl_cross_size->value;
     float thickness = cl_cross_thickness->value;

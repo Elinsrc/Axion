@@ -26,6 +26,7 @@ void CImGuiManager::Initialize()
     m_pBackend->Init();
     m_WindowSystem.Initialize();
     g_ImGuiCrosshairs.Init();
+    g_ImGuiDebug.Init();
 }
 
 void CImGuiManager::VidInitialize()
@@ -46,6 +47,7 @@ void CImGuiManager::NewFrame()
     ImGui::NewFrame();
     m_WindowSystem.NewFrame();
     g_ImGuiCrosshairs.Draw();
+    g_ImGuiDebug.Draw();
     gHUD.m_DeathNotice.ImGui_DeathNotice();
     GetClientVoiceMgr()->ImGui_DrawVoiceHUD();
     ImGui::Render();

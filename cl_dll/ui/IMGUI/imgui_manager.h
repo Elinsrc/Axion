@@ -5,6 +5,7 @@
 #include <memory>
 #include "imgui_backend.h"
 #include "ui_crosshairs.h"
+#include "imgui_debug.h"
 
 class CImGuiBackend;
 
@@ -60,6 +61,7 @@ private:
     std::unique_ptr<CImGuiBackend> m_pBackend;
     CImGuiWindowSystem m_WindowSystem;
     CImGuiCrosshairs g_ImGuiCrosshairs;
+    CImGuiDebug g_ImGuiDebug;
 
     ImFont* m_pDefaultFont = nullptr;
     ImFont* m_pHudFont     = nullptr;

@@ -110,7 +110,6 @@ set (CLDLL_SOURCES
 	ui/hud/hud_spectator.cpp
 	ui/hud/hud_update.cpp
 	ui/hud/hud_watermark.cpp
-	ui/hud/hud_debug.cpp
 	ui/hud/hud_timer.cpp
 	ui/hud/menu.cpp
 	ui/hud/message.cpp
@@ -157,6 +156,7 @@ if (USE_IMGUI)
 		ui/IMGUI/imgui_viewport.cpp
 		ui/IMGUI/imgui_MOTD.cpp
 		ui/IMGUI/imgui_ScorePanel.cpp
+		ui/IMGUI/imgui_debug.cpp
 		ui/IMGUI/ui_main.cpp
 		ui/IMGUI/ui_demo_window.cpp
 		ui/IMGUI/ui_crosshairs.cpp
@@ -177,7 +177,8 @@ else()
 	list(APPEND CLDLL_SOURCES
 		ui/hud/MOTD.cpp
 		ui/hud/scoreboard.cpp
-		ui/hud/hud_crosshairs.cpp)
+		ui/hud/hud_crosshairs.cpp
+		ui/hud/hud_debug.cpp)
 endif()
 
 if (USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
