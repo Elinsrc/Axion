@@ -6,10 +6,9 @@
 #include "gl_export.h"
 #else
 #if _WIN32
-#define HSPRITE DeletedWinapi_HSPRITE
+#include <winsani_in.h>
 #include <windows.h>
-#undef HSPRITE
-typedef int HSPRITE;
+#include <winsani_out.h>
 #include <GL/gl.h>
 #elif __linux__
 #include <GL/gl.h>

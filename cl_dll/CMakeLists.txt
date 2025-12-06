@@ -94,6 +94,7 @@ set (CLDLL_SOURCES
 	rendering/StudioModelRenderer.cpp
 	rendering/tri.cpp
 	utils/custom_utils.cpp
+	utils/net.cpp
 	ui/voice_banmgr.cpp
 	ui/hud/ammo.cpp
 	ui/hud/ammo_secondary.cpp
@@ -110,6 +111,7 @@ set (CLDLL_SOURCES
 	ui/hud/hud_update.cpp
 	ui/hud/hud_watermark.cpp
 	ui/hud/hud_debug.cpp
+	ui/hud/hud_timer.cpp
 	ui/hud/menu.cpp
 	ui/hud/message.cpp
 	ui/hud/saytext.cpp
@@ -124,7 +126,6 @@ set (CLDLL_SOURCES
 	ui/hud/OpenAG/hud_jumpspeed.cpp
 	ui/hud/OpenAG/hud_countdown.cpp
 	ui/hud/OpenAG/hud_settings.cpp
-	ui/hud/OpenAG/hud_timer.cpp
 	ui/hud/OpenAG/hud_ctf.cpp
 	ui/hud/OpenAG/hud_customtimer.cpp
 	ui/hud/OpenAG/hud_location.cpp
@@ -203,7 +204,7 @@ if (GOLDSOURCE_SUPPORT)
 endif()
 
 if(WIN32)
-    target_link_libraries(${CLDLL_LIBRARY} user32.lib opengl32.lib)
+    target_link_libraries(${CLDLL_LIBRARY} user32.lib opengl32.lib wsock32.lib)
     if (GOLDSOURCE_SUPPORT)
         target_link_libraries(${CLDLL_LIBRARY} winmm.lib)
     endif()

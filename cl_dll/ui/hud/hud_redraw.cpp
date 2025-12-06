@@ -638,3 +638,13 @@ void CHud::GetConsoleStringSizeWithColorTags(char* string, int& width, int& heig
 {
 	gEngfuncs.pfnDrawConsoleStringLen(color_tags::strip_color_tags_thread_unsafe(string), &width, &height);
 }
+
+float CHud::GetHudTransparency()
+{
+	float hud_draw = m_pCvarDraw->value;
+
+	if (hud_draw > 1) hud_draw = 1;
+	if (hud_draw < 0) hud_draw = 0;
+
+	return hud_draw;
+}

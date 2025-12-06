@@ -12,10 +12,9 @@
 #include "custom_utils.h"
 
 #ifdef _WIN32
-#define HSPRITE DeletedWinapi_HSPRITE
+#include <winsani_in.h>
 #include <windows.h>
-#undef HSPRITE
-typedef int HSPRITE;
+#include <winsani_out.h>
 #else
 #include <time.h>
 #endif

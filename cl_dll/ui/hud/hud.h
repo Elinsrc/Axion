@@ -640,6 +640,7 @@ public:
 		float default_b = 0.0f
 	);
 	void GetConsoleStringSizeWithColorTags(char* string, int& width, int& height);
+	float GetHudTransparency();
 
 
 private:
