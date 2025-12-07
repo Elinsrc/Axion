@@ -364,6 +364,17 @@ int CHudMessage::Draw( float fTime )
 		{
 			pMessage = m_pMessages[i];
 
+			// Filter out MiniAG timer that passed before we detected server AG version
+			if (gHUD.m_Timer.GetAgVersion() == CHudTimer::SV_AG_MINI && (
+				fabs(pMessage->y - 0.01) < 0.0002f && fabs(pMessage->x - 0.5) < 0.0002f ||	// Original MiniAG coordinates
+				fabs(pMessage->y - 0.01) < 0.0002f && fabs(pMessage->x + 1) < 0.0002f		// Russian Crossfire MiniAG coordinates
+			))
+			{
+				// TODO: Additional checks on text in the message...
+				m_pMessages[i] = NULL;
+				continue;
+			}
+
 			// This is when the message is over
 			switch( pMessage->effect )
 			{
@@ -443,6 +454,16 @@ void CHudMessage::MessageAdd( const char *pName, float time )
 				tempMessage = &g_pCustomMessage;
 			}
 
+			// Filter out MiniAG timer
+			if (gHUD.m_Timer.GetAgVersion() == CHudTimer::SV_AG_MINI && (
+				fabs(tempMessage->y - 0.01) < 0.0002f && fabs(tempMessage->x - 0.5) < 0.0002f ||	// Original MiniAG coordinates
+				fabs(tempMessage->y - 0.01) < 0.0002f && fabs(tempMessage->x + 1) < 0.0002f			// Russian Crossfire MiniAG coordinates
+			))
+			{
+				// TODO: Additional checks on text in the message...
+				return;
+			}
+
 			for( j = 0; j < maxHUDMessages; j++ )
 			{
 				if( m_pMessages[j] )
@@ -454,9 +475,9 @@ void CHudMessage::MessageAdd( const char *pName, float time )
 					}
 
 					// get rid of any other messages in same location (only one displays at a time)
-					if( fabs( tempMessage->y - m_pMessages[j]->y ) < 0.0001f )
+					if( fabs( tempMessage->y - m_pMessages[j]->y ) < 0.0002f )
 					{
-						if( fabs( tempMessage->x - m_pMessages[j]->x ) < 0.0001f )
+						if( fabs( tempMessage->x - m_pMessages[j]->x ) < 0.0002f )
 						{
 							m_pMessages[j] = NULL;
 						}

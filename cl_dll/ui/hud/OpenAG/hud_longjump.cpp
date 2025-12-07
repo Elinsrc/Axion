@@ -40,9 +40,13 @@ int CHudLongjump::Draw(float fTime)
     }
 
     char szText[32];
-    int r, g, b;
-    UnpackRGB(r, g, b, gHUD.m_iDefaultHUDColor);
-    sprintf(szText,"Longjump %d",(int)(m_flTurnoff - gHUD.m_flTime));
+
+    int r, g, b, a;
+    UnpackRGB(r, g, b, RGB_GREENISH);
+    a = 255 * gHUD.GetHudTransparency();
+    ScaleColors(r, g, b, a);
+
+    sprintf(szText,"Longjump %d", (int)(m_flTurnoff - gHUD.m_flTime));
     gHUD.DrawHudStringCentered(ScreenWidth / 2, gHUD.m_scrinfo.iCharHeight * 2, szText, r, g, b );
 
     return 0;
