@@ -86,7 +86,7 @@ void CImGuiManager::LoadFonts()
     m_pDefaultFont = io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, 16.0f);
     io.FontDefault = m_pDefaultFont;
 
-    m_pHudFont = io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, 32.0f);
+    m_pHudFont = io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, 26.0f);
 }
 void CImGuiManager::ApplyStyles()
 {

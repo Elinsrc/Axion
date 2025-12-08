@@ -110,6 +110,21 @@ int CHudDeathNotice::VidInit( void )
 }
 
 #if USE_IMGUI
+
+#define DN_BG_ROUNDING 5.0f
+#define DN_TEXT_PADDING_Y 4.0f
+#define DN_ROW_SPACING 5.0f
+#define DN_ICON_TEXT_SPACING 5.0f
+#define DN_RIGHT_MARGIN 10.0f
+#define DN_Y_OFFSET 2.0f
+#define DN_BG_Y_OFFSET -2.0f
+#define DN_BG_PADDING 5.0f
+
+#define DN_BG_ALPHA_BASE          0.6f
+#define DN_HIGHLIGHT_ALPHA        70.0f
+
+#define DN_MAX_ICON_SCALE 1.0f
+
 void CHudDeathNotice::ImGui_DeathNotice()
 {
 	ImFont* hudFont = g_ImGuiManager.GetHudFont();
@@ -132,14 +147,13 @@ void CHudDeathNotice::ImGui_DeathNotice()
 		rgDeathNoticeList[i].flDisplayTime = Q_min(rgDeathNoticeList[i].flDisplayTime, gHUD.m_flTime + DEATHNOTICE_DISPLAY_TIME);
 
 		float textHeight = ImGui::GetTextLineHeight();
-		float bg_h       = textHeight + 4.0f;
-		float rowHeight  = bg_h + 5.0f;
-
+		float bg_h  = textHeight + DN_TEXT_PADDING_Y;
+		float rowHeight  = bg_h + DN_ROW_SPACING;
 
 		float killerWidth = m_ImguiUtils.CalcTextWidthWithColorCodes(rgDeathNoticeList[i].szKiller);
 		float victimWidth = m_ImguiUtils.CalcTextWidthWithColorCodes(rgDeathNoticeList[i].szVictim);
 
-		float y = (int)(YRES(DEATHNOTICE_TOP) + 2 + rowHeight * i);
+		float y = (int)(YRES(DEATHNOTICE_TOP) + DN_Y_OFFSET + rowHeight * i);
 
 		int id = (rgDeathNoticeList[i].iId == -1) ? m_HUD_d_skull : rgDeathNoticeList[i].iId;
 
@@ -148,7 +162,7 @@ void CHudDeathNotice::ImGui_DeathNotice()
 		int spriteHeight = rc.bottom - rc.top;
 
 		float maxIconHeight = textHeight;
-		float scale = 1.0f;
+		float scale = DN_MAX_ICON_SCALE;
 		if (spriteHeight > 0 && spriteHeight > maxIconHeight)
 			scale = maxIconHeight / (float)spriteHeight;
 
@@ -161,33 +175,30 @@ void CHudDeathNotice::ImGui_DeathNotice()
 
 		if (t < 0.0f)
 			t = 0.0f;
-
 		if (t > 1.0f)
 			t = 1.0f;
 
-		int alphaBg = (int)(255.0f * 0.6f * t);
+		int alphaBg = (int)(255.0f * DN_BG_ALPHA_BASE * t);
 		int alphaUI = (int)(255.0f * t);
 		float alphaUIF = alphaUI / 255.0f;
 
 		bool highlight = (rgDeathNoticeList[i].iKillerKilledLocal != 0);
 
-		float x = g_ImGuiViewport.scrWidth() - victimWidth - iconWidth - 10.0f;
+		float x = g_ImGuiViewport.scrWidth() - victimWidth - iconWidth - DN_RIGHT_MARGIN;
+
 		if (!rgDeathNoticeList[i].iSuicide)
-			x -= 5.0f + killerWidth;
+			x -= DN_ICON_TEXT_SPACING + killerWidth;
 
-
-		float bg_x = x - 5.0f;
-		float bg_y = (float)y - 2.0f;
-		float bg_w = victimWidth + iconWidth + 10.0f;
+		float bg_x = x - DN_BG_PADDING;
+		float bg_y = (float)y + DN_BG_Y_OFFSET;
+		float bg_w = victimWidth + iconWidth + DN_RIGHT_MARGIN;
 		if (!rgDeathNoticeList[i].iSuicide)
-			bg_w += 5.0f + killerWidth;
-
-		float rounding = bg_h * 0.5f;
+			bg_w += DN_ICON_TEXT_SPACING + killerWidth;
 
 		ImU32 bgColor;
 		if (highlight)
 		{
-			int a = (int)(70.0f * t);
+			int a = (int)(DN_HIGHLIGHT_ALPHA * t);
 			bgColor = IM_COL32(255, 0, 0, a);
 		}
 		else
@@ -195,7 +206,8 @@ void CHudDeathNotice::ImGui_DeathNotice()
 			bgColor = IM_COL32(0, 0, 0, alphaBg);
 		}
 
-		dl->AddRectFilled(ImVec2(bg_x, bg_y), ImVec2(bg_x + bg_w, bg_y + bg_h), bgColor, rounding);
+		if (m_pCvarDeathBg->value > 0.0f)
+			dl->AddRectFilled(ImVec2(bg_x, bg_y), ImVec2(bg_x + bg_w, bg_y + bg_h), bgColor, DN_BG_ROUNDING);
 
 		if (!rgDeathNoticeList[i].iSuicide && rgDeathNoticeList[i].szKiller[0])
 		{
@@ -209,18 +221,23 @@ void CHudDeathNotice::ImGui_DeathNotice()
 
 			m_ImguiUtils.DrawTextWithColorCodesAt(ImVec2(x, y), rgDeathNoticeList[i].szKiller, baseColor, alphaUIF);
 
-			x += killerWidth + 5.0f;
+			x += killerWidth + DN_ICON_TEXT_SPACING;
 		}
 
-		int r = 255, g = 80, b = 0;
+		int r = 255;
+		int g = 80;
+		int b = 0;
+
 		if (rgDeathNoticeList[i].iTeamKill)
 		{
-			r = 10; g = 240; b = 10;
+			r = 10;
+			g = 240;
+			b = 10;
 		}
 
 		HSPRITE hSpr = gHUD.GetSprite(id);
 
-		x = m_ImguiUtils.ImGuiSpriteIcon( hSpr, rc, x, y, iconWidth, iconHeight, textHeight, r, g, b, alphaUI);
+		x = m_ImguiUtils.ImGuiSpriteIcon(hSpr, rc, x, y, iconWidth, iconHeight, textHeight, r, g, b, alphaUI);
 
 		if (!rgDeathNoticeList[i].iNonPlayerKill && rgDeathNoticeList[i].szVictim[0])
 		{
@@ -236,7 +253,7 @@ void CHudDeathNotice::ImGui_DeathNotice()
 		}
 	}
 
-	 ImGui::PopFont();
+	ImGui::PopFont();
 }
 #endif
 
