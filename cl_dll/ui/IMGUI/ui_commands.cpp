@@ -200,6 +200,24 @@ void CImGuiCommands::Draw()
             if (ImGui::Checkbox("hud_allow_hd", &hud_allow_hd))
                 m_CImguiUtils.SetCvarFloat("hud_allow_hd", hud_allow_hd);
 
+            int hud_timer = (int)m_CImguiUtils.GetCvarFloat("hud_timer");
+            int new_timer = hud_timer;
+            const char* timer_options[] = { "0", "1", "2", "3" };
+
+            ImGui::Text("hud_timer:");
+            for (int j = 0; j <= 3; j++)
+            {
+                ImGui::SameLine();
+                bool checked = (new_timer == j);
+                if (ImGui::Checkbox(timer_options[j], &checked) && checked)
+                {
+                    new_timer = j;
+                }
+            }
+
+            if (new_timer != hud_timer)
+                m_CImguiUtils.SetCvarFloat("hud_timer", (float)new_timer);
+
             ImGui::EndTabItem();
         }
 
@@ -256,6 +274,51 @@ void CImGuiCommands::Draw()
             {
                 ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
 
+                static ImVec4 vis_health100;
+                m_CImguiUtils.GetCvarColor("vis_health100", (float*)&vis_health100);
+
+                static ImVec4 vis_health80;
+                m_CImguiUtils.GetCvarColor("vis_health80", (float*)&vis_health80);
+
+                static ImVec4 vis_health60;
+                m_CImguiUtils.GetCvarColor("vis_health60", (float*)&vis_health60);
+
+                static ImVec4 vis_health40;
+                m_CImguiUtils.GetCvarColor("vis_health40", (float*)&vis_health40);
+
+                static ImVec4 vis_health20;
+                m_CImguiUtils.GetCvarColor("vis_health20", (float*)&vis_health20);
+
+                if (ImGui::ColorEdit3("Health 100%", (float*)&vis_health100))
+                    m_CImguiUtils.SetCvarColor("vis_health100", (float*)&vis_health100);
+
+                if (ImGui::ColorEdit3("Health 80%", (float*)&vis_health80))
+                    m_CImguiUtils.SetCvarColor("vis_health80", (float*)&vis_health80);
+
+                if (ImGui::ColorEdit3("Health 60%", (float*)&vis_health60))
+                    m_CImguiUtils.SetCvarColor("vis_health60", (float*)&vis_health60);
+
+                if (ImGui::ColorEdit3("Health 40%", (float*)&vis_health40))
+                    m_CImguiUtils.SetCvarColor("vis_health40", (float*)&vis_health40);
+
+                if (ImGui::ColorEdit3("Health 20%", (float*)&vis_health20))
+                    m_CImguiUtils.SetCvarColor("vis_health20", (float*)&vis_health20);
+
+                if (ImGui::Button("Reset Health Colors"))
+                {
+                    vis_health100 = ImVec4(0.0f, 250.0f/255.0f, 0.0f, 1.0f);
+                    vis_health80 = ImVec4(0.0f, 250.0f/255.0f, 0.0f, 1.0f);
+                    vis_health60 = ImVec4(250.0f/255.0f, 250.0f/255.0f, 0.0f, 1.0f);
+                    vis_health40 = ImVec4(250.0f/255.0f, 100.0f/255.0f, 0.0f, 1.0f);
+                    vis_health20 = ImVec4(250.0f/255.0f, 0.0f, 0.0f, 1.0f);
+
+                    m_CImguiUtils.SetCvarColor("vis_health100", (float*)&vis_health100);
+                    m_CImguiUtils.SetCvarColor("vis_health80", (float*)&vis_health80);
+                    m_CImguiUtils.SetCvarColor("vis_health60", (float*)&vis_health60);
+                    m_CImguiUtils.SetCvarColor("vis_health40", (float*)&vis_health40);
+                    m_CImguiUtils.SetCvarColor("vis_health20", (float*)&vis_health20);
+                }
+
                 static ImVec4 vis_battery100;
                 m_CImguiUtils.GetCvarColor("vis_battery100", (float*)&vis_battery100);
 
@@ -301,50 +364,6 @@ void CImGuiCommands::Draw()
                     m_CImguiUtils.SetCvarColor("vis_battery20",  (float*)&vis_battery20);
                 }
 
-                static ImVec4 vis_health100;
-                m_CImguiUtils.GetCvarColor("vis_health100", (float*)&vis_health100);
-
-                static ImVec4 vis_health80;
-                m_CImguiUtils.GetCvarColor("vis_health80", (float*)&vis_health80);
-
-                static ImVec4 vis_health60;
-                m_CImguiUtils.GetCvarColor("vis_health60", (float*)&vis_health60);
-
-                static ImVec4 vis_health40;
-                m_CImguiUtils.GetCvarColor("vis_health40", (float*)&vis_health40);
-
-                static ImVec4 vis_health20;
-                m_CImguiUtils.GetCvarColor("vis_health20", (float*)&vis_health20);
-
-                if (ImGui::ColorEdit3("Health 100%", (float*)&vis_health100))
-                    m_CImguiUtils.SetCvarColor("vis_health100", (float*)&vis_health100);
-
-                if (ImGui::ColorEdit3("Health 80%", (float*)&vis_health80))
-                    m_CImguiUtils.SetCvarColor("vis_health80", (float*)&vis_health80);
-
-                if (ImGui::ColorEdit3("Health 60%", (float*)&vis_health60))
-                    m_CImguiUtils.SetCvarColor("vis_health60", (float*)&vis_health60);
-
-                if (ImGui::ColorEdit3("Health 40%", (float*)&vis_health40))
-                    m_CImguiUtils.SetCvarColor("vis_health40", (float*)&vis_health40);
-
-                if (ImGui::ColorEdit3("Health 20%", (float*)&vis_health20))
-                    m_CImguiUtils.SetCvarColor("vis_health20", (float*)&vis_health20);
-
-                if (ImGui::Button("Reset Health Colors"))
-                {
-                    vis_health100 = ImVec4(0.0f, 250.0f/255.0f, 0.0f, 1.0f);
-                    vis_health80 = ImVec4(0.0f, 250.0f/255.0f, 0.0f, 1.0f);
-                    vis_health60 = ImVec4(250.0f/255.0f, 250.0f/255.0f, 0.0f, 1.0f);
-                    vis_health40 = ImVec4(250.0f/255.0f, 100.0f/255.0f, 0.0f, 1.0f);
-                    vis_health20 = ImVec4(250.0f/255.0f, 0.0f, 0.0f, 1.0f);
-
-                    m_CImguiUtils.SetCvarColor("vis_health100", (float*)&vis_health100);
-                    m_CImguiUtils.SetCvarColor("vis_health80", (float*)&vis_health80);
-                    m_CImguiUtils.SetCvarColor("vis_health60", (float*)&vis_health60);
-                    m_CImguiUtils.SetCvarColor("vis_health40", (float*)&vis_health40);
-                    m_CImguiUtils.SetCvarColor("vis_health20", (float*)&vis_health20);
-                }
                 ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
             }
             ImGui::EndTabItem();
@@ -485,7 +504,7 @@ void CImGuiCommands::Draw()
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Debug"))
+        /*if (ImGui::BeginTabItem("Debug"))
         {
             int cl_debug = (int)m_CImguiUtils.GetCvarFloat("cl_debug");
             int new_debug = cl_debug;
@@ -510,7 +529,7 @@ void CImGuiCommands::Draw()
                 m_CImguiUtils.SetCvarFloat("cl_debug_showfps", cl_debug_showfps);
 
             ImGui::EndTabItem();
-        }
+        }*/
 
         ImGui::EndTabBar();
     }

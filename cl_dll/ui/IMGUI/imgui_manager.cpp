@@ -5,6 +5,7 @@
 #include "cl_util.h"
 #include "Roboto.h"
 #include "voice_status.h"
+#include "ui_utils.h"
 
 extern int g_ImGuiMouse;
 
@@ -90,8 +91,7 @@ void CImGuiManager::LoadFonts()
 }
 void CImGuiManager::ApplyStyles()
 {
-    ImGuiIO &io = ImGui::GetIO();
-    ImGui::StyleColorsDark();
+    m_ImguiUtils.StyleColorVGUI();
 }
 
 void CImGuiManager::UpdateMouseState()
