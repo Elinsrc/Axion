@@ -2,8 +2,8 @@
 #define IMGUI_VIEWPORT_H
 
 #include "hud.h"
-#include "imgui_ScorePanel.h"
-#include "imgui_MOTD.h"
+#include "ui_ScorePanel.h"
+#include "ui_MOTD.h"
 
 #if __ANDROID__ || XASH_64BIT
 #include "gl_export.h"

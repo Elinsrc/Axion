@@ -26,7 +26,7 @@
 #include "parsemsg.h"
 #if USE_IMGUI
 #include "imgui_viewport.h"
-#include "imgui_ScorePanel.h"
+#include "ui_ScorePanel.h"
 #endif
 
 #include "demo.h"

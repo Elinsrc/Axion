@@ -1,8 +1,7 @@
 #include "imgui.h"
 #include "keydefs.h"
-#include "imgui_backend.h"
 #include "imgui_viewport.h"
-#include "imgui_ScorePanel.h"
+#include "ui_ScorePanel.h"
 
 extern int blue_flag_player_index;
 extern int red_flag_player_index;

@@ -90,9 +90,9 @@ set (CLDLL_SOURCES
 	input/input_goldsource.cpp
 	input/input_mouse.cpp
 	input/input_xash3d.cpp
-	rendering/GameStudioModelRenderer.cpp
-	rendering/StudioModelRenderer.cpp
-	rendering/tri.cpp
+	render/GameStudioModelRenderer.cpp
+	render/StudioModelRenderer.cpp
+	render/tri.cpp
 	utils/custom_utils.cpp
 	utils/net.cpp
 	ui/voice_banmgr.cpp
@@ -150,18 +150,18 @@ set (CLDLL_SOURCES
 
 if (USE_IMGUI)
 	list(APPEND CLDLL_SOURCES
-		ui/IMGUI/imgui_backend.cpp
+		render/gl_imgui_backend.cpp
 		ui/IMGUI/imgui_manager.cpp
 		ui/IMGUI/imgui_window_system.cpp
 		ui/IMGUI/imgui_viewport.cpp
-		ui/IMGUI/imgui_MOTD.cpp
-		ui/IMGUI/imgui_ScorePanel.cpp
-		ui/IMGUI/imgui_debug.cpp
+		ui/IMGUI/ui_MOTD.cpp
+		ui/IMGUI/ui_ScorePanel.cpp
+		ui/IMGUI/ui_debug.cpp
 		ui/IMGUI/ui_main.cpp
 		ui/IMGUI/ui_demo_window.cpp
 		ui/IMGUI/ui_crosshairs.cpp
 		ui/IMGUI/ui_commands.cpp
-		ui/IMGUI/ui_utils.cpp
+		utils/imgui_utils.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_demo.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_draw.cpp
@@ -183,11 +183,11 @@ endif()
 
 if (USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
     list(APPEND CLDLL_SOURCES
-        rendering/gl_export.cpp
+        render/gl_export.cpp
     )
 endif()
 
-include_directories (. hl/ events/ input/ rendering/ ui ui/hud ui/hud/OpenAG/ utils/ ${CMAKE_SOURCE_DIR}/dlls ${CMAKE_SOURCE_DIR}/dlls/wpn_shared ${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/engine ${CMAKE_SOURCE_DIR}/pm_shared ${CMAKE_SOURCE_DIR}/game_shared ${CMAKE_SOURCE_DIR}/public ${CMAKE_SOURCE_DIR}/utils/fake_vgui/include)
+include_directories (. hl/ events/ input/ render/ ui ui/hud ui/hud/OpenAG/ utils/ ${CMAKE_SOURCE_DIR}/dlls ${CMAKE_SOURCE_DIR}/dlls/wpn_shared ${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/engine ${CMAKE_SOURCE_DIR}/pm_shared ${CMAKE_SOURCE_DIR}/game_shared ${CMAKE_SOURCE_DIR}/public ${CMAKE_SOURCE_DIR}/utils/fake_vgui/include)
 
 if(USE_VOICEMGR)
 	#	ui/VGUI/utils/voice_banmgr.cpp

@@ -22,7 +22,7 @@
 #include "imgui.h"
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
-#include "ui_utils.h"
+#include "imgui_utils.h"
 #endif
 
 static void GetPlayerTextColor(int entindex, int color[3])

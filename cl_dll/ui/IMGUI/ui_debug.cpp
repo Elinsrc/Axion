@@ -1,7 +1,7 @@
 #include "hud.h"
 #include "cl_util.h"
 #include "imgui.h"
-#include "imgui_debug.h"
+#include "ui_debug.h"
 #include "imgui_viewport.h"
 
 cvar_t* cl_debug;

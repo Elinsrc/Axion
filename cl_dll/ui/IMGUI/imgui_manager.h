@@ -3,9 +3,9 @@
 #include "cursor_type.h"
 #include <map>
 #include <memory>
-#include "imgui_backend.h"
+#include "gl_imgui_backend.h"
 #include "ui_crosshairs.h"
-#include "imgui_debug.h"
+#include "ui_debug.h"
 
 class CImGuiBackend;
 

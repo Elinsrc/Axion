@@ -2,7 +2,7 @@
 #define IMGUI_SCOREBOARD_H
 
 #include "imgui_window.h"
-#include "ui_utils.h"
+#include "imgui_utils.h"
 #include "hud.h"
 #include "cl_util.h"
 

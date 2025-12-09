@@ -33,9 +33,6 @@ extern cvar_t *cl_cross;
 #endif
 
 #include "ammohistory.h"
-#if USE_VGUI
-#include "vgui_TeamFortressViewport.h"
-#endif
 
 cvar_t *vis_reload;
 cvar_t *vis_reload_color;
@@ -658,7 +655,6 @@ int CHudAmmo::MsgFunc_CurWeapon( const char *pszName, int iSize, void *pbuf )
 					SetCrosshair( m_pWeapon->hZoomedCrosshair, m_pWeapon->rcZoomedCrosshair, 255, 255, 255 );
 			}
 		}
-
 #if USE_IMGUI
 	}
 #endif
@@ -708,11 +704,6 @@ int CHudAmmo::MsgFunc_WeaponList( const char *pszName, int iSize, void *pbuf )
 // Slot button pressed
 void CHudAmmo::SlotInput( int iSlot )
 {
-#if USE_VGUI
-	// Let the Viewport use it first, for menus
-	if( gViewPort && gViewPort->SlotInput( iSlot ) )
-		return;
-#endif
 	gWR.SelectSlot(iSlot, FALSE, 1);
 }
 

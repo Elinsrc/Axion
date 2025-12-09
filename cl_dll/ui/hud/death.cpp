@@ -26,7 +26,7 @@
 #if USE_IMGUI
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
-#include "ui_utils.h"
+#include "imgui_utils.h"
 #endif
 
 DECLARE_MESSAGE( m_DeathNotice, DeathMsg )

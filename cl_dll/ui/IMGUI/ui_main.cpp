@@ -1,8 +1,8 @@
 #include "imgui_window_system.h"
 #include "ui_demo_window.h"
 #include "ui_commands.h"
-#include "imgui_ScorePanel.h"
-#include "imgui_MOTD.h"
+#include "ui_ScorePanel.h"
+#include "ui_MOTD.h"
 
 void CImGuiWindowSystem::LinkWindows()
 {
