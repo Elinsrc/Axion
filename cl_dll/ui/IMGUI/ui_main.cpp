@@ -3,6 +3,7 @@
 #include "ui_commands.h"
 #include "ui_ScorePanel.h"
 #include "ui_MOTD.h"
+#include "ui_custom_menu.h"
 
 void CImGuiWindowSystem::LinkWindows()
 {
@@ -16,4 +17,6 @@ void CImGuiWindowSystem::LinkWindows()
 
     static CImGuiMOTD motdWindow;
     AddWindow(&motdWindow);
+
+    AddWindow(&m_iCustomMenu);
 }
