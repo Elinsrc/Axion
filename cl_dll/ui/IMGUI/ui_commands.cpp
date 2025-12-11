@@ -63,12 +63,12 @@ void CImGuiCommands::Draw()
     {
         if (ImGui::BeginTabItem("Client"))
         {
-            bool cl_autojump = m_CImguiUtils.GetCvarFloat("cl_autojump");
+            bool cl_autojump = gEngfuncs.pfnGetCvarFloat("cl_autojump");
             if (ImGui::Checkbox("cl_autojump", &cl_autojump))
                 m_CImguiUtils.SetCvarFloat("cl_autojump", cl_autojump);
 
 
-            int cl_logchat = (int)m_CImguiUtils.GetCvarFloat("cl_logchat");
+            int cl_logchat = (int)gEngfuncs.pfnGetCvarFloat("cl_logchat");
             int new_logchat = cl_logchat;
             const char* logchat_options[] = { "0", "1", "2" };
 
@@ -86,7 +86,7 @@ void CImGuiCommands::Draw()
             if (new_logchat != cl_logchat)
                 m_CImguiUtils.SetCvarFloat("cl_logchat", (float)new_logchat);
 
-            bool cl_chatsound = m_CImguiUtils.GetCvarFloat("cl_chatsound");
+            bool cl_chatsound = gEngfuncs.pfnGetCvarFloat("cl_chatsound");
             if (ImGui::Checkbox("cl_chatsound", &cl_chatsound))
                 m_CImguiUtils.SetCvarFloat("cl_chatsound", cl_chatsound);
 
@@ -103,31 +103,31 @@ void CImGuiCommands::Draw()
                 ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
             }
 
-            bool cl_weaponlowering = m_CImguiUtils.GetCvarFloat("cl_weaponlowering");
+            bool cl_weaponlowering = gEngfuncs.pfnGetCvarFloat("cl_weaponlowering");
             if (ImGui::Checkbox("cl_weaponlowering", &cl_weaponlowering))
                 m_CImguiUtils.SetCvarFloat("cl_weaponlowering", cl_weaponlowering);
 
-            bool cl_weaponsway = m_CImguiUtils.GetCvarFloat("cl_weaponsway");
+            bool cl_weaponsway = gEngfuncs.pfnGetCvarFloat("cl_weaponsway");
             if (ImGui::Checkbox("cl_weaponsway", &cl_weaponsway))
                 m_CImguiUtils.SetCvarFloat("cl_weaponsway", cl_weaponsway);
 
-            bool cl_weaponlag = m_CImguiUtils.GetCvarFloat("cl_weaponlag");
+            bool cl_weaponlag = gEngfuncs.pfnGetCvarFloat("cl_weaponlag");
             if (ImGui::Checkbox("cl_weaponlag", &cl_weaponlag))
                 m_CImguiUtils.SetCvarFloat("cl_weaponlag", cl_weaponlag);
 
-            bool cl_gauss_balls = m_CImguiUtils.GetCvarFloat("cl_gauss_balls");
+            bool cl_gauss_balls = gEngfuncs.pfnGetCvarFloat("cl_gauss_balls");
             if (ImGui::Checkbox("cl_gauss_balls", &cl_gauss_balls))
                 m_CImguiUtils.SetCvarFloat("cl_gauss_balls", cl_gauss_balls);
 
-            bool cl_gauss_hits = m_CImguiUtils.GetCvarFloat("cl_gauss_hits");
+            bool cl_gauss_hits = gEngfuncs.pfnGetCvarFloat("cl_gauss_hits");
             if (ImGui::Checkbox("cl_gauss_hits", &cl_gauss_hits))
                 m_CImguiUtils.SetCvarFloat("cl_gauss_hits", cl_gauss_hits);
 
-            bool cl_hidecorpses = m_CImguiUtils.GetCvarFloat("cl_hidecorpses");
+            bool cl_hidecorpses = gEngfuncs.pfnGetCvarFloat("cl_hidecorpses");
             if (ImGui::Checkbox("cl_hidecorpses", &cl_hidecorpses))
                 m_CImguiUtils.SetCvarFloat("cl_hidecorpses", cl_hidecorpses);
 
-            bool cl_killsound = m_CImguiUtils.GetCvarFloat("cl_killsound");
+            bool cl_killsound = gEngfuncs.pfnGetCvarFloat("cl_killsound");
             if (ImGui::Checkbox("cl_killsound", &cl_killsound))
                 m_CImguiUtils.SetCvarFloat("cl_killsound", cl_killsound);
 
@@ -149,58 +149,58 @@ void CImGuiCommands::Draw()
 
         if (ImGui::BeginTabItem("HUD"))
         {
-            bool hud_weapon = m_CImguiUtils.GetCvarFloat("hud_weapon");
+            bool hud_weapon = gEngfuncs.pfnGetCvarFloat("hud_weapon");
             if (ImGui::Checkbox("hud_weapon", &hud_weapon))
                 m_CImguiUtils.SetCvarFloat("hud_weapon", hud_weapon);
 
-            bool hud_speedometer = m_CImguiUtils.GetCvarFloat("hud_speedometer");
+            bool hud_speedometer = gEngfuncs.pfnGetCvarFloat("hud_speedometer");
             if (ImGui::Checkbox("hud_speedometer", &hud_speedometer))
                 m_CImguiUtils.SetCvarFloat("hud_speedometer", hud_speedometer);
 
             if (hud_speedometer)
             {
                 ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
-                bool hud_speedometer_below_cross = m_CImguiUtils.GetCvarFloat("hud_speedometer_below_cross");
+                bool hud_speedometer_below_cross = gEngfuncs.pfnGetCvarFloat("hud_speedometer_below_cross");
                 if (ImGui::Checkbox("hud_speedometer_below_cross", &hud_speedometer_below_cross))
                     m_CImguiUtils.SetCvarFloat("hud_speedometer_below_cross", hud_speedometer_below_cross);
                 ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
             }
 
-            bool hud_jumpspeed = m_CImguiUtils.GetCvarFloat("hud_jumpspeed");
+            bool hud_jumpspeed = gEngfuncs.pfnGetCvarFloat("hud_jumpspeed");
             if (ImGui::Checkbox("hud_jumpspeed", &hud_jumpspeed))
                 m_CImguiUtils.SetCvarFloat("hud_jumpspeed", hud_jumpspeed);
 
             if (hud_jumpspeed)
             {
                 ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
-                bool hud_jumpspeed_below_cross = m_CImguiUtils.GetCvarFloat("hud_jumpspeed_below_cross");
+                bool hud_jumpspeed_below_cross = gEngfuncs.pfnGetCvarFloat("hud_jumpspeed_below_cross");
                 if (ImGui::Checkbox("hud_jumpspeed_below_cross", &hud_jumpspeed_below_cross))
                     m_CImguiUtils.SetCvarFloat("hud_jumpspeed_below_cross", hud_jumpspeed_below_cross);
                 ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
 
             }
 
-            bool hud_strafeguide = m_CImguiUtils.GetCvarFloat("hud_strafeguide");
+            bool hud_strafeguide = gEngfuncs.pfnGetCvarFloat("hud_strafeguide");
             if (ImGui::Checkbox("hud_strafeguide", &hud_strafeguide))
                 m_CImguiUtils.SetCvarFloat("hud_strafeguide", hud_strafeguide);
 
-            bool hud_watermark = m_CImguiUtils.GetCvarFloat("hud_watermark");
+            bool hud_watermark = gEngfuncs.pfnGetCvarFloat("hud_watermark");
             if (ImGui::Checkbox("hud_watermark", &hud_watermark))
                 m_CImguiUtils.SetCvarFloat("hud_watermark", hud_watermark);
 
-            bool hud_deathnotice_bg = m_CImguiUtils.GetCvarFloat("hud_deathnotice_bg");
+            bool hud_deathnotice_bg = gEngfuncs.pfnGetCvarFloat("hud_deathnotice_bg");
             if (ImGui::Checkbox("hud_deathnotice_bg", &hud_deathnotice_bg))
                 m_CImguiUtils.SetCvarFloat("hud_deathnotice_bg", hud_deathnotice_bg);
 
-            bool hud_health_divider = m_CImguiUtils.GetCvarFloat("hud_health_divider");
+            bool hud_health_divider = gEngfuncs.pfnGetCvarFloat("hud_health_divider");
             if (ImGui::Checkbox("hud_health_divider", &hud_health_divider))
                 m_CImguiUtils.SetCvarFloat("hud_health_divider", hud_health_divider);
 
-            bool hud_allow_hd = m_CImguiUtils.GetCvarFloat("hud_allow_hd");
+            bool hud_allow_hd = gEngfuncs.pfnGetCvarFloat("hud_allow_hd");
             if (ImGui::Checkbox("hud_allow_hd", &hud_allow_hd))
                 m_CImguiUtils.SetCvarFloat("hud_allow_hd", hud_allow_hd);
 
-            int hud_timer = (int)m_CImguiUtils.GetCvarFloat("hud_timer");
+            int hud_timer = (int)gEngfuncs.pfnGetCvarFloat("hud_timer");
             int new_timer = hud_timer;
             const char* timer_options[] = { "0", "1", "2", "3" };
 
@@ -223,7 +223,7 @@ void CImGuiCommands::Draw()
 
         if (ImGui::BeginTabItem("HUD Color"))
         {
-            bool hud_rainbow = m_CImguiUtils.GetCvarFloat("hud_rainbow");
+            bool hud_rainbow = gEngfuncs.pfnGetCvarFloat("hud_rainbow");
             if (ImGui::Checkbox("hud_rainbow", &hud_rainbow))
                 m_CImguiUtils.SetCvarFloat("hud_rainbow", hud_rainbow);
 
@@ -241,7 +241,7 @@ void CImGuiCommands::Draw()
                 m_CImguiUtils.SetCvarColor("hud_color", (float*)&hud_color);
             }
 
-            bool vis_reload = m_CImguiUtils.GetCvarFloat("vis_reload");
+            bool vis_reload = gEngfuncs.pfnGetCvarFloat("vis_reload");
             if (ImGui::Checkbox("vis_reload", &vis_reload))
                 m_CImguiUtils.SetCvarFloat("vis_reload", vis_reload);
 
@@ -266,7 +266,7 @@ void CImGuiCommands::Draw()
                 ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
             }
 
-            bool hud_vis = m_CImguiUtils.GetCvarFloat("hud_vis");
+            bool hud_vis = gEngfuncs.pfnGetCvarFloat("hud_vis");
             if (ImGui::Checkbox("hud_vis", &hud_vis))
                 m_CImguiUtils.SetCvarFloat("hud_vis", hud_vis);
 
@@ -371,7 +371,7 @@ void CImGuiCommands::Draw()
 
         if (ImGui::BeginTabItem("Crosshairs"))
         {
-            bool cl_cross = m_CImguiUtils.GetCvarFloat("cl_cross");
+            bool cl_cross = gEngfuncs.pfnGetCvarFloat("cl_cross");
             if (ImGui::Checkbox("cl_cross", &cl_cross))
                 m_CImguiUtils.SetCvarFloat("cl_cross", cl_cross);
 
@@ -391,43 +391,43 @@ void CImGuiCommands::Draw()
                     m_CImguiUtils.SetCvarColor("cl_cross_color", (float*)&cross_color);
                 }
 
-                int cl_cross_alpha = (int)m_CImguiUtils.GetCvarFloat("cl_cross_alpha");
+                int cl_cross_alpha = (int)gEngfuncs.pfnGetCvarFloat("cl_cross_alpha");
                 if (ImGui::SliderInt("cl_cross_alpha", &cl_cross_alpha, 0, 255))
                     m_CImguiUtils.SetCvarFloat("cl_cross_alpha", (float)cl_cross_alpha);
 
-                int cl_cross_size = (int)m_CImguiUtils.GetCvarFloat("cl_cross_size");
+                int cl_cross_size = (int)gEngfuncs.pfnGetCvarFloat("cl_cross_size");
                 if (ImGui::SliderInt("cl_cross_size", &cl_cross_size, 0, 100))
                     m_CImguiUtils.SetCvarFloat("cl_cross_size", (float)cl_cross_size);
 
-                int cl_cross_gap = (int)m_CImguiUtils.GetCvarFloat("cl_cross_gap");
+                int cl_cross_gap = (int)gEngfuncs.pfnGetCvarFloat("cl_cross_gap");
                 if (ImGui::SliderInt("cl_cross_gap", &cl_cross_gap, 0, 100))
                     m_CImguiUtils.SetCvarFloat("cl_cross_gap", (float)cl_cross_gap);
 
-                int cl_cross_thickness = (int)m_CImguiUtils.GetCvarFloat("cl_cross_thickness");
+                int cl_cross_thickness = (int)gEngfuncs.pfnGetCvarFloat("cl_cross_thickness");
                 if (ImGui::SliderInt("cl_cross_thickness", &cl_cross_thickness, 0, 100))
                     m_CImguiUtils.SetCvarFloat("cl_cross_thickness", (float)cl_cross_thickness);
 
-                bool cl_cross_outline = m_CImguiUtils.GetCvarFloat("cl_cross_outline");
+                bool cl_cross_outline = gEngfuncs.pfnGetCvarFloat("cl_cross_outline");
                 if (ImGui::Checkbox("cl_cross_outline", &cl_cross_outline))
                     m_CImguiUtils.SetCvarFloat("cl_cross_outline", cl_cross_outline);
 
-                bool cl_cross_top_line = m_CImguiUtils.GetCvarFloat("cl_cross_top_line");
+                bool cl_cross_top_line = gEngfuncs.pfnGetCvarFloat("cl_cross_top_line");
                 if (ImGui::Checkbox("cl_cross_top_line", &cl_cross_top_line))
                     m_CImguiUtils.SetCvarFloat("cl_cross_top_line", cl_cross_top_line);
 
-                bool cl_cross_bottom_line = m_CImguiUtils.GetCvarFloat("cl_cross_bottom_line");
+                bool cl_cross_bottom_line = gEngfuncs.pfnGetCvarFloat("cl_cross_bottom_line");
                 if (ImGui::Checkbox("cl_cross_bottom_line", &cl_cross_bottom_line))
                     m_CImguiUtils.SetCvarFloat("cl_cross_bottom_line", cl_cross_bottom_line);
 
-                bool cl_cross_left_line = m_CImguiUtils.GetCvarFloat("cl_cross_left_line");
+                bool cl_cross_left_line = gEngfuncs.pfnGetCvarFloat("cl_cross_left_line");
                 if (ImGui::Checkbox("cl_cross_left_line", &cl_cross_left_line))
                     m_CImguiUtils.SetCvarFloat("cl_cross_left_line", cl_cross_left_line);
 
-                bool cl_cross_right_line = m_CImguiUtils.GetCvarFloat("cl_cross_right_line");
+                bool cl_cross_right_line = gEngfuncs.pfnGetCvarFloat("cl_cross_right_line");
                 if (ImGui::Checkbox("cl_cross_right_line", &cl_cross_right_line))
                     m_CImguiUtils.SetCvarFloat("cl_cross_right_line", cl_cross_right_line);
 
-                int cl_cross_dot_size = (int)m_CImguiUtils.GetCvarFloat("cl_cross_dot_size");
+                int cl_cross_dot_size = (int)gEngfuncs.pfnGetCvarFloat("cl_cross_dot_size");
                 if (ImGui::SliderInt("cl_cross_dot_size", &cl_cross_dot_size, 0, 100))
                     m_CImguiUtils.SetCvarFloat("cl_cross_dot_size", (float)cl_cross_dot_size);
 
@@ -450,7 +450,7 @@ void CImGuiCommands::Draw()
                     ImGui::Unindent(ImGui::GetFrameHeightWithSpacing());
                 }
 
-                int cl_cross_circle_radius = (int)m_CImguiUtils.GetCvarFloat("cl_cross_circle_radius");
+                int cl_cross_circle_radius = (int)gEngfuncs.pfnGetCvarFloat("cl_cross_circle_radius");
                 if (ImGui::SliderInt("cl_cross_circle_radius", &cl_cross_circle_radius, 0, 100))
                     m_CImguiUtils.SetCvarFloat("cl_cross_circle_radius", (float)cl_cross_circle_radius);
 
@@ -458,7 +458,7 @@ void CImGuiCommands::Draw()
                 {
                     ImGui::Indent(ImGui::GetFrameHeightWithSpacing());
 
-                    int cl_cross_circle_gap = (int)m_CImguiUtils.GetCvarFloat("cl_cross_circle_gap");
+                    int cl_cross_circle_gap = (int)gEngfuncs.pfnGetCvarFloat("cl_cross_circle_gap");
                     if (ImGui::SliderInt("cl_cross_circle_gap", &cl_cross_circle_gap, 0, 100))
                         m_CImguiUtils.SetCvarFloat("cl_cross_circle_gap", (float)cl_cross_circle_gap);
 
@@ -506,7 +506,7 @@ void CImGuiCommands::Draw()
 
         /*if (ImGui::BeginTabItem("Debug"))
         {
-            int cl_debug = (int)m_CImguiUtils.GetCvarFloat("cl_debug");
+            int cl_debug = (int)gEngfuncs.pfnGetCvarFloat("cl_debug");
             int new_debug = cl_debug;
             const char* debug_options[] = { "0", "1", "2", "3" };
 
@@ -524,7 +524,7 @@ void CImGuiCommands::Draw()
             if (new_debug != cl_debug)
                 m_CImguiUtils.SetCvarFloat("cl_debug", (float)new_debug);
 
-            bool cl_debug_showfps = m_CImguiUtils.GetCvarFloat("cl_debug_showfps");
+            bool cl_debug_showfps = gEngfuncs.pfnGetCvarFloat("cl_debug_showfps");
             if (ImGui::Checkbox("cl_debug_showfps", &cl_debug_showfps))
                 m_CImguiUtils.SetCvarFloat("cl_debug_showfps", cl_debug_showfps);
 

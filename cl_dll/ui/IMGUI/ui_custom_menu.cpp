@@ -466,7 +466,7 @@ void CImGuiCustomMenu::DrawItemsRecursive(const std::vector<MenuItem>& items)
                 if (item.label.empty() || item.cvarName.empty())
                     break;
 
-                float v = m_ImguiUtils.GetCvarFloat(item.cvarName.c_str());
+                float v = gEngfuncs.pfnGetCvarFloat(item.cvarName.c_str());
                 bool  state = (v != 0.0f);
 
                 if (ImGui::Checkbox(item.label.c_str(), &state))
@@ -547,6 +547,101 @@ void CImGuiCustomMenu::DrawItemsRecursive(const std::vector<MenuItem>& items)
 
             case MenuItem::TAB:
                 break;
+
+            case MenuItem::SLIDER_INT:
+            {
+                if (item.label.empty() || item.cvarName.empty())
+                    continue;
+
+                int v = (int)gEngfuncs.pfnGetCvarFloat(item.cvarName.c_str());
+                if (ImGui::SliderInt(item.label.c_str(), &v, item.minInt, item.maxInt))
+                {
+                    char cmd[256];
+                    std::snprintf(cmd, sizeof(cmd), "%s %d", item.cvarName.c_str(), v);
+                    gEngfuncs.pfnClientCmd(cmd);
+                }
+                break;
+            }
+
+            case MenuItem::SLIDER_FLOAT:
+            {
+                if (item.label.empty() || item.cvarName.empty())
+                    continue;
+
+                float v = gEngfuncs.pfnGetCvarFloat(item.cvarName.c_str());
+
+                const float step = 0.1f;
+
+                if (ImGui::SliderFloat(item.label.c_str(), &v, item.minValue, item.maxValue, "%.1f"))
+                {
+                    v = std::roundf(v / step) * step;
+
+                    char cmd[256];
+                    std::snprintf(cmd, sizeof(cmd), "%s %.1f", item.cvarName.c_str(), v);
+                    gEngfuncs.pfnClientCmd(cmd);
+                }
+                break;
+            }
+
+            case MenuItem::COLOR_CVAR:
+            {
+                if (item.label.empty() || item.cvarName.empty())
+                    continue;
+
+                const char* str = gEngfuncs.pfnGetCvarString(item.cvarName.c_str());
+                int r = 0, g = 0, b = 0, a = 255;
+                int count = 0;
+
+                if (str && *str)
+                    count = std::sscanf(str, "%d %d %d %d", &r, &g, &b, &a);
+
+                if (count < 3)
+                {
+                    r = g = b = 0;
+                    a = 255;
+                }
+
+                if (count < 4)
+                    a = 255;
+
+                float col[4];
+                col[0] = r / 255.0f;
+                col[1] = g / 255.0f;
+                col[2] = b / 255.0f;
+                col[3] = a / 255.0f;
+
+                const char* label = item.label.c_str();
+                bool hasAlpha = (count >= 4);
+
+                bool changed = false;
+                if (hasAlpha)
+                    changed = ImGui::ColorEdit4(label, col);
+                else
+                    changed = ImGui::ColorEdit3(label, col);
+
+                if (changed)
+                {
+                    r = (int)(col[0] * 255.0f + 0.5f);
+                    g = (int)(col[1] * 255.0f + 0.5f);
+                    b = (int)(col[2] * 255.0f + 0.5f);
+                    a = (int)(col[3] * 255.0f + 0.5f);
+
+                    char cmd[128];
+                    if (hasAlpha)
+                        std::snprintf(cmd, sizeof(cmd), "%s \"%d %d %d %d\"", item.cvarName.c_str(), r, g, b, a);
+                    else
+                        std::snprintf(cmd, sizeof(cmd), "%s \"%d %d %d\"", item.cvarName.c_str(), r, g, b);
+
+                    gEngfuncs.pfnClientCmd(cmd);
+                }
+                break;
+            }
+
+            case MenuItem::SPACE:
+            {
+                ImGui::Spacing();
+                break;
+            }
         }
     }
 }
@@ -557,13 +652,18 @@ void CImGuiCustomMenu::ExecMenu_f()
 
     if (argc < 2)
     {
-        gEngfuncs.Con_Printf("Usage: exec_menu <file.cfg>\n");
+        gEngfuncs.Con_Printf("Usage: exec_menu <file>\n");
         return;
     }
 
-    const char* file = gEngfuncs.Cmd_Argv(1);
-    if (!LoadFromCfg(file))
-        gEngfuncs.Con_Printf("Failed to load menu '%s'\n", file);
+    const char* arg = gEngfuncs.Cmd_Argv(1);
+
+    std::string file = arg;
+    if (file.size() < 4 || file.compare(file.size() - 4, 4, ".cfg") != 0)
+        file += ".cfg";
+
+    if (!LoadFromCfg(file.c_str()))
+        gEngfuncs.Con_Printf("Failed to load menu '%s'\n", file.c_str());
 }
 
 bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
@@ -629,7 +729,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
         {
             if (StartsWith(str, "stylevar2"))
             {
-                char  name[64];
+                char name[64];
                 float a, b;
                 if (std::sscanf(str.c_str(), "stylevar2 %63s %f %f", name, &a, &b) != 3)
                 {
@@ -638,9 +738,9 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
                 }
 
                 MenuStyleVar sv;
-                sv.idx    = GetStyleVarIndex(name);
+                sv.idx = GetStyleVarIndex(name);
                 sv.isVec2 = true;
-                sv.value  = ImVec2(a, b);
+                sv.value = ImVec2(a, b);
 
                 if (sv.idx == (ImGuiStyleVar)-1)
                     PrintError("Unknown stylevar2 '%s'", name);
@@ -652,7 +752,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
 
             if (StartsWith(str, "stylevar"))
             {
-                char  name[64];
+                char name[64];
                 float a;
                 if (std::sscanf(str.c_str(), "stylevar %63s %f", name, &a) != 2)
                 {
@@ -661,9 +761,9 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
                 }
 
                 MenuStyleVar sv;
-                sv.idx    = GetStyleVarIndex(name);
+                sv.idx = GetStyleVarIndex(name);
                 sv.isVec2 = false;
-                sv.value  = ImVec2(a, 0.0f);
+                sv.value = ImVec2(a, 0.0f);
 
                 if (sv.idx == (ImGuiStyleVar)-1)
                     PrintError("Unknown stylevar '%s'", name);
@@ -697,7 +797,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
 
             if (StartsWith(str, "window"))
             {
-                size_t first  = str.find('"');
+                size_t first = str.find('"');
                 size_t second = str.find('"', first + 1);
 
                 MenuWindow win;
@@ -765,7 +865,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
         if (StartsWith(str, "text"))
         {
             size_t first = str.find('"');
-            size_t last  = str.rfind('"');
+            size_t last = str.rfind('"');
             if (first == std::string::npos || last  == std::string::npos || last <= first)
             {
                 PrintError("Invalid text syntax. Expected: text \"Label\"");
@@ -773,7 +873,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
             }
 
             MenuItem it;
-            it.type  = MenuItem::TEXT;
+            it.type = MenuItem::TEXT;
             it.label = str.substr(first + 1, last - first - 1);
             curList->push_back(it);
             continue;
@@ -797,20 +897,20 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
 
         if (StartsWith(str, "button"))
         {
-            size_t first  = str.find('"');
+            size_t first = str.find('"');
             size_t second = str.find('"', first + 1);
-            size_t third  = str.find('"', second + 1);
+            size_t third = str.find('"', second + 1);
             size_t fourth = str.find('"', third + 1);
 
-            if (first  == std::string::npos || second == std::string::npos || third  == std::string::npos || fourth == std::string::npos || !(second > first && fourth > third))
+            if (first == std::string::npos || second == std::string::npos || third  == std::string::npos || fourth == std::string::npos || !(second > first && fourth > third))
             {
                 PrintError("Invalid button syntax. Expected: button \"Label\" \"command\"");
                 continue;
             }
 
             MenuItem it;
-            it.type    = MenuItem::BUTTON;
-            it.label   = str.substr(first  + 1, second - first  - 1);
+            it.type = MenuItem::BUTTON;
+            it.label = str.substr(first  + 1, second - first  - 1);
             it.command = str.substr(third  + 1, fourth - third - 1);
             curList->push_back(it);
             continue;
@@ -818,20 +918,20 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
 
         if (StartsWith(str, "checkbox"))
         {
-            size_t first  = str.find('"');
+            size_t first = str.find('"');
             size_t second = str.find('"', first + 1);
-            size_t third  = str.find('"', second + 1);
+            size_t third = str.find('"', second + 1);
             size_t fourth = str.find('"', third + 1);
 
-            if (first  == std::string::npos || second == std::string::npos || third  == std::string::npos || fourth == std::string::npos || !(second > first && fourth > third))
+            if (first == std::string::npos || second == std::string::npos || third  == std::string::npos || fourth == std::string::npos || !(second > first && fourth > third))
             {
                 PrintError("Invalid checkbox syntax. Expected: checkbox \"Label\" \"cvar\"");
                 continue;
             }
 
             MenuItem it;
-            it.type     = MenuItem::CHECKBOX;
-            it.label    = str.substr(first  + 1, second - first  - 1);
+            it.type = MenuItem::CHECKBOX;
+            it.label = str.substr(first  + 1, second - first  - 1);
             it.cvarName = str.substr(third  + 1, fourth - third - 1);
             curList->push_back(it);
             continue;
@@ -840,7 +940,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
         if (StartsWith(str, "close_menu"))
         {
             size_t first = str.find('"');
-            size_t last  = str.rfind('"');
+            size_t last = str.rfind('"');
             if (first == std::string::npos || last  == std::string::npos || last <= first)
             {
                 PrintError("Invalid close_menu syntax. Expected: close_menu \"Label\"");
@@ -848,7 +948,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
             }
 
             MenuItem it;
-            it.type  = MenuItem::CLOSE_MENU;
+            it.type = MenuItem::CLOSE_MENU;
             it.label = str.substr(first + 1, last - first - 1);
             curList->push_back(it);
             continue;
@@ -856,7 +956,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
 
         if (StartsWith(str, "submenu"))
         {
-            size_t first  = str.find('"');
+            size_t first = str.find('"');
             size_t second = str.find('"', first + 1);
 
             if (first == std::string::npos || second == std::string::npos || second <= first)
@@ -866,7 +966,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
             }
 
             MenuItem it;
-            it.type  = MenuItem::SUBMENU;
+            it.type = MenuItem::SUBMENU;
             it.label = str.substr(first + 1, second - first - 1);
             curList->push_back(it);
             lastContainer = &curList->back();
@@ -882,7 +982,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
 
         if (StartsWith(str, "tabbar"))
         {
-            size_t first  = str.find('"');
+            size_t first = str.find('"');
             size_t second = str.find('"', first + 1);
 
             if (first == std::string::npos || second == std::string::npos || second <= first)
@@ -892,33 +992,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
             }
 
             MenuItem it;
-            it.type  = MenuItem::TABBAR;
-            it.label = str.substr(first + 1, second - first - 1);
-            curList->push_back(it);
-            lastContainer = &curList->back();
-
-            if (str.find('{', second) != std::string::npos)
-            {
-                stack.push_back(curList);
-                curList       = &lastContainer->children;
-                lastContainer = nullptr;
-            }
-            continue;
-        }
-
-        if (StartsWith(str, "tab"))
-        {
-            size_t first  = str.find('"');
-            size_t second = str.find('"', first + 1);
-
-            if (first == std::string::npos || second == std::string::npos || second <= first)
-            {
-                PrintError("Invalid tab syntax. Expected: tab \"Label\" { ... }");
-                continue;
-            }
-
-            MenuItem it;
-            it.type  = MenuItem::TAB;
+            it.type = MenuItem::TABBAR;
             it.label = str.substr(first + 1, second - first - 1);
             curList->push_back(it);
             lastContainer = &curList->back();
@@ -932,6 +1006,137 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
             continue;
         }
 
+        if (StartsWith(str, "tab"))
+        {
+            size_t first = str.find('"');
+            size_t second = str.find('"', first + 1);
+
+            if (first == std::string::npos || second == std::string::npos || second <= first)
+            {
+                PrintError("Invalid tab syntax. Expected: tab \"Label\" { ... }");
+                continue;
+            }
+
+            MenuItem it;
+            it.type = MenuItem::TAB;
+            it.label = str.substr(first + 1, second - first - 1);
+            curList->push_back(it);
+            lastContainer = &curList->back();
+
+            if (str.find('{', second) != std::string::npos)
+            {
+                stack.push_back(curList);
+                curList = &lastContainer->children;
+                lastContainer = nullptr;
+            }
+            continue;
+        }
+
+        if (StartsWith(str, "slider_int"))
+        {
+            size_t first = str.find('"');
+            size_t second = str.find('"', first + 1);
+            size_t third = str.find('"', second + 1);
+            size_t fourth = str.find('"', third + 1);
+
+            if (first == std::string::npos || second == std::string::npos || second <= first || third  == std::string::npos || fourth == std::string::npos || fourth <= third)
+            {
+                PrintError("Invalid slider_int syntax. Expected: slider_int \"Label\" \"cvar\" min max");
+                continue;
+            }
+
+            std::string label = str.substr(first  + 1, second - first  - 1);
+            std::string cvar = str.substr(third + 1, fourth - third - 1);
+
+            const char* rest = str.c_str() + fourth + 1;
+
+            int minVal = 0, maxVal = 0;
+            if (std::sscanf(rest, "%d %d", &minVal, &maxVal) != 2)
+            {
+                PrintError("Invalid slider_int syntax. Expected: slider_int \"Label\" \"cvar\" min max");
+                continue;
+            }
+
+            MenuItem it;
+            it.type = MenuItem::SLIDER_INT;
+            it.label = label;
+            it.cvarName = cvar;
+            it.minInt = minVal;
+            it.maxInt = maxVal;
+
+            curList->push_back(it);
+            continue;
+        }
+
+        if (StartsWith(str, "slider_float"))
+        {
+            size_t first = str.find('"');
+            size_t second = str.find('"', first + 1);
+            size_t third = str.find('"', second + 1);
+            size_t fourth = str.find('"', third + 1);
+
+            if (first == std::string::npos || second == std::string::npos || second <= first || third  == std::string::npos || fourth == std::string::npos || fourth <= third)
+            {
+                PrintError("Invalid slider_float syntax. Expected: slider_float \"Label\" \"cvar\" min max");
+                continue;
+            }
+
+            std::string label = str.substr(first  + 1, second - first  - 1);
+            std::string cvar = str.substr(third + 1, fourth - third - 1);
+
+            const char* rest = str.c_str() + fourth + 1;
+
+            float minVal = 0.0f, maxVal = 0.0f;
+            if (std::sscanf(rest, "%f %f", &minVal, &maxVal) != 2)
+            {
+                PrintError("Invalid slider_float syntax. Expected: slider_float \"Label\" \"cvar\" min max");
+                continue;
+            }
+
+            MenuItem it;
+            it.type = MenuItem::SLIDER_FLOAT;
+            it.label = label;
+            it.cvarName = cvar;
+            it.minValue = minVal;
+            it.maxValue = maxVal;
+
+            curList->push_back(it);
+            continue;
+        }
+
+        if (StartsWith(str, "color_cvar"))
+        {
+            size_t first  = str.find('"');
+            size_t second = str.find('"', first + 1);
+            size_t third  = str.find('"', second + 1);
+            size_t fourth = str.find('"', third + 1);
+
+            if (first  == std::string::npos || second == std::string::npos || second <= first || third  == std::string::npos || fourth == std::string::npos || fourth <= third)
+            {
+                PrintError("Invalid color_cvar syntax. Expected: color_cvar \"Label\" \"cvar\"");
+                continue;
+            }
+
+            std::string label = str.substr(first  + 1, second - first  - 1);
+            std::string cvar = str.substr(third + 1, fourth - third - 1);
+
+            MenuItem it;
+            it.type = MenuItem::COLOR_CVAR;
+            it.label = label;
+            it.cvarName = cvar;
+
+            curList->push_back(it);
+            continue;
+        }
+
+        if (StartsWith(str, "space"))
+        {
+            MenuItem it;
+            it.type = MenuItem::SPACE;
+            curList->push_back(it);
+            continue;
+        }
+
         PrintError("Unknown directive: '%s'", str.c_str());
     }
 
@@ -941,7 +1146,6 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
     {
         PrintError("Unexpected end of file: %d unclosed '{' block(s)", (int)stack.size());
     }
-
 
     bool success = !hadError && stack.empty() && !m_Windows.empty();
 

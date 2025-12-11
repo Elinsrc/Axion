@@ -16,7 +16,6 @@ public:
     static float ImGuiSpriteIcon(HSPRITE hSprite, const wrect_t& rc, float x, float y, float iconWidth, float iconHeight, float textHeight, int r, int g, int b, int alpha);
     void HUEtoRGB(float hue, RGBColor &color);
     void DrawModelName(float topcolor, float bottomcolor, const char* model);
-    float GetCvarFloat(const char* name);
     void SetCvarFloat(const char* name, float value);
     void GetCvarColor(const char* name, float outColor[3]);
     void SetCvarColor(const char* name, const float color[3]);

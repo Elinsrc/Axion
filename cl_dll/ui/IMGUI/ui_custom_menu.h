@@ -18,12 +18,23 @@ struct MenuItem
         CLOSE_MENU,
         SAME_LINE,
         TABBAR,
-        TAB
+        TAB,
+        SLIDER_INT,
+        SLIDER_FLOAT,
+        COLOR_CVAR,
+        SPACE
     } type;
 
     std::string label;
     std::string command;
     std::string cvarName;
+
+    float minValue = 0.0f;
+    float maxValue = 0.0f;
+
+    int minInt = 0;
+    int maxInt = 0;
+
     std::vector<MenuItem> children;
 };
 
@@ -36,7 +47,7 @@ struct MenuWindow
 
 struct MenuStyleVar
 {
-    ImGuiStyleVar idx  = (ImGuiStyleVar)-1;
+    ImGuiStyleVar idx = (ImGuiStyleVar)-1;
     ImVec2 value;
     bool isVec2 = false;
 };

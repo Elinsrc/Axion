@@ -285,12 +285,6 @@ void CImguiUtils::DrawModelName(float topcolor, float bottomcolor, const char* m
     draw_list->AddText(ImGui::GetFont(), ImGui::GetFontSize(), pos, IM_COL32(bottom.r, bottom.g, bottom.b, 255), secondcolor.c_str());
 }
 
-float CImguiUtils::GetCvarFloat(const char* name)
-{
-    cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(name);
-    return cvar->value;
-}
-
 void CImguiUtils::SetCvarFloat(const char* name, float value)
 {
     char cmd[64];
