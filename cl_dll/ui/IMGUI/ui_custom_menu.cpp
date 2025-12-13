@@ -456,7 +456,7 @@ void CImGuiCustomMenu::DrawItemsRecursive(const std::vector<MenuItem>& items)
                 if (item.label.empty() || item.command.empty())
                     break;
 
-                if (ImGui::Button(item.label.c_str(), ImVec2(200.0f, 0.0f)))
+                if (ImGui::Button(item.label.c_str()))
                     gEngfuncs.pfnClientCmd(item.command.c_str());
                 break;
             }
@@ -498,7 +498,7 @@ void CImGuiCustomMenu::DrawItemsRecursive(const std::vector<MenuItem>& items)
                 if (item.label.empty())
                     break;
 
-                if (ImGui::Button(item.label.c_str(), ImVec2(200.0f, 0.0f)))
+                if (ImGui::Button(item.label.c_str()))
                     m_ShowCustomMenu = false;
                 break;
             }
