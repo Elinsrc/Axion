@@ -230,6 +230,8 @@ void CVoiceStatus::ImGui_DrawVoiceHUD()
     rcVoice.right  = sprW;
     rcVoice.bottom = sprH;
 
+    gHUD.GetAllPlayersInfo();
+
     for (int i = 1; i <= VOICE_MAX_PLAYERS; ++i)
     {
         int client = i - 1;
@@ -324,6 +326,8 @@ int CVoiceStatus::Draw( float time )
 
     float bg_h = (float)textHeight + 4.0f;
     float rowHeight = bg_h + 2.0f;
+
+    gHUD.GetAllPlayersInfo();
 
     for (int i = 1; i <= VOICE_MAX_PLAYERS; ++i)
     {
