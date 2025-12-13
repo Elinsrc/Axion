@@ -22,18 +22,32 @@ struct MenuItem
         SLIDER_INT,
         SLIDER_FLOAT,
         COLOR_CVAR,
-        SPACE
+        SPACE,
+        CONDITION
     } type;
 
     std::string label;
     std::string command;
     std::string cvarName;
 
-    float minValue = 0.0f;
-    float maxValue = 0.0f;
+    float minValue;
+    float maxValue;
 
-    int minInt = 0;
-    int maxInt = 0;
+    int minInt;
+    int maxInt;
+
+    enum CompareOp
+    {
+        EQ, // ==
+        NE, // !=
+        GT, // >
+        GE, // >=
+        LT, // <
+        LE  // <=
+    } conditionOp = EQ;
+
+    std::string conditionCvar;
+    float conditionValue;
 
     std::vector<MenuItem> children;
 };

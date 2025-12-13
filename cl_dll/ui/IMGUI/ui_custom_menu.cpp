@@ -525,21 +525,42 @@ void CImGuiCustomMenu::DrawItemsRecursive(const std::vector<MenuItem>& items)
                 std::string id = item.label + "##tabbar";
                 if (ImGui::BeginTabBar(id.c_str()))
                 {
-                    for (const auto& tab : item.children)
+                    for (const auto& child : item.children)
                     {
-                        if (tab.type != MenuItem::TAB)
+                        if (child.type == MenuItem::CONDITION)
+                        {
+                            float val = gEngfuncs.pfnGetCvarFloat(child.conditionCvar.c_str());
+                            if (val == child.conditionValue)
+                            {
+                                for (const auto& tab : child.children)
+                                {
+                                    if (tab.type != MenuItem::TAB || tab.label.empty())
+                                        continue;
+
+                                    if (ImGui::BeginTabItem(tab.label.c_str()))
+                                    {
+                                        ImGui::PushID(&tab);
+                                        DrawItemsRecursive(tab.children);
+                                        ImGui::PopID();
+                                        ImGui::EndTabItem();
+                                    }
+                                }
+                            }
                             continue;
-                        if (tab.label.empty())
+                        }
+
+                        if (child.type != MenuItem::TAB || child.label.empty())
                             continue;
 
-                        if (ImGui::BeginTabItem(tab.label.c_str()))
+                        if (ImGui::BeginTabItem(child.label.c_str()))
                         {
-                            ImGui::PushID(&tab);
-                            DrawItemsRecursive(tab.children);
+                            ImGui::PushID(&child);
+                            DrawItemsRecursive(child.children);
                             ImGui::PopID();
                             ImGui::EndTabItem();
                         }
                     }
+
                     ImGui::EndTabBar();
                 }
                 break;
@@ -640,6 +661,39 @@ void CImGuiCustomMenu::DrawItemsRecursive(const std::vector<MenuItem>& items)
             case MenuItem::SPACE:
             {
                 ImGui::Spacing();
+                break;
+            }
+
+            case MenuItem::CONDITION:
+            {
+                float v = gEngfuncs.pfnGetCvarFloat(item.conditionCvar.c_str());
+                bool pass = false;
+
+                switch (item.conditionOp)
+                {
+                    case MenuItem::EQ:
+                        pass = (v == item.conditionValue);
+                        break;
+                    case MenuItem::NE:
+                        pass = (v != item.conditionValue);
+                        break;
+                    case MenuItem::GT:
+                        pass = (v > item.conditionValue);
+                        break;
+                    case MenuItem::GE:
+                        pass = (v >= item.conditionValue);
+                        break;
+                    case MenuItem::LT:
+                        pass = (v < item.conditionValue);
+                        break;
+                    case MenuItem::LE:
+                        pass = (v <= item.conditionValue);
+                        break;
+                }
+
+                if (pass)
+                    DrawItemsRecursive(item.children);
+
                 break;
             }
         }
@@ -1134,6 +1188,56 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
             MenuItem it;
             it.type = MenuItem::SPACE;
             curList->push_back(it);
+            continue;
+        }
+
+        if (StartsWith(str, "condition"))
+        {
+            size_t first = str.find('"');
+            size_t second = str.find('"', first + 1);
+
+            if (first == std::string::npos || second == std::string::npos || second <= first)
+            {
+                PrintError("Invalid condition syntax. Expected: condition \"cvar\" <operator> value { ... }");
+                continue;
+            }
+
+            MenuItem it;
+            it.type = MenuItem::CONDITION;
+            it.conditionCvar = str.substr(first + 1, second - first - 1);
+
+            std::string rest = str.substr(second + 1);
+
+            if (rest.find(">=") != std::string::npos)
+                it.conditionOp = MenuItem::GE;
+            else if (rest.find("<=") != std::string::npos)
+                it.conditionOp = MenuItem::LE;
+            else if (rest.find("!=") != std::string::npos)
+                it.conditionOp = MenuItem::NE;
+            else if (rest.find(">")  != std::string::npos)
+                it.conditionOp = MenuItem::GT;
+            else if (rest.find("<")  != std::string::npos)
+                it.conditionOp = MenuItem::LT;
+            else
+                it.conditionOp = MenuItem::EQ;
+
+            float value = 0.0f;
+            if (std::sscanf(rest.c_str(), "%*[^0-9.-]%f", &value) != 1)
+            {
+                PrintError("Invalid condition value");
+                continue;
+            }
+
+            it.conditionValue = value;
+
+            curList->push_back(it);
+            lastContainer = &curList->back();
+
+            if (str.find('{', second) != std::string::npos)
+            {
+                stack.push_back(curList);
+                curList = &lastContainer->children;
+            }
             continue;
         }
 
