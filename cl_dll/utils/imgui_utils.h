@@ -4,6 +4,13 @@
 #include "hud.h"
 #include "cl_util.h"
 
+struct ImGuiImage
+{
+    ImTextureID texture = 0;
+    int width = 0;
+    int height = 0;
+};
+
 class CImguiUtils
 {
 public:
@@ -20,6 +27,8 @@ public:
     void GetCvarColor(const char* name, float outColor[3]);
     void SetCvarColor(const char* name, const float color[3]);
     void StyleColorVGUI(void);
+    ImGuiImage LoadImageFromFile(const char* filename);
+    float DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r = 255, int g = 255, int b = 255, int alpha = 255);
 };
 
 extern CImguiUtils m_ImguiUtils;

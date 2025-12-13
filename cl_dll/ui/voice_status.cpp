@@ -23,6 +23,8 @@
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
 #include "imgui_utils.h"
+
+ImGuiImage m_pAckBitmap;
 #endif
 
 static void GetPlayerTextColor(int entindex, int color[3])
@@ -201,6 +203,9 @@ int CVoiceStatus::VidInit()
 
     m_VoiceHeadModel = gEngfuncs.pfnSPR_Load( "sprites/voiceicon.spr" );
 
+#if USE_IMGUI
+    m_pAckBitmap = m_ImguiUtils.LoadImageFromFile("gfx/vgui/icntlk_sv.tga");
+#endif
     return TRUE;
 }
 
@@ -268,10 +273,6 @@ void CVoiceStatus::ImGui_DrawVoiceHUD()
         ImU32 bgColor;
         ImVec4 nameBaseColor;
 
-        int iconR = 255;
-        int iconG = 255;
-        int iconB = 255;
-
         if (gHUD.m_Teamplay)
         {
             bgColor       = IM_COL32(teamClr[0], teamClr[1], teamClr[2], 120);
@@ -291,8 +292,7 @@ void CVoiceStatus::ImGui_DrawVoiceHUD()
         m_ImguiUtils.DrawTextWithColorCodesAt(ImVec2(textX, textY), g_PlayerInfoList[i].name, nameBaseColor);
 
         float iconX = bg_x + border + textWidth + border;
-
-        iconX = m_ImguiUtils.ImGuiSpriteIcon(m_VoiceHeadModel, rcVoice, iconX, bg_y, iconW, iconH, bg_h, iconR, iconG, iconB, 255);
+        iconX = m_ImguiUtils.DrawImage(m_pAckBitmap, iconX, bg_y, bg_h, iconW, iconH);
 
         y += rowHeight;
     }
@@ -300,7 +300,7 @@ void CVoiceStatus::ImGui_DrawVoiceHUD()
     if (m_bTalking || m_bServerAcked)
     {
         int r, g, b;
-        UnpackRGB(r, g, b, gHUD.m_iDefaultHUDColor);
+        UnpackRGB(r,g,b, RGB_YELLOWISH);
 
         int xpos = ScreenWidth  - 40;
         int ypos = ScreenHeight - gHUD.m_iFontHeight*3 - 6;
@@ -396,7 +396,7 @@ int CVoiceStatus::Draw( float time )
     if (m_bTalking || m_bServerAcked)
     {
         int r, g, b;
-        UnpackRGB(r, g, b, gHUD.m_iDefaultHUDColor);
+        UnpackRGB(r,g,b, RGB_YELLOWISH);
 
         int xpos = ScreenWidth  - 40;
         int ypos = ScreenHeight - gHUD.m_iFontHeight * 3 - 6;

@@ -15,6 +15,8 @@
 #endif
 #endif
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 CImguiUtils m_ImguiUtils;
 
@@ -377,4 +379,42 @@ void CImguiUtils::StyleColorVGUI(void)
     style.ScrollbarRounding  = 0.0f;
     style.GrabRounding       = 0.0f;
     style.TabRounding        = 0.0f;
+}
+
+ImGuiImage CImguiUtils::LoadImageFromFile(const char* filename)
+{
+    ImGuiImage result;
+
+    char Path[512];
+    snprintf(Path, sizeof(Path), "%s/%s", gEngfuncs.pfnGetGameDirectory(), filename);
+
+    int channels;
+    unsigned char* data = stbi_load(Path, &result.width, &result.height, &channels, 4);
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, result.width, result.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    stbi_image_free(data);
+
+    result.texture = (ImTextureID)(intptr_t)texture;
+    return result;
+}
+
+float CImguiUtils::DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r, int g, int b, int alpha)
+{
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+
+    float iconY = y + (rowHeight - height) * 0.5f;
+
+    ImVec2 p_min(x, iconY);
+    ImVec2 p_max(x + width, iconY + height);
+
+    ImU32 col = IM_COL32(r, g, b, alpha);
+
+    dl->AddImage(image.texture, p_min, p_max, ImVec2(0,0), ImVec2(1,1), col);
+
+    return x + width;
 }
