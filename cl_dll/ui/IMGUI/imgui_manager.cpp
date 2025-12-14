@@ -6,6 +6,7 @@
 #include "Roboto.h"
 #include "voice_status.h"
 #include "imgui_utils.h"
+#include "imgui_viewport.h"
 
 extern int g_ImGuiMouse;
 
@@ -257,8 +258,8 @@ bool CImGuiManager::IsCursorRequired()
 void CImGuiManager::TouchEvent(int fingerID, float x, float y, float dx, float dy)
 {
     m_TouchID = fingerID;
-    m_TouchX = x * ScreenWidth;
-    m_TouchY = y * ScreenHeight;
+    m_TouchX = x * g_ImGuiViewport.scrWidth();
+    m_TouchY = y * g_ImGuiViewport.scrHeight();
     m_TouchDX = dx;
     m_TouchDY = dy;
 }
