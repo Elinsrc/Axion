@@ -2,6 +2,7 @@
 
 #include "imgui_window.h"
 #include "imgui.h"
+#include "imgui_utils.h"
 
 #include <string>
 #include <vector>
@@ -23,7 +24,8 @@ struct MenuItem
         SLIDER_FLOAT,
         COLOR_CVAR,
         SPACE,
-        CONDITION
+        CONDITION,
+        IMAGE_BUTTON
     } type;
 
     std::string label;
@@ -50,6 +52,14 @@ struct MenuItem
     float conditionValue;
 
     std::vector<MenuItem> children;
+
+    std::string imagePath;
+
+    ImGuiImage image;
+    bool imageLoaded = false;
+
+    float imageWidth;
+    float imageHeight;
 };
 
 struct MenuWindow
@@ -89,11 +99,14 @@ public:
 
 private:
     void DrawWindow(MenuWindow& win);
-    void DrawItemsRecursive(const std::vector<MenuItem>& items);
+    void DrawItemsRecursive(std::vector<MenuItem>& items);
     void SetupDefaultMenuStyle();
 
     static ImGuiStyleVar GetStyleVarIndex(const std::string& name);
     static ImGuiCol GetColorIndex(const std::string& name);
+
+    void FreeImagesRecursive(std::vector<MenuItem>& items);
+    void FreeAllImages();
 
 private:
     static bool m_ShowCustomMenu;

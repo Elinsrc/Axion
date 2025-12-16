@@ -418,3 +418,14 @@ float CImguiUtils::DrawImage(const ImGuiImage& image, float x, float y, float ro
 
     return x + width;
 }
+
+void CImguiUtils::FreeImage(ImGuiImage& image)
+{
+    if (image.texture != (ImTextureID)0)
+    {
+        GLuint tex = (GLuint)(uintptr_t)image.texture;
+        glDeleteTextures(1, &tex);
+        image.texture = (ImTextureID)0;
+        image.width = image.height = 0;
+    }
+}

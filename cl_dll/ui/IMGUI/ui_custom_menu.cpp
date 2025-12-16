@@ -10,6 +10,7 @@
 #include <cstdarg>
 #include <cstring>
 #include <string>
+#include <unordered_map>
 
 CImGuiCustomMenu m_iCustomMenu;
 
@@ -48,116 +49,120 @@ static void ExecMenuCmd_f()
 
 ImGuiStyleVar CImGuiCustomMenu::GetStyleVarIndex(const std::string& name)
 {
-    // float
-    if (name == "Alpha")                     return ImGuiStyleVar_Alpha;
-    if (name == "DisabledAlpha")             return ImGuiStyleVar_DisabledAlpha;
-    if (name == "WindowRounding")            return ImGuiStyleVar_WindowRounding;
-    if (name == "WindowBorderSize")          return ImGuiStyleVar_WindowBorderSize;
-    if (name == "ChildRounding")             return ImGuiStyleVar_ChildRounding;
-    if (name == "ChildBorderSize")           return ImGuiStyleVar_ChildBorderSize;
-    if (name == "PopupRounding")             return ImGuiStyleVar_PopupRounding;
-    if (name == "PopupBorderSize")           return ImGuiStyleVar_PopupBorderSize;
-    if (name == "FrameRounding")             return ImGuiStyleVar_FrameRounding;
-    if (name == "FrameBorderSize")           return ImGuiStyleVar_FrameBorderSize;
-    if (name == "IndentSpacing")             return ImGuiStyleVar_IndentSpacing;
-    if (name == "ScrollbarSize")             return ImGuiStyleVar_ScrollbarSize;
-    if (name == "ScrollbarRounding")         return ImGuiStyleVar_ScrollbarRounding;
-    if (name == "ScrollbarPadding")          return ImGuiStyleVar_ScrollbarPadding;
-    if (name == "GrabMinSize")               return ImGuiStyleVar_GrabMinSize;
-    if (name == "GrabRounding")              return ImGuiStyleVar_GrabRounding;
-    if (name == "ImageBorderSize")           return ImGuiStyleVar_ImageBorderSize;
-    if (name == "TabRounding")               return ImGuiStyleVar_TabRounding;
-    if (name == "TabBorderSize")             return ImGuiStyleVar_TabBorderSize;
-    if (name == "TabMinWidthBase")           return ImGuiStyleVar_TabMinWidthBase;
-    if (name == "TabMinWidthShrink")         return ImGuiStyleVar_TabMinWidthShrink;
-    if (name == "TabBarBorderSize")          return ImGuiStyleVar_TabBarBorderSize;
-    if (name == "TabBarOverlineSize")        return ImGuiStyleVar_TabBarOverlineSize;
-    if (name == "TableAngledHeadersAngle")   return ImGuiStyleVar_TableAngledHeadersAngle;
-    if (name == "TreeLinesSize")             return ImGuiStyleVar_TreeLinesSize;
-    if (name == "TreeLinesRounding")         return ImGuiStyleVar_TreeLinesRounding;
-    if (name == "SeparatorTextBorderSize")   return ImGuiStyleVar_SeparatorTextBorderSize;
+    static const std::unordered_map<std::string, ImGuiStyleVar> vars = {
+        {"Alpha", ImGuiStyleVar_Alpha},
+        {"DisabledAlpha", ImGuiStyleVar_DisabledAlpha},
+        {"WindowRounding", ImGuiStyleVar_WindowRounding},
+        {"WindowBorderSize", ImGuiStyleVar_WindowBorderSize},
+        {"ChildRounding", ImGuiStyleVar_ChildRounding},
+        {"ChildBorderSize", ImGuiStyleVar_ChildBorderSize},
+        {"PopupRounding", ImGuiStyleVar_PopupRounding},
+        {"PopupBorderSize", ImGuiStyleVar_PopupBorderSize},
+        {"FrameRounding", ImGuiStyleVar_FrameRounding},
+        {"FrameBorderSize", ImGuiStyleVar_FrameBorderSize},
+        {"IndentSpacing", ImGuiStyleVar_IndentSpacing},
+        {"ScrollbarSize", ImGuiStyleVar_ScrollbarSize},
+        {"ScrollbarRounding", ImGuiStyleVar_ScrollbarRounding},
+        {"ScrollbarPadding", ImGuiStyleVar_ScrollbarPadding},
+        {"GrabMinSize", ImGuiStyleVar_GrabMinSize},
+        {"GrabRounding", ImGuiStyleVar_GrabRounding},
+        {"ImageBorderSize", ImGuiStyleVar_ImageBorderSize},
+        {"TabRounding", ImGuiStyleVar_TabRounding},
+        {"TabBorderSize", ImGuiStyleVar_TabBorderSize},
+        {"TabMinWidthBase", ImGuiStyleVar_TabMinWidthBase},
+        {"TabMinWidthShrink", ImGuiStyleVar_TabMinWidthShrink},
+        {"TabBarBorderSize", ImGuiStyleVar_TabBarBorderSize},
+        {"TabBarOverlineSize", ImGuiStyleVar_TabBarOverlineSize},
+        {"TableAngledHeadersAngle", ImGuiStyleVar_TableAngledHeadersAngle},
+        {"TreeLinesSize", ImGuiStyleVar_TreeLinesSize},
+        {"TreeLinesRounding", ImGuiStyleVar_TreeLinesRounding},
+        {"SeparatorTextBorderSize", ImGuiStyleVar_SeparatorTextBorderSize},
+        {"WindowPadding", ImGuiStyleVar_WindowPadding},
+        {"WindowMinSize", ImGuiStyleVar_WindowMinSize},
+        {"WindowTitleAlign", ImGuiStyleVar_WindowTitleAlign},
+        {"FramePadding", ImGuiStyleVar_FramePadding},
+        {"ItemSpacing", ImGuiStyleVar_ItemSpacing},
+        {"ItemInnerSpacing", ImGuiStyleVar_ItemInnerSpacing},
+        {"CellPadding", ImGuiStyleVar_CellPadding},
+        {"TableAngledHeadersTextAlign", ImGuiStyleVar_TableAngledHeadersTextAlign},
+        {"ButtonTextAlign", ImGuiStyleVar_ButtonTextAlign},
+        {"SelectableTextAlign", ImGuiStyleVar_SelectableTextAlign},
+        {"SeparatorTextAlign", ImGuiStyleVar_SeparatorTextAlign},
+        {"SeparatorTextPadding", ImGuiStyleVar_SeparatorTextPadding},
+    };
 
-    // ImVec2
-    if (name == "WindowPadding")             return ImGuiStyleVar_WindowPadding;
-    if (name == "WindowMinSize")            return ImGuiStyleVar_WindowMinSize;
-    if (name == "WindowTitleAlign")         return ImGuiStyleVar_WindowTitleAlign;
-    if (name == "FramePadding")             return ImGuiStyleVar_FramePadding;
-    if (name == "ItemSpacing")              return ImGuiStyleVar_ItemSpacing;
-    if (name == "ItemInnerSpacing")         return ImGuiStyleVar_ItemInnerSpacing;
-    if (name == "CellPadding")              return ImGuiStyleVar_CellPadding;
-    if (name == "TableAngledHeadersTextAlign") return ImGuiStyleVar_TableAngledHeadersTextAlign;
-    if (name == "ButtonTextAlign")          return ImGuiStyleVar_ButtonTextAlign;
-    if (name == "SelectableTextAlign")      return ImGuiStyleVar_SelectableTextAlign;
-    if (name == "SeparatorTextAlign")       return ImGuiStyleVar_SeparatorTextAlign;
-    if (name == "SeparatorTextPadding")     return ImGuiStyleVar_SeparatorTextPadding;
-
-    return (ImGuiStyleVar)-1;
+    auto it = vars.find(name);
+    return (it != vars.end()) ? it->second : (ImGuiStyleVar)-1;
 }
 
 ImGuiCol CImGuiCustomMenu::GetColorIndex(const std::string& name)
 {
-    if (name == "Text")                      return ImGuiCol_Text;
-    if (name == "TextDisabled")              return ImGuiCol_TextDisabled;
-    if (name == "WindowBg")                  return ImGuiCol_WindowBg;
-    if (name == "ChildBg")                   return ImGuiCol_ChildBg;
-    if (name == "PopupBg")                   return ImGuiCol_PopupBg;
-    if (name == "Border")                    return ImGuiCol_Border;
-    if (name == "BorderShadow")              return ImGuiCol_BorderShadow;
-    if (name == "FrameBg")                   return ImGuiCol_FrameBg;
-    if (name == "FrameBgHovered")            return ImGuiCol_FrameBgHovered;
-    if (name == "FrameBgActive")             return ImGuiCol_FrameBgActive;
-    if (name == "TitleBg")                   return ImGuiCol_TitleBg;
-    if (name == "TitleBgActive")             return ImGuiCol_TitleBgActive;
-    if (name == "TitleBgCollapsed")          return ImGuiCol_TitleBgCollapsed;
-    if (name == "MenuBarBg")                 return ImGuiCol_MenuBarBg;
-    if (name == "ScrollbarBg")               return ImGuiCol_ScrollbarBg;
-    if (name == "ScrollbarGrab")             return ImGuiCol_ScrollbarGrab;
-    if (name == "ScrollbarGrabHovered")      return ImGuiCol_ScrollbarGrabHovered;
-    if (name == "ScrollbarGrabActive")       return ImGuiCol_ScrollbarGrabActive;
-    if (name == "CheckMark")                 return ImGuiCol_CheckMark;
-    if (name == "SliderGrab")                return ImGuiCol_SliderGrab;
-    if (name == "SliderGrabActive")          return ImGuiCol_SliderGrabActive;
-    if (name == "Button")                    return ImGuiCol_Button;
-    if (name == "ButtonHovered")             return ImGuiCol_ButtonHovered;
-    if (name == "ButtonActive")              return ImGuiCol_ButtonActive;
-    if (name == "Header")                    return ImGuiCol_Header;
-    if (name == "HeaderHovered")             return ImGuiCol_HeaderHovered;
-    if (name == "HeaderActive")              return ImGuiCol_HeaderActive;
-    if (name == "Separator")                 return ImGuiCol_Separator;
-    if (name == "SeparatorHovered")          return ImGuiCol_SeparatorHovered;
-    if (name == "SeparatorActive")           return ImGuiCol_SeparatorActive;
-    if (name == "ResizeGrip")                return ImGuiCol_ResizeGrip;
-    if (name == "ResizeGripHovered")         return ImGuiCol_ResizeGripHovered;
-    if (name == "ResizeGripActive")          return ImGuiCol_ResizeGripActive;
-    if (name == "InputTextCursor")           return ImGuiCol_InputTextCursor;
-    if (name == "TabHovered")                return ImGuiCol_TabHovered;
-    if (name == "Tab")                       return ImGuiCol_Tab;
-    if (name == "TabSelected")               return ImGuiCol_TabSelected;
-    if (name == "TabSelectedOverline")       return ImGuiCol_TabSelectedOverline;
-    if (name == "TabDimmed")                 return ImGuiCol_TabDimmed;
-    if (name == "TabDimmedSelected")         return ImGuiCol_TabDimmedSelected;
-    if (name == "TabDimmedSelectedOverline") return ImGuiCol_TabDimmedSelectedOverline;
-    if (name == "PlotLines")                 return ImGuiCol_PlotLines;
-    if (name == "PlotLinesHovered")          return ImGuiCol_PlotLinesHovered;
-    if (name == "PlotHistogram")             return ImGuiCol_PlotHistogram;
-    if (name == "PlotHistogramHovered")      return ImGuiCol_PlotHistogramHovered;
-    if (name == "TableHeaderBg")             return ImGuiCol_TableHeaderBg;
-    if (name == "TableBorderStrong")         return ImGuiCol_TableBorderStrong;
-    if (name == "TableBorderLight")          return ImGuiCol_TableBorderLight;
-    if (name == "TableRowBg")                return ImGuiCol_TableRowBg;
-    if (name == "TableRowBgAlt")             return ImGuiCol_TableRowBgAlt;
-    if (name == "TextLink")                  return ImGuiCol_TextLink;
-    if (name == "TextSelectedBg")            return ImGuiCol_TextSelectedBg;
-    if (name == "TreeLines")                 return ImGuiCol_TreeLines;
-    if (name == "DragDropTarget")            return ImGuiCol_DragDropTarget;
-    if (name == "UnsavedMarker")             return ImGuiCol_UnsavedMarker;
-    if (name == "NavCursor")                 return ImGuiCol_NavCursor;
-    if (name == "NavWindowingHighlight")     return ImGuiCol_NavWindowingHighlight;
-    if (name == "NavWindowingDimBg")         return ImGuiCol_NavWindowingDimBg;
-    if (name == "ModalWindowDimBg")          return ImGuiCol_ModalWindowDimBg;
+    static const std::unordered_map<std::string, ImGuiCol> colors = {
+        {"Text", ImGuiCol_Text},
+        {"TextDisabled", ImGuiCol_TextDisabled},
+        {"WindowBg", ImGuiCol_WindowBg},
+        {"ChildBg", ImGuiCol_ChildBg},
+        {"PopupBg", ImGuiCol_PopupBg},
+        {"Border", ImGuiCol_Border},
+        {"BorderShadow", ImGuiCol_BorderShadow},
+        {"FrameBg", ImGuiCol_FrameBg},
+        {"FrameBgHovered", ImGuiCol_FrameBgHovered},
+        {"FrameBgActive", ImGuiCol_FrameBgActive},
+        {"TitleBg", ImGuiCol_TitleBg},
+        {"TitleBgActive", ImGuiCol_TitleBgActive},
+        {"TitleBgCollapsed", ImGuiCol_TitleBgCollapsed},
+        {"MenuBarBg", ImGuiCol_MenuBarBg},
+        {"ScrollbarBg", ImGuiCol_ScrollbarBg},
+        {"ScrollbarGrab", ImGuiCol_ScrollbarGrab},
+        {"ScrollbarGrabHovered", ImGuiCol_ScrollbarGrabHovered},
+        {"ScrollbarGrabActive", ImGuiCol_ScrollbarGrabActive},
+        {"CheckMark", ImGuiCol_CheckMark},
+        {"SliderGrab", ImGuiCol_SliderGrab},
+        {"SliderGrabActive", ImGuiCol_SliderGrabActive},
+        {"Button", ImGuiCol_Button},
+        {"ButtonHovered", ImGuiCol_ButtonHovered},
+        {"ButtonActive", ImGuiCol_ButtonActive},
+        {"Header", ImGuiCol_Header},
+        {"HeaderHovered", ImGuiCol_HeaderHovered},
+        {"HeaderActive", ImGuiCol_HeaderActive},
+        {"Separator", ImGuiCol_Separator},
+        {"SeparatorHovered", ImGuiCol_SeparatorHovered},
+        {"SeparatorActive", ImGuiCol_SeparatorActive},
+        {"ResizeGrip", ImGuiCol_ResizeGrip},
+        {"ResizeGripHovered", ImGuiCol_ResizeGripHovered},
+        {"ResizeGripActive", ImGuiCol_ResizeGripActive},
+        {"InputTextCursor", ImGuiCol_InputTextCursor},
+        {"TabHovered", ImGuiCol_TabHovered},
+        {"Tab", ImGuiCol_Tab},
+        {"TabSelected", ImGuiCol_TabSelected},
+        {"TabSelectedOverline", ImGuiCol_TabSelectedOverline},
+        {"TabDimmed", ImGuiCol_TabDimmed},
+        {"TabDimmedSelected", ImGuiCol_TabDimmedSelected},
+        {"TabDimmedSelectedOverline", ImGuiCol_TabDimmedSelectedOverline},
+        {"PlotLines", ImGuiCol_PlotLines},
+        {"PlotLinesHovered", ImGuiCol_PlotLinesHovered},
+        {"PlotHistogram", ImGuiCol_PlotHistogram},
+        {"PlotHistogramHovered", ImGuiCol_PlotHistogramHovered},
+        {"TableHeaderBg", ImGuiCol_TableHeaderBg},
+        {"TableBorderStrong", ImGuiCol_TableBorderStrong},
+        {"TableBorderLight", ImGuiCol_TableBorderLight},
+        {"TableRowBg", ImGuiCol_TableRowBg},
+        {"TableRowBgAlt", ImGuiCol_TableRowBgAlt},
+        {"TextLink", ImGuiCol_TextLink},
+        {"TextSelectedBg", ImGuiCol_TextSelectedBg},
+        {"TreeLines", ImGuiCol_TreeLines},
+        {"DragDropTarget", ImGuiCol_DragDropTarget},
+        {"UnsavedMarker", ImGuiCol_UnsavedMarker},
+        {"NavCursor", ImGuiCol_NavCursor},
+        {"NavWindowingHighlight", ImGuiCol_NavWindowingHighlight},
+        {"NavWindowingDimBg", ImGuiCol_NavWindowingDimBg},
+        {"ModalWindowDimBg", ImGuiCol_ModalWindowDimBg},
+    };
 
-    return (ImGuiCol)-1;
+    auto it = colors.find(name);
+    return (it != colors.end()) ? it->second : (ImGuiCol)-1;
 }
+
 
 void CImGuiCustomMenu::SetupDefaultMenuStyle()
 {
@@ -330,13 +335,40 @@ void CImGuiCustomMenu::SetupDefaultMenuStyle()
     addVar2(ImGuiStyleVar_SeparatorTextPadding,     20.0f, 3.0f);
 }
 
+void CImGuiCustomMenu::FreeImagesRecursive(std::vector<MenuItem>& items)
+{
+    for (auto& it : items)
+    {
+        if (it.type == MenuItem::IMAGE_BUTTON && it.image.texture != (ImTextureID)0)
+        {
+            m_ImguiUtils.FreeImage(it.image);
+            it.imageLoaded = false;
+        }
+
+        if (!it.children.empty())
+            FreeImagesRecursive(it.children);
+    }
+}
+
+void CImGuiCustomMenu::FreeAllImages()
+{
+    for (auto& win : m_Windows)
+        FreeImagesRecursive(win.items);
+}
+
 void CImGuiCustomMenu::Initialize()
 {
     gEngfuncs.pfnAddCommand("exec_menu", ExecMenuCmd_f);
 }
 
 void CImGuiCustomMenu::VidInitialize() {}
-void CImGuiCustomMenu::Terminate() {}
+void CImGuiCustomMenu::Terminate()
+{
+    FreeAllImages();
+    m_Windows.clear();
+    m_StyleVars.clear();
+    m_StyleColors.clear();
+}
 void CImGuiCustomMenu::Think() {}
 
 bool CImGuiCustomMenu::Active()
@@ -445,9 +477,9 @@ void CImGuiCustomMenu::DrawWindow(MenuWindow& win)
     win.open = openFlag;
 }
 
-void CImGuiCustomMenu::DrawItemsRecursive(const std::vector<MenuItem>& items)
+void CImGuiCustomMenu::DrawItemsRecursive(std::vector<MenuItem>& items)
 {
-    for (const auto& item : items)
+    for (auto& item : items)
     {
         switch (item.type)
         {
@@ -525,14 +557,14 @@ void CImGuiCustomMenu::DrawItemsRecursive(const std::vector<MenuItem>& items)
                 std::string id = item.label + "##tabbar";
                 if (ImGui::BeginTabBar(id.c_str()))
                 {
-                    for (const auto& child : item.children)
+                    for (auto& child : item.children)
                     {
                         if (child.type == MenuItem::CONDITION)
                         {
                             float val = gEngfuncs.pfnGetCvarFloat(child.conditionCvar.c_str());
                             if (val == child.conditionValue)
                             {
-                                for (const auto& tab : child.children)
+                                for (auto& tab : child.children)
                                 {
                                     if (tab.type != MenuItem::TAB || tab.label.empty())
                                         continue;
@@ -696,6 +728,41 @@ void CImGuiCustomMenu::DrawItemsRecursive(const std::vector<MenuItem>& items)
 
                 break;
             }
+
+            case MenuItem::IMAGE_BUTTON:
+            {
+                if (item.imagePath.empty())
+                    break;
+
+                if (!item.imageLoaded)
+                {
+                    item.image = m_ImguiUtils.LoadImageFromFile(item.imagePath.c_str());
+                    item.imageLoaded = (item.image.texture != (ImTextureID)0);
+
+                    if (!item.imageLoaded)
+                    {
+                        gEngfuncs.Con_Printf("Failed to load image '%s'\n", item.imagePath.c_str());
+                        break;
+                    }
+                }
+
+                float w = (item.imageWidth  > 0.0f) ? item.imageWidth  : (float)item.image.width;
+                float h = (item.imageHeight > 0.0f) ? item.imageHeight : (float)item.image.height;
+
+                ImVec2 size(w, h);
+
+                ImGui::PushID(&item);
+                bool pressed = ImGui::ImageButton("##imgbtn", item.image.texture, size);
+                ImGui::PopID();
+
+                if (pressed && !item.command.empty())
+                    gEngfuncs.pfnClientCmd(item.command.c_str());
+
+                if (!item.label.empty() && ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", item.label.c_str());
+
+                break;
+            }
         }
     }
 }
@@ -722,6 +789,8 @@ void CImGuiCustomMenu::ExecMenu_f()
 
 bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
 {
+    FreeAllImages();
+
     m_ShowCustomMenu = false;
 
     char path[512];
@@ -1238,6 +1307,44 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
                 stack.push_back(curList);
                 curList = &lastContainer->children;
             }
+            continue;
+        }
+
+        if (StartsWith(str, "image_button"))
+        {
+            size_t first  = str.find('"');
+            size_t second = str.find('"', first  + 1);
+            size_t third  = str.find('"', second + 1);
+            size_t fourth = str.find('"', third  + 1);
+            size_t fifth  = str.find('"', fourth + 1);
+            size_t sixth  = str.find('"', fifth  + 1);
+
+            if (first  == std::string::npos || second == std::string::npos || second <= first ||
+                third  == std::string::npos || fourth == std::string::npos || fourth <= third ||
+                fifth  == std::string::npos || sixth  == std::string::npos || sixth  <= fifth)
+            {
+                PrintError("Invalid image_button syntax. Expected: image_button \"Label\" \"command\" \"image\" width height");
+                continue;
+            }
+
+            std::string label   = str.substr(first  + 1, second - first - 1);
+            std::string command = str.substr(third  + 1, fourth - third - 1);
+            std::string image   = str.substr(fifth  + 1, sixth  - fifth - 1);
+
+            float w = 32.0f, h = 32.0f;
+            const char* rest = str.c_str() + sixth + 1;
+            std::sscanf(rest, "%f %f", &w, &h);
+
+            MenuItem it;
+            it.type = MenuItem::IMAGE_BUTTON;
+            it.label = label;
+            it.command = command;
+            it.imagePath = image;
+            it.imageWidth = w;
+            it.imageHeight = h;
+            it.imageLoaded = false;
+
+            curList->push_back(it);
             continue;
         }
 

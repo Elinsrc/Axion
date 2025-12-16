@@ -29,6 +29,7 @@ public:
     void StyleColorVGUI(void);
     ImGuiImage LoadImageFromFile(const char* filename);
     float DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r = 255, int g = 255, int b = 255, int alpha = 255);
+    void FreeImage(ImGuiImage& image);
 };
 
 extern CImguiUtils m_ImguiUtils;
