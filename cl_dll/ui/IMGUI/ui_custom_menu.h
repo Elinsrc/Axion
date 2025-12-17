@@ -26,7 +26,8 @@ struct MenuItem
         SPACE,
         CONDITION,
         IMAGE,
-        IMAGE_BUTTON
+        IMAGE_BUTTON,
+        CVAR_CHECK
     } type;
 
     std::string label;

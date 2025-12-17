@@ -789,6 +789,44 @@ void CImGuiCustomMenu::DrawItemsRecursive(std::vector<MenuItem>& items)
 
                 break;
             }
+
+            case MenuItem::CVAR_CHECK:
+            {
+                cvar_t* cvar = gEngfuncs.pfnGetCvarPointer(item.cvarName.c_str());
+
+                if (!cvar)
+                {
+                    ImGui::Text("%s: <not found>", item.label.c_str());
+                    break;
+                }
+
+                char* end = nullptr;
+                std::strtof(cvar->string, &end);
+                bool isNumber = (end && *end == '\0');
+
+                if (!isNumber)
+                {
+                    ImGui::Text("%s: %s", item.label.c_str(), cvar->string);
+                    break;
+                }
+
+                float v = cvar->value;
+                int iv = (int)v;
+
+                if (fabsf(v - (float)iv) < 0.0001f)
+                {
+                    // int
+                    ImGui::Text("%s: %d", item.label.c_str(), iv);
+                }
+                else
+                {
+                    // float
+                    ImGui::Text("%s: %.3f", item.label.c_str(), v);
+                }
+
+                break;
+            }
+
         }
     }
 }
@@ -1338,7 +1376,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
 
         if (StartsWith(str, "image "))
         {
-            size_t first  = str.find('"');
+            size_t first = str.find('"');
             size_t second = str.find('"', first + 1);
 
             if (first == std::string::npos || second == std::string::npos || second <= first)
@@ -1360,7 +1398,7 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
                 continue;
             }
 
-            it.imageWidth  = w;
+            it.imageWidth = w;
             it.imageHeight = h;
             it.imageLoaded = false;
 
@@ -1386,9 +1424,9 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
                 continue;
             }
 
-            std::string label   = str.substr(first  + 1, second - first - 1);
+            std::string label = str.substr(first  + 1, second - first - 1);
             std::string command = str.substr(third  + 1, fourth - third - 1);
-            std::string image   = str.substr(fifth  + 1, sixth  - fifth - 1);
+            std::string image = str.substr(fifth  + 1, sixth  - fifth - 1);
 
             float w = 32.0f, h = 32.0f;
             const char* rest = str.c_str() + sixth + 1;
@@ -1406,6 +1444,29 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
             curList->push_back(it);
             continue;
         }
+
+        if (StartsWith(str, "cvar_check"))
+        {
+            size_t first = str.find('"');
+            size_t second = str.find('"', first + 1);
+            size_t third = str.find('"', second + 1);
+            size_t fourth = str.find('"', third + 1);
+
+            if (first == std::string::npos || second == std::string::npos || third == std::string::npos || fourth == std::string::npos)
+            {
+                PrintError("Invalid cvar_check syntax. Expected: cvar_check \"text\" \"cvar\"");
+                continue;
+            }
+
+            MenuItem it;
+            it.type = MenuItem::CVAR_CHECK;
+            it.label = str.substr(first + 1, second - first - 1);
+            it.cvarName = str.substr(third + 1, fourth - third - 1);
+
+            curList->push_back(it);
+            continue;
+        }
+
 
         PrintError("Unknown directive: '%s'", str.c_str());
     }
