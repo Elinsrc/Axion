@@ -339,7 +339,7 @@ void CImGuiCustomMenu::FreeImagesRecursive(std::vector<MenuItem>& items)
 {
     for (auto& it : items)
     {
-        if (it.type == MenuItem::IMAGE_BUTTON && it.image.texture != (ImTextureID)0)
+        if ((it.type == MenuItem::IMAGE || it.type == MenuItem::IMAGE_BUTTON) && it.image.texture != (ImTextureID)0)
         {
             m_ImguiUtils.FreeImage(it.image);
             it.imageLoaded = false;
@@ -726,6 +726,32 @@ void CImGuiCustomMenu::DrawItemsRecursive(std::vector<MenuItem>& items)
                 if (pass)
                     DrawItemsRecursive(item.children);
 
+                break;
+            }
+
+            case MenuItem::IMAGE:
+            {
+                if (item.imagePath.empty())
+                    break;
+
+                if (!item.imageLoaded)
+                {
+                    item.image = m_ImguiUtils.LoadImageFromFile(item.imagePath.c_str());
+                    item.imageLoaded = (item.image.texture != (ImTextureID)0);
+
+                    if (!item.imageLoaded)
+                    {
+                        gEngfuncs.Con_Printf("Failed to load image '%s'\n", item.imagePath.c_str());
+                        break;
+                    }
+                }
+
+                float w = (item.imageWidth  > 0.0f) ? item.imageWidth  : (float)item.image.width;
+                float h = (item.imageHeight > 0.0f) ? item.imageHeight : (float)item.image.height;
+
+                ImVec2 size(w, h);
+
+                ImGui::Image(item.image.texture, size);
                 break;
             }
 
@@ -1309,6 +1335,39 @@ bool CImGuiCustomMenu::LoadFromCfg(const char* filename)
             }
             continue;
         }
+
+        if (StartsWith(str, "image "))
+        {
+            size_t first  = str.find('"');
+            size_t second = str.find('"', first + 1);
+
+            if (first == std::string::npos || second == std::string::npos || second <= first)
+            {
+                PrintError("Invalid image syntax. Expected: image \"path\" width height");
+                continue;
+            }
+
+            MenuItem it;
+            it.type = MenuItem::IMAGE;
+            it.imagePath = str.substr(first + 1, second - first - 1);
+
+            float w = 32.0f, h = 32.0f;
+            const char* rest = str.c_str() + second + 1;
+
+            if (std::sscanf(rest, "%f %f", &w, &h) != 2)
+            {
+                PrintError("Invalid image size. Expected: image \"path\" width height");
+                continue;
+            }
+
+            it.imageWidth  = w;
+            it.imageHeight = h;
+            it.imageLoaded = false;
+
+            curList->push_back(it);
+            continue;
+        }
+
 
         if (StartsWith(str, "image_button"))
         {

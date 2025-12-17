@@ -25,6 +25,7 @@ struct MenuItem
         COLOR_CVAR,
         SPACE,
         CONDITION,
+        IMAGE,
         IMAGE_BUTTON
     } type;
 
