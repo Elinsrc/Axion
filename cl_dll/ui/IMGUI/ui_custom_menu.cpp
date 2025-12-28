@@ -12,7 +12,7 @@
 #include <string>
 #include <unordered_map>
 
-CImGuiCustomMenu m_iCustomMenu;
+CImGuiCustomMenu g_iCustomMenu;
 
 bool CImGuiCustomMenu::m_ShowCustomMenu = false;
 
@@ -44,7 +44,7 @@ static bool StartsWith(const std::string& s, const char* what)
 
 static void ExecMenuCmd_f()
 {
-    m_iCustomMenu.ExecMenu_f();
+    g_iCustomMenu.ExecMenu_f();
 }
 
 ImGuiStyleVar CImGuiCustomMenu::GetStyleVarIndex(const std::string& name)

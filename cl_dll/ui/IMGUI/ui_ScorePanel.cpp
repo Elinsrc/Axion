@@ -6,9 +6,9 @@
 extern int blue_flag_player_index;
 extern int red_flag_player_index;
 
-CImGuiScoreboard m_iScoreboard;
+CImGuiScoreboard g_iScoreboard;
 
-bool CImGuiScoreboard::m_ShowWindow = false;
+bool CImGuiScoreboard::m_ShowScore = false;
 
 void CImGuiScoreboard::Initialize()
 {
@@ -260,21 +260,53 @@ void CImGuiScoreboard::DrawScoreboard()
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 2));
 	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(12, 2));
 
-	float padding_y = 20.f;
-	float sb_width = 700.f;
-	float sb_height = g_ImGuiViewport.scrHeight() - 2 * padding_y;
-	float sb_x = (g_ImGuiViewport.scrWidth() - sb_width) / 2;
+	float scrWidth = g_ImGuiViewport.scrWidth();
+	float scrHeight = g_ImGuiViewport.scrHeight();
+
+	char playersText[64], teamsText[64], scoreText[64], deathText[64], latencyText[64], modelText[64];
+	strncpy(playersText, CHudTextMessage::BufferedLocaliseTextString("#PLAYERS"), sizeof(playersText) - 1);
+	strncpy(teamsText, CHudTextMessage::BufferedLocaliseTextString("#TEAMS"), sizeof(teamsText) - 1);
+	strncpy(scoreText, CHudTextMessage::BufferedLocaliseTextString("#SCORE"), sizeof(scoreText) - 1);
+	strncpy(deathText, CHudTextMessage::BufferedLocaliseTextString("#DEATHS"), sizeof(deathText) - 1);
+	strncpy(latencyText, CHudTextMessage::BufferedLocaliseTextString("#LATENCY"), sizeof(latencyText) - 1);
+	strncpy(modelText, "MODEL", sizeof(modelText) - 1);
+
+	float colModel = ImGui::CalcTextSize(modelText).x + 24.f;
+	float colScore = ImGui::CalcTextSize(scoreText).x + 24.f;
+	float colDeath = ImGui::CalcTextSize(deathText).x + 24.f;
+	float colPing = ImGui::CalcTextSize(latencyText).x + 24.f;
+
+	float minNameWidth = 150.f;
+
+	float fixedColumnsWidth = colModel + colScore + colDeath + colPing;
+	float minWindowWidth = fixedColumnsWidth + minNameWidth + 40.f;
+
+	float padding_y = scrHeight * 0.05f;
+	float sb_width = scrWidth * 0.55f;
+
+	if (sb_width < minWindowWidth)
+		sb_width = minWindowWidth;
+
+	if (sb_width > scrWidth - 20.f)
+		sb_width = scrWidth - 20.f;
+
+	float sb_height = scrHeight - 2 * padding_y;
+	float sb_x = (scrWidth - sb_width) / 2;
 	float sb_y = padding_y;
+
+	if (sb_x < 10.f)
+		sb_x = 10.f;
 
 	ImGui::SetNextWindowPos(ImVec2(sb_x, sb_y));
 	ImGui::SetNextWindowSize(ImVec2(sb_width, sb_height));
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.02f, 0.02f, 0.02f, 0.7f));
-	ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImVec4(0,0,0,0));
-	ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.05f,0.05f,0.05f,0.5f));
-	ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.08f,0.08f,0.08f,0.5f));
-	ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,160,0,255));
 
-	if (ImGui::Begin("##Scoreboard", &m_ShowWindow,
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(0, 0, 0, 150));
+	ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, IM_COL32(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_TableRowBg, IM_COL32(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, IM_COL32(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 0, 255));
+
+	if (ImGui::Begin("##Scoreboard", &m_ShowScore,
 		ImGuiWindowFlags_NoTitleBar |
 		ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_NoMove |
@@ -286,6 +318,10 @@ void CImGuiScoreboard::DrawScoreboard()
 		ImVec2 win_pos = ImGui::GetWindowPos();
 		ImVec2 win_size = ImGui::GetWindowSize();
 
+		float padding = ImGui::GetStyle().WindowPadding.x;
+		float lineStartX = win_pos.x + padding;
+		float lineEndX = win_pos.x + win_size.x - padding;
+
 		float line_y = ImGui::GetCursorPosY();
 
 		m_ImguiUtils.TextWithColorCodes(g_ImGuiViewport.m_szServerName);
@@ -293,38 +329,41 @@ void CImGuiScoreboard::DrawScoreboard()
 		char player_count[256];
 		sprintf(player_count, "%d/%d", get_player_count(), gEngfuncs.GetMaxClients());
 		float text_width = ImGui::CalcTextSize(player_count).x;
-		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - text_width - ImGui::GetStyle().WindowPadding.x);
+		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - text_width - padding);
 		ImGui::SetCursorPosY(line_y);
 		ImGui::Text("%s", player_count);
 
 		ImGui::Spacing();
-		char map_name[64]; get_map_name(map_name, ARRAYSIZE(map_name));
+		char map_name[64];
+		get_map_name(map_name, ARRAYSIZE(map_name));
 		ImGui::Text("%s", map_name);
 
-		if (ImGui::BeginTable("ScoreboardTableInvisible", 5, ImGuiTableFlags_SizingFixedFit, ImVec2(0, 480)))
+		float tableHeight = sb_height - ImGui::GetCursorPosY() - 20.f;
+
+		if (ImGui::BeginTable("ScoreboardTableInvisible", 5, ImGuiTableFlags_SizingFixedFit, ImVec2(0, tableHeight)))
 		{
 			if (!gHUD.m_Teamplay)
 			{
-				ImGui::TableSetupColumn(CHudTextMessage::BufferedLocaliseTextString("#PLAYERS"), ImGuiTableColumnFlags_WidthStretch, 0.f);
-				ImGui::TableSetupColumn("MODEL", ImGuiTableColumnFlags_WidthFixed, 80.f);
+				ImGui::TableSetupColumn(playersText, ImGuiTableColumnFlags_WidthStretch, 0.f);
+				ImGui::TableSetupColumn(modelText, ImGuiTableColumnFlags_WidthFixed, colModel);
 			}
 			else
 			{
-				ImGui::TableSetupColumn(CHudTextMessage::BufferedLocaliseTextString("#TEAMS"), ImGuiTableColumnFlags_WidthStretch, 0.f);
-				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 80.f);
+				ImGui::TableSetupColumn(teamsText, ImGuiTableColumnFlags_WidthStretch, 0.f);
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, colModel);
 			}
-			ImGui::TableSetupColumn(CHudTextMessage::BufferedLocaliseTextString("#SCORE"), ImGuiTableColumnFlags_WidthFixed, 80.f);
-			ImGui::TableSetupColumn(CHudTextMessage::BufferedLocaliseTextString("#DEATHS"), ImGuiTableColumnFlags_WidthFixed, 80.f);
-			ImGui::TableSetupColumn(CHudTextMessage::BufferedLocaliseTextString("#LATENCY"), ImGuiTableColumnFlags_WidthFixed, 80.f);
+			ImGui::TableSetupColumn(scoreText, ImGuiTableColumnFlags_WidthFixed, colScore);
+			ImGui::TableSetupColumn(deathText, ImGuiTableColumnFlags_WidthFixed, colDeath);
+			ImGui::TableSetupColumn(latencyText, ImGuiTableColumnFlags_WidthFixed, colPing);
 			ImGui::TableHeadersRow();
 
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
 
 			ImVec2 line_start = ImGui::GetCursorScreenPos();
-			line_start.x = win_pos.x + ImGui::GetStyle().WindowPadding.x;
+			line_start.x = lineStartX;
 			line_start.y -= 2.0f;
-			ImVec2 line_end = ImVec2(win_pos.x + win_size.x - ImGui::GetStyle().WindowPadding.x, line_start.y );
+			ImVec2 line_end = ImVec2(lineEndX, line_start.y);
 			draw_list->AddLine(line_start, line_end, IM_COL32(100, 100, 100, 255), 1.0f);
 
 			ImGui::Spacing();
@@ -338,16 +377,11 @@ void CImGuiScoreboard::DrawScoreboard()
 				{
 					team_info_t* team = &g_TeamInfo[m_iSortedRows[row]];
 					int teamColorIdx = team->teamnumber % iNumberOfTeamColors;
-					ImVec4 teamColor = ImVec4(
-						iTeamColors[teamColorIdx][0] / 255.f,
-						iTeamColors[teamColorIdx][1] / 255.f,
-						iTeamColors[teamColorIdx][2] / 255.f,
-						1.0f
-					);
+					ImU32 teamColor = IM_COL32(iTeamColors[teamColorIdx][0], iTeamColors[teamColorIdx][1], iTeamColors[teamColorIdx][2], 255);
 
 					// TEAMS
 					ImGui::PushStyleColor(ImGuiCol_Text, teamColor);
-					ImGui::Text("%s (%d)", team->name, team->players);
+					ImGui::Text("%s - %d %s", team->name, team->players, CHudTextMessage::BufferedLocaliseTextString(team->players == 1 ? "#Player" : "#Player_plural"));
 					ImGui::PopStyleColor();
 
 					// SCORE
@@ -368,31 +402,27 @@ void CImGuiScoreboard::DrawScoreboard()
 					ImGui::Text("%d", team->ping);
 					ImGui::PopStyleColor();
 
-
 					// LINE
-					ImVec2 line_start = ImGui::GetCursorScreenPos();
-					line_start.x = win_pos.x + ImGui::GetStyle().WindowPadding.x;
-					line_start.y -= 2.0f;
-					ImVec2 line_end = ImVec2(win_pos.x + win_size.x - ImGui::GetStyle().WindowPadding.x, line_start.y);
-					ImU32 lineColor = IM_COL32((int)(teamColor.x * 255), (int)(teamColor.y * 255), (int)(teamColor.z * 255), 255);
-					draw_list->AddLine(line_start, line_end, lineColor, 1.0f);
+					ImVec2 team_line_start = ImGui::GetCursorScreenPos();
+					team_line_start.x = lineStartX;
+					team_line_start.y -= 2.0f;
+					ImVec2 team_line_end = ImVec2(lineEndX, team_line_start.y);
+					draw_list->AddLine(team_line_start, team_line_end, teamColor, 1.0f);
 				}
 				else if (m_iIsATeam[row] == TEAM_SPECTATORS)
 				{
 					// TEXT
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.63f, 0.0f, 1.0f));
-					ImGui::Text("Spectators");
+					ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 0, 255));
+					ImGui::Text("%s", CHudTextMessage::BufferedLocaliseTextString("#Spectators"));
 					ImGui::PopStyleColor();
 
 					// LINE
-					ImVec2 line_start = ImGui::GetCursorScreenPos();
-					line_start.x = win_pos.x + ImGui::GetStyle().WindowPadding.x;
-					line_start.y -= 2.0f;
-					ImVec2 line_end = ImVec2(win_pos.x + win_size.x - ImGui::GetStyle().WindowPadding.x, line_start.y);
-					ImU32 lineColor = IM_COL32(255, 160, 0, 255);
-					draw_list->AddLine(line_start, line_end, lineColor, 1.0f);
+					ImVec2 spec_line_start = ImGui::GetCursorScreenPos();
+					spec_line_start.x = lineStartX;
+					spec_line_start.y -= 2.0f;
+					ImVec2 spec_line_end = ImVec2(lineEndX, spec_line_start.y);
+					draw_list->AddLine(spec_line_start, spec_line_end, IM_COL32(255, 160, 0, 255), 1.0f);
 				}
-
 				else if (m_iIsATeam[row] == TEAM_BLANK)
 				{
 					ImGui::Text(" ");
@@ -406,33 +436,28 @@ void CImGuiScoreboard::DrawScoreboard()
 					extra_player_info_t* ex = &g_PlayerExtraInfo[m_iSortedRows[row]];
 
 					int teamColorIdx = ex->teamnumber % iNumberOfTeamColors;
-					ImVec4 playerColor = ImVec4(
-						iTeamColors[teamColorIdx][0] / 255.f,
-						iTeamColors[teamColorIdx][1] / 255.f,
-						iTeamColors[teamColorIdx][2] / 255.f,
-						1.0f
-					);
+					ImU32 playerColor = IM_COL32(iTeamColors[teamColorIdx][0], iTeamColors[teamColorIdx][1], iTeamColors[teamColorIdx][2], 255);
 
 					float textH = ImGui::GetTextLineHeight();
 
 					// PLAYER BG
 					ImVec2 row_min = ImGui::GetCursorScreenPos();
-					row_min.x = win_pos.x + ImGui::GetStyle().WindowPadding.x;
-					ImVec2 row_max = ImVec2(win_pos.x + win_size.x - ImGui::GetStyle().WindowPadding.x, row_min.y + ImGui::GetTextLineHeightWithSpacing());
+					row_min.x = lineStartX;
+					ImVec2 row_max = ImVec2(lineEndX, row_min.y + ImGui::GetTextLineHeightWithSpacing());
 
 					if (pl->thisplayer)
 					{
 						draw_list->AddRectFilled(row_min, row_max, IM_COL32(0, 0, 255, 70), 4.0f);
 					}
-					else if ( m_iSortedRows[row] == m_iLastKilledBy && m_fLastKillTime && m_fLastKillTime > gHUD.m_flTime )
+					else if (m_iSortedRows[row] == m_iLastKilledBy && m_fLastKillTime && m_fLastKillTime > gHUD.m_flTime)
 					{
-						draw_list->AddRectFilled(row_min, row_max,IM_COL32(255, 0, 0,(int)(70.0f * (m_fLastKillTime - gHUD.m_flTime) / 10.0f)),4.0f);
+						draw_list->AddRectFilled(row_min, row_max, IM_COL32(255, 0, 0, (int)(70.0f * (m_fLastKillTime - gHUD.m_flTime) / 10.0f)), 4.0f);
 					}
 
 					// FLAG
 					if (blue_flag_player_index == m_iSortedRows[row] || red_flag_player_index == m_iSortedRows[row])
 					{
-						float sprW = (float)(m_IconFlagScore.rc.right  - m_IconFlagScore.rc.left);
+						float sprW = (float)(m_IconFlagScore.rc.right - m_IconFlagScore.rc.left);
 						float sprH = (float)(m_IconFlagScore.rc.bottom - m_IconFlagScore.rc.top);
 
 						float iconH = textH;
@@ -482,7 +507,6 @@ void CImGuiScoreboard::DrawScoreboard()
 					ImGui::Text("%d", pl->ping);
 					ImGui::PopStyleColor();
 				}
-
 			}
 			ImGui::EndTable();
 		}
@@ -508,7 +532,7 @@ void CImGuiScoreboard::DeathMsg( int killer, int victim )
 
 void CImGuiScoreboard::Draw()
 {
-	if (!m_ShowWindow)
+	if (!m_ShowScore)
 		return;
 
 	int i;
@@ -539,7 +563,7 @@ void CImGuiScoreboard::Draw()
 
 bool CImGuiScoreboard::Active()
 {
-	return m_ShowWindow;
+	return m_ShowScore;
 }
 bool CImGuiScoreboard::CursorRequired()
 {

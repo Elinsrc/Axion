@@ -119,4 +119,4 @@ private:
     std::vector<MenuStyleColor> m_StyleColors;
 };
 
-extern CImGuiCustomMenu m_iCustomMenu;
+extern CImGuiCustomMenu g_iCustomMenu;

@@ -142,8 +142,8 @@ int CHudMenu::Draw( float flTime )
 
 	// don't draw the menu if the scoreboard is being shown
 #if USE_IMGUI
-	/*if( g_ImGuiViewport.IsScoreBoardVisible() )
-		return 1;*/
+	if( g_ImGuiViewport.IsScoreBoardVisible() )
+		return 1;
 #endif
 
 	SCREENINFO screenInfo;

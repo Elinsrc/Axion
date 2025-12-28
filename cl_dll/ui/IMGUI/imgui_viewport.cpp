@@ -29,7 +29,12 @@ void CImGuiViewport::Initialize()
 void CImGuiViewport::ShowScoreBoard()
 {
     if( gEngfuncs.GetMaxClients() > 1 )
-        m_iScoreboard.m_ShowWindow = true;
+        g_iScoreboard.m_ShowScore = true;
+}
+
+bool CImGuiViewport::IsScoreBoardVisible()
+{
+    return g_iScoreboard.isVisible();
 }
 
 void CImGuiViewport::HideScoreBoard()
@@ -37,7 +42,7 @@ void CImGuiViewport::HideScoreBoard()
     if( gHUD.m_iIntermission )
         return;
 
-    m_iScoreboard.m_ShowWindow = false;
+    g_iScoreboard.m_ShowScore = false;
 }
 
 void CImGuiViewport::GetAllPlayersInfo()
@@ -47,7 +52,7 @@ void CImGuiViewport::GetAllPlayersInfo()
         GetPlayerInfo( i, &g_PlayerInfoList[i] );
 
         if( g_PlayerInfoList[i].thisplayer )
-            m_iScoreboard.m_iPlayerNum = i;  // !!!HACK: this should be initialized elsewhere... maybe gotten from the engine
+            g_iScoreboard.m_iPlayerNum = i;  // !!!HACK: this should be initialized elsewhere... maybe gotten from the engine
     }
 }
 
@@ -93,7 +98,7 @@ int CImGuiViewport::MsgFunc_MOTD( const char *pszName, int iSize, void *pbuf )
     // don't show MOTD for HLTV spectators
     if( m_iGotAllMOTD && !gEngfuncs.IsSpectateOnly() )
     {
-        m_iMOTD.m_ShowMOTD = true;
+        g_iMOTD.m_ShowMOTD = true;
     }
 
     return 1;
@@ -150,13 +155,13 @@ int CImGuiViewport::MsgFunc_TeamScore( const char *pszName, int iSize, void *pbu
 
     int i;
 
-    for( i = 1; i <= m_iScoreboard.m_iNumTeams; i++ )
+    for( i = 1; i <= g_iScoreboard.m_iNumTeams; i++ )
     {
         if( !stricmp( TeamName, g_TeamInfo[i].name ) )
             break;
     }
 
-    if( i > m_iScoreboard.m_iNumTeams )
+    if( i > g_iScoreboard.m_iNumTeams )
         return 1;
 
     g_TeamInfo[i].scores_overriden = TRUE;
@@ -177,14 +182,14 @@ int CImGuiViewport::MsgFunc_TeamInfo( const char *pszName, int iSize, void *pbuf
         g_PlayerExtraInfo[cl].teamname[MAX_TEAM_NAME - 1] = '\0';
     }
 
-    m_iScoreboard.RebuildTeams();
+    g_iScoreboard.RebuildTeams();
 
     return 1;
 }
 
 void CImGuiViewport::DeathMsg( int killer, int victim )
 {
-    m_iScoreboard.DeathMsg( killer, victim );
+    g_iScoreboard.DeathMsg( killer, victim );
 }
 
 int CImGuiViewport::MsgFunc_Spectator( const char *pszName, int iSize, void *pbuf )

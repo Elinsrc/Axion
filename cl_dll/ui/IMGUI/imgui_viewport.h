@@ -45,6 +45,7 @@ public:
 
     void Initialize();
     void ShowScoreBoard();
+    bool IsScoreBoardVisible();
     void HideScoreBoard();
     void GetAllPlayersInfo();
 

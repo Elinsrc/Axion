@@ -13,10 +13,10 @@ void CImGuiWindowSystem::LinkWindows()
     static CImGuiCommands commandsWindow;
     AddWindow(&commandsWindow);
 
-    AddWindow(&m_iScoreboard);
+    AddWindow(&g_iScoreboard);
 
     static CImGuiMOTD motdWindow;
     AddWindow(&motdWindow);
 
-    AddWindow(&m_iCustomMenu);
+    AddWindow(&g_iCustomMenu);
 }

@@ -17,13 +17,15 @@
 class CImGuiScoreboard : public IImGuiWindow
 {
 public:
-    static bool m_ShowWindow;
+    static bool m_ShowScore;
+    static bool isVisible() { return m_ShowScore; }
 
     void Initialize();
     void VidInitialize();
     void Terminate();
     void Think();
 
+    void Update();
     void DrawScoreboard();
     void Draw();
     bool Active();
@@ -56,6 +58,6 @@ private:
     icon_flagstatus_t m_IconFlagScore;
 };
 
-extern CImGuiScoreboard m_iScoreboard;
+extern CImGuiScoreboard g_iScoreboard;
 
 #endif // IMGUI_SCOREBOARD_H

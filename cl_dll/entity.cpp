@@ -19,10 +19,7 @@
 #include "pm_defs.h"
 #include "pmtrace.h"	
 #include "pm_shared.h"
-
-#if !USE_VGUI
 #include "voice_status.h"
-#endif
 
 void Game_AddObjects( void );
 

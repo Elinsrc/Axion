@@ -908,7 +908,7 @@ void CHud::GetAllPlayersInfo()
 		if( g_PlayerInfoList[i].thisplayer )
 		{
 #if USE_IMGUI
-			m_iScoreboard.m_iPlayerNum = i;
+			g_iScoreboard.m_iPlayerNum = i;
 #endif
 #if !USE_IMGUI || USE_NOIMGUI_SCOREBOARD
 			m_Scoreboard.m_iPlayerNum = i;  // !!!HACK: this should be initialized elsewhere... maybe gotten from the engine

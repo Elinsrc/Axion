@@ -18,5 +18,5 @@ public:
     static bool m_ShowMOTD;
 };
 
-extern CImGuiMOTD m_iMOTD;
+extern CImGuiMOTD g_iMOTD;
 #endif // IMGUI_MOTD_H
