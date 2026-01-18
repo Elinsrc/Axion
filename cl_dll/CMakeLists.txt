@@ -197,7 +197,7 @@ if(USE_VOICEMGR)
 endif()
 
 if (USE_IMGUI)
-	include_directories(${CMAKE_SOURCE_DIR}/external/imgui ui/IMGUI ${CMAKE_SOURCE_DIR}/external/stb)
+	include_directories(${CMAKE_SOURCE_DIR}/external/imgui ui/IMGUI ${CMAKE_SOURCE_DIR}/external/stb utils/images)
 endif()
 
 add_library (${CLDLL_LIBRARY} SHARED ${CLDLL_SOURCES})

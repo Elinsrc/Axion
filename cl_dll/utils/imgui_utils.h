@@ -26,8 +26,8 @@ public:
     void SetCvarFloat(const char* name, float value);
     void GetCvarColor(const char* name, float outColor[3]);
     void SetCvarColor(const char* name, const float color[3]);
-    void StyleColorVGUI(void);
     ImGuiImage LoadImageFromFile(const char* filename);
+    ImGuiImage LoadImageFromMemory(const unsigned char* buffer, int bufferSize);
     float DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r = 255, int g = 255, int b = 255, int alpha = 255);
     void FreeImage(ImGuiImage& image);
 };

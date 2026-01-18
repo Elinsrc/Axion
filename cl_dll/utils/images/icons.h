@@ -1,0 +1,6 @@
+#include "app_icon.h"
+#include "cl_settings_icon.h"
+#include "close_icon.h"
+#include "crosshair_icon.h"
+#include "settings_icon.h"
+#include "draw_icon.h"

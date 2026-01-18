@@ -92,7 +92,7 @@ void CImGuiManager::LoadFonts()
 }
 void CImGuiManager::ApplyStyles()
 {
-    m_ImguiUtils.StyleColorVGUI();
+    ImGui::StyleColorsDark();
 }
 
 void CImGuiManager::UpdateMouseState()
