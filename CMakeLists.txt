@@ -182,8 +182,3 @@ if(HAVE_TGMATH_H)
 endif()
 
 add_subdirectory(cl_dll)
-
-if(ANDROID)
-	set(BUILD_CLIENT OFF CACHE BOOL "Disable building client from HLSDK")
-	add_subdirectory(external/hlsdk-portable)
-endif()

@@ -1,7 +1,3 @@
-[submodule "external/hlsdk-portable"]
-	path = external/hlsdk-portable
-	url = https://github.com/Elinsrc/hlsdk-portable
-	branch = bhop_fix
 [submodule "external/imgui"]
 	path = external/imgui
 	url = https://github.com/ocornut/imgui
