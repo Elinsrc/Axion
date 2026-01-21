@@ -2,15 +2,31 @@
 #include "keydefs.h"
 #include "imgui_viewport.h"
 #include "ui_ScorePanel.h"
+#include "voice_status.h"
+#include "cl_util.h"
+#include "imgui_utils.h"
 
 extern int blue_flag_player_index;
 extern int red_flag_player_index;
+
+ImGuiImage m_pScoreboardVoiceBanned;
+ImGuiImage m_pscoreboardVoiceSpeaking;
+ImGuiImage m_pscoreboardVoiceSpeaking2;
+ImGuiImage m_pscoreboardVoiceSpeaking3;
+ImGuiImage m_pscoreboardVoiceSpeaking4;
 
 CImGuiScoreboard g_iScoreboard;
 
 bool CImGuiScoreboard::m_ShowScore = false;
 
 void CImGuiScoreboard::Initialize()
+{
+	m_bMouseMode = false;
+
+	InitHUDData();
+}
+
+void CImGuiScoreboard::InitHUDData()
 {
 	m_iLastKilledBy = 0;
 	m_fLastKillTime = 0;
@@ -26,13 +42,29 @@ void CImGuiScoreboard::VidInitialize()
 	iSprite = gHUD.GetSpriteIndex( "icon_ctf_score" );
 	m_IconFlagScore.spr = gHUD.GetSprite( iSprite );
 	m_IconFlagScore.rc = gHUD.GetSpriteRect( iSprite );
+
+	m_pScoreboardVoiceBanned = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_voiceblocked.tga");
+	m_pscoreboardVoiceSpeaking = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker1.tga");
+    m_pscoreboardVoiceSpeaking2 = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker2.tga");
+    m_pscoreboardVoiceSpeaking3 = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker3.tga");
+    m_pscoreboardVoiceSpeaking4 = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker4.tga");
 }
 
 void CImGuiScoreboard::Terminate()
 {
+	m_ImguiUtils.FreeImage(m_pScoreboardVoiceBanned);
+	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking);
+	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking2);
+	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking3);
+	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking4);
 }
+
 void CImGuiScoreboard::Think()
 {
+	if (!m_ShowScore)
+	{
+		m_bMouseMode = false;
+	}
 }
 
 void CImGuiScoreboard::RebuildTeams()
@@ -259,26 +291,29 @@ void CImGuiScoreboard::DrawScoreboard()
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 2));
 	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(12, 2));
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
 	float scrWidth = g_ImGuiViewport.scrWidth();
 	float scrHeight = g_ImGuiViewport.scrHeight();
 
-	char playersText[64], teamsText[64], scoreText[64], deathText[64], latencyText[64], modelText[64];
+	char playersText[64], teamsText[64], scoreText[64], deathText[64], latencyText[64], modelText[64], voiceText[64];
 	strncpy(playersText, CHudTextMessage::BufferedLocaliseTextString("#PLAYERS"), sizeof(playersText) - 1);
 	strncpy(teamsText, CHudTextMessage::BufferedLocaliseTextString("#TEAMS"), sizeof(teamsText) - 1);
 	strncpy(scoreText, CHudTextMessage::BufferedLocaliseTextString("#SCORE"), sizeof(scoreText) - 1);
 	strncpy(deathText, CHudTextMessage::BufferedLocaliseTextString("#DEATHS"), sizeof(deathText) - 1);
 	strncpy(latencyText, CHudTextMessage::BufferedLocaliseTextString("#LATENCY"), sizeof(latencyText) - 1);
 	strncpy(modelText, "MODEL", sizeof(modelText) - 1);
+	strncpy(voiceText, CHudTextMessage::BufferedLocaliseTextString("#VOICE"), sizeof(voiceText) - 1);
 
 	float colModel = ImGui::CalcTextSize(modelText).x + 24.f;
 	float colScore = ImGui::CalcTextSize(scoreText).x + 24.f;
 	float colDeath = ImGui::CalcTextSize(deathText).x + 24.f;
 	float colPing = ImGui::CalcTextSize(latencyText).x + 24.f;
+	float colVoice = ImGui::CalcTextSize(voiceText).x + 24.f;
 
 	float minNameWidth = 150.f;
 
-	float fixedColumnsWidth = colModel + colScore + colDeath + colPing;
+	float fixedColumnsWidth = colModel + colScore + colDeath + colPing + colVoice;
 	float minWindowWidth = fixedColumnsWidth + minNameWidth + 40.f;
 
 	float padding_y = scrHeight * 0.05f;
@@ -305,14 +340,26 @@ void CImGuiScoreboard::DrawScoreboard()
 	ImGui::PushStyleColor(ImGuiCol_TableRowBg, IM_COL32(0, 0, 0, 0));
 	ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, IM_COL32(0, 0, 0, 0));
 	ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 0, 255));
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));      
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0, 0)); 
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));  
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0,0,0,0));
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0,0,0,0));
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0,0,0,0));
 
-	if (ImGui::Begin("##Scoreboard", &m_ShowScore,
-		ImGuiWindowFlags_NoTitleBar |
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
 		ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoCollapse |
-		ImGuiWindowFlags_NoInputs))
+		ImGuiWindowFlags_NoCollapse;
+
+
+	if (!m_bMouseMode)
+		flags |= ImGuiWindowFlags_NoInputs;
+	else
+		flags |= ImGuiWindowFlags_NoNav;
+
+	if (ImGui::Begin("##Scoreboard", &m_ShowScore, flags))
 	{
 		ImDrawList* draw_list = ImGui::GetWindowDrawList();
 		ImVec2 win_pos = ImGui::GetWindowPos();
@@ -340,7 +387,7 @@ void CImGuiScoreboard::DrawScoreboard()
 
 		float tableHeight = sb_height - ImGui::GetCursorPosY() - 20.f;
 
-		if (ImGui::BeginTable("ScoreboardTableInvisible", 5, ImGuiTableFlags_SizingFixedFit, ImVec2(0, tableHeight)))
+		if (ImGui::BeginTable("ScoreboardTableInvisible", 6, ImGuiTableFlags_SizingFixedFit, ImVec2(0, tableHeight)))
 		{
 			if (!gHUD.m_Teamplay)
 			{
@@ -352,9 +399,11 @@ void CImGuiScoreboard::DrawScoreboard()
 				ImGui::TableSetupColumn(teamsText, ImGuiTableColumnFlags_WidthStretch, 0.f);
 				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, colModel);
 			}
+
 			ImGui::TableSetupColumn(scoreText, ImGuiTableColumnFlags_WidthFixed, colScore);
 			ImGui::TableSetupColumn(deathText, ImGuiTableColumnFlags_WidthFixed, colDeath);
 			ImGui::TableSetupColumn(latencyText, ImGuiTableColumnFlags_WidthFixed, colPing);
+			ImGui::TableSetupColumn(voiceText, ImGuiTableColumnFlags_WidthFixed, colVoice);
 			ImGui::TableHeadersRow();
 
 			ImGui::TableNextRow();
@@ -432,8 +481,9 @@ void CImGuiScoreboard::DrawScoreboard()
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
 
-					hud_player_info_t* pl = &g_PlayerInfoList[m_iSortedRows[row]];
-					extra_player_info_t* ex = &g_PlayerExtraInfo[m_iSortedRows[row]];
+					int iPlayerIndex = m_iSortedRows[row]; 
+					hud_player_info_t* pl = &g_PlayerInfoList[iPlayerIndex];
+					extra_player_info_t* ex = &g_PlayerExtraInfo[iPlayerIndex];
 
 					int teamColorIdx = ex->teamnumber % iNumberOfTeamColors;
 					ImU32 playerColor = IM_COL32(iTeamColors[teamColorIdx][0], iTeamColors[teamColorIdx][1], iTeamColors[teamColorIdx][2], 255);
@@ -506,6 +556,99 @@ void CImGuiScoreboard::DrawScoreboard()
 					ImGui::PushStyleColor(ImGuiCol_Text, playerColor);
 					ImGui::Text("%d", pl->ping);
 					ImGui::PopStyleColor();
+
+					// VOICE	
+					ImGui::TableSetColumnIndex(5);
+					if (pl->name && pl->name[0]) 
+					{
+						char string[256];
+
+						CVoiceStatus* pVoiceMgr = GetClientVoiceMgr();
+
+						bool isMuted = pVoiceMgr->IsPlayerBlocked(iPlayerIndex);
+						bool isSpeaking = pVoiceMgr->IsPlayerSpeaking(iPlayerIndex);
+
+						if (pl->thisplayer) 
+							isMuted = false;
+					
+						double frameDuration = 0.5; // seconds per frame
+						int currentFrame = (int)(ImGui::GetTime() / frameDuration) % 3;
+
+						ImGuiImage* pCurrentImg = nullptr;
+						ImVec4 tint = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+
+						if (isMuted)
+						{
+							pCurrentImg = &m_pScoreboardVoiceBanned;
+							tint = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+						}
+						else if (isSpeaking)
+						{
+							switch (currentFrame)
+							{
+							case 0:
+								pCurrentImg = &m_pscoreboardVoiceSpeaking2;    
+								break;
+							case 1:
+								pCurrentImg = &m_pscoreboardVoiceSpeaking3;
+								break;
+							case 2:
+								pCurrentImg = &m_pscoreboardVoiceSpeaking4; 
+								break;
+							}
+							tint = ImVec4(1.0f, 0.66f, 0.0f, 1.0f);
+						}
+						else
+						{
+							pCurrentImg = &m_pscoreboardVoiceSpeaking;
+						}
+
+						if (pCurrentImg)
+						{
+							float iconSize = ImGui::GetTextLineHeight();
+							
+							ImGui::PushID(iPlayerIndex);
+
+							if (m_bMouseMode && !pl->thisplayer)
+							{
+								if (ImGui::ImageButton("##vbtn", pCurrentImg->texture, ImVec2(iconSize, iconSize), ImVec2(0,0), ImVec2(1,1), ImVec4(0,0,0,0), tint))
+								{
+									if (isMuted)
+									{
+										char string1[1024];
+
+										// remove mute
+										GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, false);
+
+										sprintf( string1, "%s %s", CHudTextMessage::BufferedLocaliseTextString( "#Unmuted" ), pl->name );
+										sprintf( string, "%c** %s\n", HUD_PRINTTALK, string1 );
+
+										gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string)+1, string );
+									}
+									else
+									{
+										char string1[1024];
+										char string2[1024];
+
+										// mute the player
+										GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, true);
+
+										sprintf( string1, "%s %s", CHudTextMessage::BufferedLocaliseTextString( "#Muted" ), pl->name );
+										sprintf( string2, "%s", CHudTextMessage::BufferedLocaliseTextString( "#No_longer_hear_that_player" ) );
+										sprintf( string, "%c** %s %s\n", HUD_PRINTTALK, string1, string2 );
+
+										gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string)+1, string );
+									}
+								}
+							}
+							else
+							{
+								ImGui::Image(pCurrentImg->texture, ImVec2(iconSize, iconSize), ImVec2(0,0), ImVec2(1,1), tint, ImVec4(0,0,0,0));
+							}
+							
+							ImGui::PopID();
+						}
+					}
 				}
 			}
 			ImGui::EndTable();
@@ -514,8 +657,8 @@ void CImGuiScoreboard::DrawScoreboard()
 		ImGui::End();
 	}
 
-	ImGui::PopStyleColor(5);
-	ImGui::PopStyleVar(6);
+	ImGui::PopStyleColor(11);
+	ImGui::PopStyleVar(7);
 }
 
 void CImGuiScoreboard::DeathMsg( int killer, int victim )
@@ -565,12 +708,35 @@ bool CImGuiScoreboard::Active()
 {
 	return m_ShowScore;
 }
+
 bool CImGuiScoreboard::CursorRequired()
 {
-	return false;
+	if (m_ShowScore && m_bMouseMode)
+		return true;
 
+	return false;
 }
+
 bool CImGuiScoreboard::HandleKey(bool keyDown, int keyNumber, const char* bindName)
 {
+	if (!m_ShowScore)
+		return true;
+
+	if (keyDown && keyNumber == K_MOUSE2)
+	{
+		if (!m_bMouseMode)
+		{
+			m_bMouseMode = true; 
+			gEngfuncs.pfnSetMousePos(g_ImGuiViewport.scrWidth() / 2, g_ImGuiViewport.scrHeight() / 2);
+		}
+		
+		return false; 
+	}
+
+	if (m_bMouseMode)
+	{
+		return false;
+	}
+
 	return true;
 }

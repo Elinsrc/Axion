@@ -68,6 +68,10 @@ public:
     // blocks the target client from being heard
     void	SetPlayerBlockedState(int iPlayerIndex, bool blocked);
 
+#if USE_IMGUI
+    bool IsPlayerSpeaking(int iPlayerIndex);
+#endif
+
 public:
     void			UpdateServerState(bool bForce);
 

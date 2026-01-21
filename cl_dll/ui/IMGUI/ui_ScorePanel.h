@@ -21,6 +21,7 @@ public:
     static bool isVisible() { return m_ShowScore; }
 
     void Initialize();
+    void InitHUDData();
     void VidInitialize();
     void Terminate();
     void Think();
@@ -56,6 +57,8 @@ private:
     }icon_flagstatus_t;
 
     icon_flagstatus_t m_IconFlagScore;
+
+    bool m_bMouseMode;
 };
 
 extern CImGuiScoreboard g_iScoreboard;

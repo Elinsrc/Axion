@@ -82,10 +82,10 @@ void CImGuiMOTD::Draw()
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 0, 255));
 
     ImGui::Begin("##motdwin", nullptr,
-                 ImGuiWindowFlags_NoTitleBar |
-                 ImGuiWindowFlags_NoResize |
-                 ImGuiWindowFlags_NoCollapse |
-                 ImGuiWindowFlags_NoMove);
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoMove);
 
     m_ImguiUtils.TextWithColorCodes(motdText);
 

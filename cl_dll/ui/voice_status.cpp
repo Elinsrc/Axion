@@ -704,3 +704,12 @@ void CVoiceStatus::SetPlayerBlockedState(int iPlayer, bool blocked)
     m_BanMgr.SetPlayerBan( playerID, blocked );
     UpdateServerState(false);
 }
+
+#if USE_IMGUI
+bool CVoiceStatus::IsPlayerSpeaking(int iPlayerIndex)
+{
+    int iClient = iPlayerIndex - 1;
+    if (iClient < 0 || iClient >= MAX_VOICE_SPEAKERS) return false;
+    return !!m_VoicePlayers[iClient];
+}
+#endif
