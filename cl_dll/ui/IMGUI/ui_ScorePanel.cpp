@@ -620,10 +620,10 @@ void CImGuiScoreboard::DrawScoreboard()
 										// remove mute
 										GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, false);
 
-										sprintf( string1, "%s %s", CHudTextMessage::BufferedLocaliseTextString( "#Unmuted" ), pl->name );
-										sprintf( string, "%c** %s\n", HUD_PRINTTALK, string1 );
+										sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Unmuted"), pl->name);
+										sprintf(string, "%c** %s\n", HUD_PRINTTALK, string1);
 
-										gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string)+1, string );
+										gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
 									}
 									else
 									{
@@ -633,12 +633,13 @@ void CImGuiScoreboard::DrawScoreboard()
 										// mute the player
 										GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, true);
 
-										sprintf( string1, "%s %s", CHudTextMessage::BufferedLocaliseTextString( "#Muted" ), pl->name );
-										sprintf( string2, "%s", CHudTextMessage::BufferedLocaliseTextString( "#No_longer_hear_that_player" ) );
-										sprintf( string, "%c** %s %s\n", HUD_PRINTTALK, string1, string2 );
+										sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Muted"), pl->name);
+										sprintf(string2, "%s", CHudTextMessage::BufferedLocaliseTextString("#No_longer_hear_that_player"));
+										sprintf(string, "%c** %s %s\n", HUD_PRINTTALK, string1, string2);
 
-										gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string)+1, string );
+										gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
 									}
+
 								}
 							}
 							else
