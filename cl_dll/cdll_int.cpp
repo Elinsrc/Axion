@@ -27,6 +27,8 @@
 #include "VGUI_Panel.h"
 #include "VGUI_App.h"
 
+using namespace vgui;
+
 #if USE_IMGUI
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
@@ -212,7 +214,7 @@ int *HUD_GetRect( void )
 	return extent;
 }
 
-class TeamFortressViewport : public vgui::Panel
+class TeamFortressViewport : public Panel
 {
 public:
 	TeamFortressViewport(int x,int y,int wide,int tall);
@@ -232,7 +234,9 @@ TeamFortressViewport::TeamFortressViewport(int x, int y, int wide, int tall) : P
 
 void TeamFortressViewport::Initialize()
 {
-	//vgui::App::getInstance()->setCursorOveride( vgui::App::getInstance()->getScheme()->getCursor(vgui::Scheme::scu_none) );
+#if USE_IMGUI
+	App::getInstance()->setCursorOveride( App::getInstance()->getScheme()->getCursor(Scheme::scu_none) );
+#endif
 }
 
 void TeamFortressViewport::paintBackground()
@@ -265,7 +269,7 @@ so the HUD can reinitialize itself.
 int DLLEXPORT HUD_VidInit( void )
 {
 	gHUD.VidInit();
-	vgui::Panel* root=(vgui::Panel*)gEngfuncs.VGui_GetPanel();
+	Panel* root=(vgui::Panel*)gEngfuncs.VGui_GetPanel();
 	if (root) {
 		gEngfuncs.Con_Printf( "Root VGUI panel exists\n" );
 		root->setBgColor(128,128,0,0);

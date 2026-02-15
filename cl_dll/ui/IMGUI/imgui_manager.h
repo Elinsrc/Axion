@@ -7,6 +7,10 @@
 #include "ui_crosshairs.h"
 #include "ui_debug.h"
 
+#include "VGUI_App.h"
+#include "VGUI_Scheme.h"
+using namespace vgui;
+
 class CImGuiBackend;
 
 class CImGuiManager
@@ -65,5 +69,7 @@ private:
 
     ImFont* m_pDefaultFont = nullptr;
     ImFont* m_pHudFont     = nullptr;
+
+    Scheme::SchemeCursor m_CurrentCursor = Scheme::scu_last;
 };
 extern CImGuiManager &g_ImGuiManager;

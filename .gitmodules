@@ -4,3 +4,9 @@
 [submodule "external/stb"]
 	path = external/stb
 	url = https://github.com/nothings/stb
+[submodule "external/openvgui"]
+	path = external/openvgui
+	url = https://github.com/FWGS/openvgui
+[submodule "external/vgui-dev"]
+	path = external/vgui-dev
+	url = https://github.com/FWGS/vgui-dev

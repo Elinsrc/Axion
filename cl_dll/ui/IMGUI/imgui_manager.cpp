@@ -122,17 +122,68 @@ void CImGuiManager::UpdateMouseState()
 
 void CImGuiManager::UpdateCursorState()
 {
-    ImGuiIO &io = ImGui::GetIO();
     bool cursorRequired = m_WindowSystem.CursorRequired();
-    if (cursorRequired)
+
+    if (!cursorRequired)
     {
-        io.MouseDrawCursor = true;
+        if (m_CurrentCursor != Scheme::scu_none)
+        {
+            m_CurrentCursor = Scheme::scu_none;
+            App::getInstance()->setCursorOveride(App::getInstance()->getScheme()->getCursor(Scheme::scu_none));
+        }
+        return;
     }
-    else if (cursorRequired != m_bWasCursorRequired) {
-        io.MouseDrawCursor = false;
+
+    ImGuiMouseCursor imguiCursor = ImGui::GetMouseCursor();
+    Scheme::SchemeCursor Cursor = Scheme::scu_arrow;
+
+    switch (imguiCursor)
+    {
+        case ImGuiMouseCursor_None:        
+            Cursor = Scheme::scu_none; 
+            break;
+        case ImGuiMouseCursor_Arrow:       
+            Cursor = Scheme::scu_arrow; 
+            break;
+        case ImGuiMouseCursor_TextInput:   
+            Cursor = Scheme::scu_ibeam; 
+            break;
+        case ImGuiMouseCursor_ResizeAll:   
+            Cursor = Scheme::scu_sizeall; 
+            break;
+        case ImGuiMouseCursor_ResizeNS:    
+            Cursor = Scheme::scu_sizens; 
+            break;
+        case ImGuiMouseCursor_ResizeEW:    
+            Cursor = Scheme::scu_sizewe; 
+            break;
+        case ImGuiMouseCursor_ResizeNESW:  
+            Cursor = Scheme::scu_sizenesw; 
+            break;
+        case ImGuiMouseCursor_ResizeNWSE:  
+            Cursor = Scheme::scu_sizenwse; 
+            break;
+        case ImGuiMouseCursor_Hand:        
+            Cursor = Scheme::scu_hand; 
+            break;
+        case ImGuiMouseCursor_NotAllowed:  
+            Cursor = Scheme::scu_no; 
+            break;
+        default:                           
+            Cursor = Scheme::scu_arrow; 
+            break;
     }
+
+    if (m_CurrentCursor != Cursor)
+    {
+        m_CurrentCursor = Cursor;
+
+        App::getInstance()->setCursorOveride(App::getInstance()->getScheme()->getCursor(Cursor));
+    }
+
     m_bWasCursorRequired = cursorRequired;
 }
+
 
 void CImGuiManager::HandleKeyInput(bool keyDown, int keyNumber)
 {
