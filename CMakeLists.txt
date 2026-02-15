@@ -184,6 +184,7 @@ endif()
 if(USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
     set(VGUI_STATIC ON CACHE BOOL "" FORCE)
     add_subdirectory(external/openvgui)
+	add_subdirectory(external)
 endif()
 
 

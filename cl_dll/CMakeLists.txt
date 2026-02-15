@@ -225,6 +225,7 @@ endif()
 
 if(USE_IMGUI)
 	if(ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8)
+		target_link_libraries(${CLDLL_LIBRARY} vgui_support)
 		target_link_libraries(${CLDLL_LIBRARY} vgui)
 	else()
 		if (WIN32)
