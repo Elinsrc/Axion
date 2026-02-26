@@ -9,7 +9,7 @@
 
 #include "net.h"
 
-#ifdef _WIN32
+#if XASH_WIN32
 #include <winsani_in.h>
 #include <windows.h>
 #include <winsani_out.h>
@@ -59,7 +59,7 @@ int NetSendReceiveUdp(const char *addr, int port, const char *sendbuf, int len, 
 
 int NetSendReceiveUdp(unsigned long sin_addr, int sin_port, const char *sendbuf, int len, char *recvbuf, int size)
 {
-#ifdef _WIN32
+#if XASH_WIN32
 	if (!g_bInitialised)
 		WinsockInit();
 	if (g_bFailedInitialization)
@@ -67,7 +67,7 @@ int NetSendReceiveUdp(unsigned long sin_addr, int sin_port, const char *sendbuf,
 #endif
 
 	// Create a socket for sending data
-#ifdef _WIN32
+#if XASH_WIN32
 	SOCKET SendSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 #else
 	int SendSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -88,7 +88,7 @@ int NetSendReceiveUdp(unsigned long sin_addr, int sin_port, const char *sendbuf,
 	int res;
 	unsigned long nonzero = 1;
 
-#ifdef _WIN32
+#if XASH_WIN32
 	ioctlsocket(SendSocket, FIONBIO, &nonzero);
 	SOCKET maxfd;
 #else
@@ -115,7 +115,7 @@ int NetSendReceiveUdp(unsigned long sin_addr, int sin_port, const char *sendbuf,
 		res = select(maxfd + 1, &rfd, NULL, &efd, &tv);
 
 		// Check for error on socket
-#ifdef _WIN32
+#if XASH_WIN32
 		if (res == SOCKET_ERROR || FD_ISSET(SendSocket, &efd))
 			break;
 #else
@@ -137,7 +137,7 @@ int NetSendReceiveUdp(unsigned long sin_addr, int sin_port, const char *sendbuf,
 		res = recvfrom(SendSocket, recvbuf, size, 0,
 					   (struct sockaddr *)&fromaddr, &fromaddrlen);
 
-#ifdef _WIN32
+#if XASH_WIN32
 		if (res == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK)
 			break;
 #else
@@ -150,7 +150,7 @@ int NetSendReceiveUdp(unsigned long sin_addr, int sin_port, const char *sendbuf,
 			addr.sin_addr.s_addr == fromaddr.sin_addr.s_addr &&
 			addr.sin_port == fromaddr.sin_port)
 		{
-#ifdef _WIN32
+#if XASH_WIN32
 			closesocket(SendSocket);
 #else
 			close(SendSocket);
@@ -162,7 +162,7 @@ int NetSendReceiveUdp(unsigned long sin_addr, int sin_port, const char *sendbuf,
 			break;
 	}
 
-#ifdef _WIN32
+#if XASH_WIN32
 	closesocket(SendSocket);
 #else
 	close(SendSocket);
@@ -173,7 +173,7 @@ int NetSendReceiveUdp(unsigned long sin_addr, int sin_port, const char *sendbuf,
 
 int NetSendUdp(unsigned long sin_addr, int sin_port, const char *sendbuf, int len, NetSocket *s)
 {
-#ifdef _WIN32
+#if _WIN32
 	if (!g_bInitialised)
 		WinsockInit();
 	if (g_bFailedInitialization)
@@ -181,7 +181,7 @@ int NetSendUdp(unsigned long sin_addr, int sin_port, const char *sendbuf, int le
 #endif
 
 	// Create or get a socket for sending data
-#ifdef _WIN32
+#if XASH_WIN32
 	SOCKET s1;
 #else
 	int s1;
@@ -202,7 +202,7 @@ int NetSendUdp(unsigned long sin_addr, int sin_port, const char *sendbuf, int le
 	int res = sendto(s1, sendbuf, len, 0, (struct sockaddr *)&addr, sizeof(addr));
 
 	// Return socket if send was successful
-#ifdef _WIN32
+#if XASH_WIN32
 	if (res != SOCKET_ERROR && s)
 #else
 	if (res != -1 && s)
@@ -210,7 +210,7 @@ int NetSendUdp(unsigned long sin_addr, int sin_port, const char *sendbuf, int le
 		*s = SocketConvert(s1);
 	else
 	{
-#ifdef _WIN32
+#if XASH_WIN32
 		closesocket(s1);
 #else
 		close(s1);
@@ -222,7 +222,7 @@ int NetSendUdp(unsigned long sin_addr, int sin_port, const char *sendbuf, int le
 
 int NetReceiveUdp(unsigned long sin_addr, int sin_port, char *recvbuf, int size, NetSocket ns)
 {
-#ifdef _WIN32
+#if XASH_WIN32
 	if (!g_bInitialised)
 		WinsockInit();
 	if (g_bFailedInitialization)
@@ -243,7 +243,7 @@ int NetReceiveUdp(unsigned long sin_addr, int sin_port, char *recvbuf, int size,
 	int res;
 	unsigned long nonzero = 1;
 
-#ifdef _WIN32
+#if XASH_WIN32
 	ioctlsocket(s, FIONBIO, &nonzero);
 	SOCKET maxfd;
 #else
@@ -267,7 +267,7 @@ int NetReceiveUdp(unsigned long sin_addr, int sin_port, char *recvbuf, int size,
 
 	res = select(maxfd + 1, &rfd, NULL, &efd, &tv);
 
-#ifdef _WIN32
+#if XASH_WIN32
 	if (res == SOCKET_ERROR || FD_ISSET(s, &efd))
 		return -1;
 #else
@@ -282,7 +282,7 @@ int NetReceiveUdp(unsigned long sin_addr, int sin_port, char *recvbuf, int size,
 
 	res = recvfrom(s, recvbuf, size, 0, (struct sockaddr *)&fromaddr, &fromaddrlen);
 
-#ifdef _WIN32
+#if XASH_WIN32
 	if (res == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK)
 		return -1;
 #else
@@ -312,7 +312,7 @@ void NetCloseSocket(NetSocket s)
 	if (!s)
 		return;
 
-#ifdef _WIN32
+#if XASH_WIN32
 	closesocket(SocketConvert(s));
 #else
 	close(SocketConvert(s));

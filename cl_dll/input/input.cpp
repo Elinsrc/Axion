@@ -28,11 +28,13 @@ extern "C"
 #include <string.h>
 #include <ctype.h>
 
+#include "build.h"
+
 #if USE_IMGUI
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
 extern cvar_t *ui_imgui_scoreboard;
-#if __ANDROID__ || XASH_64BIT
+#if XASH_MOBILE_PLATFORM || XASH_64BIT
 #include "gl_export.h"
 #endif
 #endif
@@ -1278,7 +1280,7 @@ void DLLEXPORT HUD_Shutdown( void )
 	ShutdownInput();
 
 #if USE_IMGUI
-#if __ANDROID__ || XASH_64BIT
+#if XASH_MOBILE_PLATFORM || XASH_64BIT
 	GL_Shutdown();
 #else
 	g_ImGuiManager.Terminate();

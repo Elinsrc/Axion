@@ -9,7 +9,9 @@
 
 #include <cstdint>
 
-#ifdef _WIN32
+#include "build.h"
+
+#ifdef XASH_WIN32
 typedef int socklen_t;
 #endif
 

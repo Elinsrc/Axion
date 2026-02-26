@@ -10,6 +10,7 @@
 #include "const.h"
 #include "com_model.h"
 #include "studio_util.h"
+#include "build.h"
 
 /*
 ====================

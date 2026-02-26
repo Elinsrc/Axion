@@ -11,7 +11,9 @@
 
 #include "custom_utils.h"
 
-#ifdef _WIN32
+#include "build.h"
+
+#if XASH_WIN32
 #include <winsani_in.h>
 #include <windows.h>
 #include <winsani_out.h>
@@ -22,7 +24,7 @@
 
 float CustomUtils::GetCurrentSysTime()
 {
-#ifdef _WIN32
+#if XASH_WIN32
     static LARGE_INTEGER perfFreq;
     static LARGE_INTEGER clockStart;
     LARGE_INTEGER currentTime;

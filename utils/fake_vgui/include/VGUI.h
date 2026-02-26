@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright ï¿½ 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose: 
 //
@@ -77,7 +77,7 @@
 //		then App can come along later and fire all the signals
 //TODO: Change all method naming to starting with a capital letter.
 
-#ifdef _WIN32
+#ifdef XASH_WIN32
 # define VGUIAPI __declspec( dllexport )
 #else
 # define VGUIAPI  __attribute__ ((visibility("default")))

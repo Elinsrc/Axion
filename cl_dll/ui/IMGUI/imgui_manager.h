@@ -25,7 +25,7 @@ public:
     bool KeyInput(bool keyDown, int keyNumber, const char *bindName);
     bool IsCursorRequired();
 
-#if __ANDROID__
+#if XASH_MOBILE_PLATFORM
     void TouchEvent(int fingerID, float x, float y, float dx, float dy);
     int m_TouchID = -1;
     float m_TouchX = 0.0f;

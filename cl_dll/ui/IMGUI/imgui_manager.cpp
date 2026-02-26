@@ -8,6 +8,13 @@
 #include "imgui_utils.h"
 #include "imgui_viewport.h"
 
+#include "build.h"
+
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+void IN_SetVisibleMouse(bool visible);
+void IgnoreNextMouseDelta();
+#endif
+
 extern int g_ImGuiMouse;
 
 CImGuiManager &g_ImGuiManager = CImGuiManager::GetInstance();
@@ -99,7 +106,7 @@ void CImGuiManager::UpdateMouseState()
 {
     ImGuiIO &io = ImGui::GetIO();
 
-#if __ANDROID__
+#if XASH_MOBILE_PLATFORM
     io.AddMousePosEvent(m_TouchX, m_TouchY);
 
     if (m_TouchID == 0 || m_TouchID == 2)
@@ -129,6 +136,9 @@ void CImGuiManager::UpdateCursorState()
         if (m_CurrentCursor != Scheme::scu_none)
         {
             m_CurrentCursor = Scheme::scu_none;
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+            IN_SetVisibleMouse(false);
+#endif  
             App::getInstance()->setCursorOveride(App::getInstance()->getScheme()->getCursor(Scheme::scu_none));
         }
         return;
@@ -177,7 +187,10 @@ void CImGuiManager::UpdateCursorState()
     if (m_CurrentCursor != Cursor)
     {
         m_CurrentCursor = Cursor;
-
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+        IN_SetVisibleMouse(true);
+        IgnoreNextMouseDelta();
+#endif
         App::getInstance()->setCursorOveride(App::getInstance()->getScheme()->getCursor(Cursor));
     }
 
@@ -305,7 +318,7 @@ bool CImGuiManager::IsCursorRequired()
     return m_WindowSystem.CursorRequired();
 }
 
-#if __ANDROID__
+#if XASH_MOBILE_PLATFORM
 void CImGuiManager::TouchEvent(int fingerID, float x, float y, float dx, float dy)
 {
     m_TouchID = fingerID;

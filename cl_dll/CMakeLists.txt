@@ -192,6 +192,10 @@ endif()
 
 include_directories (. hl/ events/ input/ render/ ui ui/hud ui/hud/OpenAG/ utils/ ${CMAKE_SOURCE_DIR}/dlls ${CMAKE_SOURCE_DIR}/dlls/wpn_shared ${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/engine ${CMAKE_SOURCE_DIR}/pm_shared ${CMAKE_SOURCE_DIR}/game_shared ${CMAKE_SOURCE_DIR}/public)
 
+if (WIN32)
+	include_directories (../external/)
+endif()
+
 if(USE_VOICEMGR)
 	#	ui/VGUI/utils/voice_banmgr.cpp
 	#	ui/VGUI/utils/voice_status.cpp)

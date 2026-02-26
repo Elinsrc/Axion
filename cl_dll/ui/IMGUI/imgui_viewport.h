@@ -5,10 +5,12 @@
 #include "ui_ScorePanel.h"
 #include "ui_MOTD.h"
 
-#if __ANDROID__ || XASH_64BIT
+#include "build.h"
+
+#if XASH_MOBILE_PLATFORM || XASH_64BIT
 #include "gl_export.h"
 #else
-#if _WIN32
+#if XASH_WIN32
 #include <winsani_in.h>
 #include <windows.h>
 #include <winsani_out.h>
@@ -16,7 +18,7 @@
 #ifdef PlaySound
 #undef PlaySound
 #endif
-#elif __linux__
+#elif XASH_LINUX
 #include <GL/gl.h>
 #endif
 #endif
