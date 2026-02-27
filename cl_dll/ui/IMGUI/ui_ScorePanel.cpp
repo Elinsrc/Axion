@@ -283,6 +283,9 @@ void CImGuiScoreboard::SortPlayers( int iTeam, char *team )
 
 void CImGuiScoreboard::DrawScoreboard()
 {
+	if (!m_ShowScore)
+		return;
+
 	g_ImGuiViewport.GetAllPlayersInfo();
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.f);
@@ -340,12 +343,12 @@ void CImGuiScoreboard::DrawScoreboard()
 	ImGui::PushStyleColor(ImGuiCol_TableRowBg, IM_COL32(0, 0, 0, 0));
 	ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, IM_COL32(0, 0, 0, 0));
 	ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 0, 255));
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));      
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0, 0)); 
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));  
-	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0,0,0,0));
-	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0,0,0,0));
-	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0,0,0,0));
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
 
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
 		ImGuiWindowFlags_NoResize |
@@ -353,11 +356,10 @@ void CImGuiScoreboard::DrawScoreboard()
 		ImGuiWindowFlags_NoScrollbar |
 		ImGuiWindowFlags_NoCollapse;
 
-
-	if (!m_bMouseMode)
-		flags |= ImGuiWindowFlags_NoInputs;
-	else
-		flags |= ImGuiWindowFlags_NoNav;
+		if (!m_bMouseMode)
+			flags |= ImGuiWindowFlags_NoInputs;
+		else
+			flags |= ImGuiWindowFlags_NoNav;
 
 	if (ImGui::Begin("##Scoreboard", &m_ShowScore, flags))
 	{
@@ -481,7 +483,7 @@ void CImGuiScoreboard::DrawScoreboard()
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
 
-					int iPlayerIndex = m_iSortedRows[row]; 
+					int iPlayerIndex = m_iSortedRows[row];
 					hud_player_info_t* pl = &g_PlayerInfoList[iPlayerIndex];
 					extra_player_info_t* ex = &g_PlayerExtraInfo[iPlayerIndex];
 
@@ -503,6 +505,45 @@ void CImGuiScoreboard::DrawScoreboard()
 					{
 						draw_list->AddRectFilled(row_min, row_max, IM_COL32(255, 0, 0, (int)(70.0f * (m_fLastKillTime - gHUD.m_flTime) / 10.0f)), 4.0f);
 					}
+					
+					ImGui::PushID(iPlayerIndex); 
+					ImVec2 cursorPosBeforeSelectable = ImGui::GetCursorPos();
+					
+					if (pl && !pl->thisplayer && pl->name && pl->name[0])
+					{
+						if (ImGui::Selectable("##RowSelectable", false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap, ImVec2(0, textH)))
+						{
+							char string[256];
+
+							if (GetClientVoiceMgr()->IsPlayerBlocked(iPlayerIndex))
+							{
+								char string1[1024];
+								
+								GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, false);
+								sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Unmuted"), pl->name);
+								sprintf(string, "%c** %s\n", HUD_PRINTTALK, string1);
+								gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
+							}
+							else
+							{
+								char string1[1024];
+								char string2[1024];
+								
+								GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, true);
+								sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Muted"), pl->name);
+								sprintf(string2, "%s", CHudTextMessage::BufferedLocaliseTextString("#No_longer_hear_that_player"));
+								sprintf(string, "%c** %s %s\n", HUD_PRINTTALK, string1, string2);
+								gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
+							}
+						}
+
+						if (ImGui::IsItemHovered())
+						{
+							draw_list->AddRectFilled(row_min, row_max, IM_COL32(255, 255, 255, 30), 4.0f);
+						}
+					}
+					
+					ImGui::SetCursorPos(cursorPosBeforeSelectable);
 
 					// FLAG
 					if (blue_flag_player_index == m_iSortedRows[row] || red_flag_player_index == m_iSortedRows[row])
@@ -559,41 +600,31 @@ void CImGuiScoreboard::DrawScoreboard()
 
 					// VOICE	
 					ImGui::TableSetColumnIndex(5);
-					if (pl->name && pl->name[0]) 
+					if (pl && pl->name && pl->name[0])
 					{
-						char string[256];
-
-						CVoiceStatus* pVoiceMgr = GetClientVoiceMgr();
-
-						bool isMuted = pVoiceMgr->IsPlayerBlocked(iPlayerIndex);
-						bool isSpeaking = pVoiceMgr->IsPlayerSpeaking(iPlayerIndex);
-
-						if (pl->thisplayer) 
-							isMuted = false;
-					
 						double frameDuration = 0.5; // seconds per frame
 						int currentFrame = (int)(ImGui::GetTime() / frameDuration) % 3;
 
 						ImGuiImage* pCurrentImg = nullptr;
 						ImVec4 tint = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
 
-						if (isMuted)
+						if (GetClientVoiceMgr()->IsPlayerBlocked(iPlayerIndex))
 						{
 							pCurrentImg = &m_pScoreboardVoiceBanned;
 							tint = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
 						}
-						else if (isSpeaking)
+						else if (GetClientVoiceMgr()->IsPlayerSpeaking(iPlayerIndex))
 						{
 							switch (currentFrame)
 							{
 							case 0:
-								pCurrentImg = &m_pscoreboardVoiceSpeaking2;    
+								pCurrentImg = &m_pscoreboardVoiceSpeaking2;
 								break;
 							case 1:
 								pCurrentImg = &m_pscoreboardVoiceSpeaking3;
 								break;
 							case 2:
-								pCurrentImg = &m_pscoreboardVoiceSpeaking4; 
+								pCurrentImg = &m_pscoreboardVoiceSpeaking4;
 								break;
 							}
 							tint = ImVec4(1.0f, 0.66f, 0.0f, 1.0f);
@@ -606,50 +637,11 @@ void CImGuiScoreboard::DrawScoreboard()
 						if (pCurrentImg)
 						{
 							float iconSize = ImGui::GetTextLineHeight();
-							
-							ImGui::PushID(iPlayerIndex);
-
-							if (m_bMouseMode && !pl->thisplayer)
-							{
-								if (ImGui::ImageButton("##vbtn", pCurrentImg->texture, ImVec2(iconSize, iconSize), ImVec2(0,0), ImVec2(1,1), ImVec4(0,0,0,0), tint))
-								{
-									if (isMuted)
-									{
-										char string1[1024];
-
-										// remove mute
-										GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, false);
-
-										sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Unmuted"), pl->name);
-										sprintf(string, "%c** %s\n", HUD_PRINTTALK, string1);
-
-										gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
-									}
-									else
-									{
-										char string1[1024];
-										char string2[1024];
-
-										// mute the player
-										GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, true);
-
-										sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Muted"), pl->name);
-										sprintf(string2, "%s", CHudTextMessage::BufferedLocaliseTextString("#No_longer_hear_that_player"));
-										sprintf(string, "%c** %s %s\n", HUD_PRINTTALK, string1, string2);
-
-										gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
-									}
-
-								}
-							}
-							else
-							{
-								ImGui::Image(pCurrentImg->texture, ImVec2(iconSize, iconSize), ImVec2(0,0), ImVec2(1,1), tint, ImVec4(0,0,0,0));
-							}
-							
-							ImGui::PopID();
+							ImGui::Image(pCurrentImg->texture, ImVec2(iconSize, iconSize), ImVec2(0, 0), ImVec2(1, 1), tint, ImVec4(0, 0, 0, 0));
 						}
 					}
+		
+					ImGui::PopID(); 
 				}
 			}
 			ImGui::EndTable();
@@ -676,9 +668,6 @@ void CImGuiScoreboard::DeathMsg( int killer, int victim )
 
 void CImGuiScoreboard::Draw()
 {
-	if (!m_ShowScore)
-		return;
-
 	int i;
 
 	RebuildTeams();
