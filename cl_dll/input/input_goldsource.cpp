@@ -634,7 +634,7 @@ void GoldSourceInput::IN_MouseEvent (int mstate)
 {
 	int i;
 
-	if ( iMouseInUse || iVisibleMouse )
+	if ( iMouseInUse )
 		return;
 
 	// perform button actions
