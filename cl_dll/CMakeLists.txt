@@ -173,7 +173,9 @@ if (USE_IMGUI)
 	
 	if(NOT ANDROID AND CMAKE_SIZEOF_VOID_P EQUAL 4)
 		list(APPEND CLDLL_SOURCES
-			utils/steam_api.cpp)
+			utils/engine_hooks.cpp
+			utils/steam_api.cpp
+			utils/svc_messages.cpp)
 	endif()
 	
 	if (USE_NOIMGUI_MOTD)

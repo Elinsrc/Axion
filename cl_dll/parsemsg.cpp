@@ -23,10 +23,11 @@ static byte *gpBuf;
 static int giSize;
 static int giRead;
 static int giBadRead;
+static char string[2048];
 
-void BEGIN_READ( void *buf, int size )
+void BEGIN_READ( void *buf, int size, int readpos = 0 )
 {
-	giRead = 0;
+	giRead = readpos;
 	giBadRead = 0;
 	giSize = size;
 	gpBuf = (byte*)buf;
@@ -142,6 +143,30 @@ char* READ_STRING( void )
 		string[l] = c;
 		l++;
 	}while( l < sizeof(string) - 1 );
+
+	string[l] = 0;
+
+	return string;
+}
+
+char* READ_LINE( void )
+{
+	int l, c;
+
+	string[0] = 0;
+
+	l = 0;
+	do
+	{
+		if ( giRead + 1 > giSize )
+			break; // no more characters
+
+		c = READ_CHAR();
+		if (c == -1 || c == 0 || c == '\n')
+			break;
+		string[l] = c;
+		l++;
+	} while (l < sizeof(string)-1);
 
 	string[l] = 0;
 

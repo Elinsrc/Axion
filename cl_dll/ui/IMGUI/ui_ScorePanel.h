@@ -13,7 +13,6 @@
 #define TEAM_SPECTATORS 2
 #define TEAM_BLANK 3
 
-
 class CImGuiScoreboard : public IImGuiWindow
 {
 public:

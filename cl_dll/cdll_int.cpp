@@ -32,21 +32,26 @@
 using namespace vgui;
 
 #if USE_IMGUI
+
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
+
 int g_ImGuiMouse = 0;
 
-#if !XASH_MOBILE_PLATFORM || !XASH_64BIT
-#include "steam_api.h"
-#endif
-
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
+
 #include "gl_export.h"
 #include "render_api.h"
 render_api_t gRenderAPI;
-#endif
-#endif
 
+#else 
+
+#include "engine_hooks.h"
+#include "steam_api.h"
+#include "svc_messages.h"
+
+#endif
+#endif
 
 extern "C"
 {
@@ -176,6 +181,10 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 	memcpy( &gEngfuncs, pEnginefuncs, sizeof(cl_enginefunc_t) - sizeof( void * ) );
 
 #if USE_IMGUI && (!XASH_MOBILE_PLATFORM || !XASH_64BIT)
+	
+	EngineHooks::PatchEngine();
+	HookSvcMessages();
+
 	if (g_SteamAPI.initialize())
 	{
 		gEngfuncs.Con_Printf("\n[SteamAPI]: initialized\n");
@@ -320,20 +329,22 @@ the hud variables.
 ==========================
 */
 
-void DLLEXPORT HUD_Init( void )
+void DLLEXPORT HUD_Init(void)
 {
 	InitInput();
 	gHUD.Init();
 
 #if USE_IMGUI
 	g_ImGuiViewport.Initialize();
+
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
 	GL_Init();
 #else
+	SvcMessagesInit();
 	g_ImGuiManager.Initialize();
 #endif
-#endif
 
+#endif
 }
 
 /*
@@ -405,6 +416,7 @@ void DLLEXPORT HUD_Frame( double time )
 		gEngfuncs.VGui_ViewportPaintBackground(HUD_GetRect());
 
 #if USE_IMGUI && (!XASH_MOBILE_PLATFORM || !XASH_64BIT)
+	EngineHooks::OnHudFrame();
 	g_SteamAPI.RunCallbacks();
 #endif
 }

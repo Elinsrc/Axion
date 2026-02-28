@@ -1,3 +1,4 @@
+#include "build.h"
 #include "imgui.h"
 #include "keydefs.h"
 #include "imgui_viewport.h"
@@ -18,6 +19,10 @@ ImGuiImage m_pscoreboardVoiceSpeaking4;
 CImGuiScoreboard g_iScoreboard;
 
 bool CImGuiScoreboard::m_ShowScore = false;
+
+#if !XASH_MOBILE_PLATFORM || !XASH_64BIT
+char g_PlayerSteamId[MAX_PLAYERS + 1][MAX_STEAMID + 1];
+#endif
 
 void CImGuiScoreboard::Initialize()
 {

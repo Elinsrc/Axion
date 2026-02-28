@@ -68,6 +68,8 @@ typedef struct cvar_s cvar_t;
 #define MAX_SERVERNAME_LENGTH	64
 #define MAX_TEAMNAME_SIZE 32
 
+#define MAX_STEAMID 32
+
 extern int iTeamColors[5][3];
 extern int iNumberOfTeamColors;
 
@@ -349,6 +351,10 @@ extern hud_player_info_t	g_PlayerInfoList[MAX_PLAYERS + 1];	   // player info fr
 extern extra_player_info_t  g_PlayerExtraInfo[MAX_PLAYERS + 1];   // additional player info sent directly to the client dll
 extern team_info_t			g_TeamInfo[MAX_TEAMS + 1];
 extern int					g_IsSpectator[MAX_PLAYERS + 1];
+
+#if USE_IMGUI && (!XASH_MOBILE_PLATFORM || !XASH_64BIT)
+extern char					g_PlayerSteamId[MAX_PLAYERS + 1][MAX_STEAMID + 1];
+#endif
 
 //
 //-----------------------------------------------------
