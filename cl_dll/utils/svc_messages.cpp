@@ -23,6 +23,7 @@
 #include "svc_messages.h"
 #include "imgui_viewport.h"
 #include "ui_ScorePanel.h"
+#include "avatar_cache.h"
 
 #if XASH_LINUX
 #define _stricmp strcasecmp
@@ -385,6 +386,7 @@ void SvcPrint(void)
 				if (g_PlayerInfoList[i].name != NULL && !strcmp(g_PlayerInfoList[i].name, str))
 				{
 					g_PlayerSteamId[i][0] = 0;
+					g_AvatarCache.ClearAvatar(i);
 					break;
 				}
 			}

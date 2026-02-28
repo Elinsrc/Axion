@@ -175,6 +175,7 @@ if (USE_IMGUI)
 		list(APPEND CLDLL_SOURCES
 			utils/engine_hooks.cpp
 			utils/steam_api.cpp
+			utils/avatar_cache.cpp
 			utils/svc_messages.cpp)
 	endif()
 	

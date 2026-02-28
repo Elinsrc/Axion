@@ -1,8 +1,7 @@
-#pragma once
+#ifndef STEAM_API_H
+#define STEAM_API_H
 
-#include <string>
-#include <cstdint>
-#include <unordered_map>
+#include <stdint.h>
 
 typedef uint64_t SteamID64;
 
@@ -14,41 +13,48 @@ public:
     bool initialize();
     void shutdown();
     void RunCallbacks();
-    bool IsInitialized() const { return m_initialized; }
 
+    int GetSmallFriendAvatar(SteamID64 steamID);
+    int GetMediumFriendAvatar(SteamID64 steamID);
+    int GetLargeFriendAvatar(SteamID64 steamID);
+    bool GetImageSize(int iImage, uint32_t *pnWidth, uint32_t *pnHeight);
+    bool GetImageRGBA(int iImage, uint8_t *pubDest, int nDestBufferSize);
+    SteamID64 GetLocalSteamID();
+
+    bool IsInitialized() const { return m_initialized; }
 
 private:
     CSteamAPI() = default;
-    ~CSteamAPI() = default;
-    CSteamAPI(const CSteamAPI&) = delete;
-    CSteamAPI& operator=(const CSteamAPI&) = delete;
-
     void* get_proc(const char* name);
     bool LoadSteamFunctions();
 
-private:
     void* m_library = nullptr;
     bool m_initialized = false;
 
-    char m_playerSteamIDs[MAX_PLAYERS][64] = {};
-
+    // API functions
     bool (*m_SteamAPI_Init)() = nullptr;
     void (*m_SteamAPI_Shutdown)() = nullptr;
-    void  (*m_SteamAPI_RunCallbacks)() = nullptr;
+    void (*m_SteamAPI_RunCallbacks)() = nullptr;
 
+    // Interfaces
     void* (*m_SteamFriends)() = nullptr;
     void* (*m_SteamUtils)() = nullptr;
-
     void* (*m_SteamUser)() = nullptr;
-    SteamID64 (*m_GetSteamID)(void*) = nullptr;
 
+    // Friends
     int (*m_GetSmallFriendAvatar)(void*, SteamID64) = nullptr;
     int (*m_GetMediumFriendAvatar)(void*, SteamID64) = nullptr;
     int (*m_GetLargeFriendAvatar)(void*, SteamID64) = nullptr;
     bool (*m_RequestUserInformation)(void*, SteamID64, bool) = nullptr;
 
+    // Utils
     bool (*m_GetImageSize)(void*, int, uint32_t*, uint32_t*) = nullptr;
     bool (*m_GetImageRGBA)(void*, int, uint8_t*, int) = nullptr;
+
+    // User
+    SteamID64 (*m_GetSteamID)(void*) = nullptr;
 };
 
 extern CSteamAPI& g_SteamAPI;
+
+#endif

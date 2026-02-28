@@ -141,3 +141,33 @@ void CSteamAPI::RunCallbacks()
     if (m_initialized && m_SteamAPI_RunCallbacks)
         m_SteamAPI_RunCallbacks();
 }
+
+int CSteamAPI::GetSmallFriendAvatar(SteamID64 steamID)
+{
+    return m_GetSmallFriendAvatar(m_SteamFriends(), steamID);
+}
+
+int CSteamAPI::GetMediumFriendAvatar(SteamID64 steamID)
+{
+    return m_GetMediumFriendAvatar(m_SteamFriends(), steamID);
+}
+
+int CSteamAPI::GetLargeFriendAvatar(SteamID64 steamID)
+{
+    return m_GetLargeFriendAvatar(m_SteamFriends(), steamID);
+}
+
+bool CSteamAPI::GetImageSize(int iImage, uint32_t *pnWidth, uint32_t *pnHeight)
+{
+    return m_GetImageSize(m_SteamUtils(), iImage, pnWidth, pnHeight);
+}
+
+bool CSteamAPI::GetImageRGBA(int iImage, uint8_t *pubDest, int nDestBufferSize)
+{
+    return m_GetImageRGBA(m_SteamUtils(), iImage, pubDest, nDestBufferSize);
+}
+
+SteamID64 CSteamAPI::GetLocalSteamID()
+{
+    return m_GetSteamID(m_SteamUser());
+}

@@ -180,7 +180,7 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 	// for now filterstuffcmd is last in the engine interface
 	memcpy( &gEngfuncs, pEnginefuncs, sizeof(cl_enginefunc_t) - sizeof( void * ) );
 
-#if USE_IMGUI && (!XASH_MOBILE_PLATFORM || !XASH_64BIT)
+#if USE_IMGUI && (!XASH_MOBILE_PLATFORM && !XASH_64BIT)
 	
 	EngineHooks::PatchEngine();
 	HookSvcMessages();
@@ -415,7 +415,7 @@ void DLLEXPORT HUD_Frame( double time )
 	if (!gViewPort)
 		gEngfuncs.VGui_ViewportPaintBackground(HUD_GetRect());
 
-#if USE_IMGUI && (!XASH_MOBILE_PLATFORM || !XASH_64BIT)
+#if USE_IMGUI && (!XASH_MOBILE_PLATFORM && !XASH_64BIT)
 	EngineHooks::OnHudFrame();
 	g_SteamAPI.RunCallbacks();
 #endif
