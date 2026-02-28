@@ -170,6 +170,12 @@ if (USE_IMGUI)
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_draw.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_tables.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_widgets.cpp)
+	
+	if(NOT ANDROID AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+		list(APPEND CLDLL_SOURCES
+			utils/steam_api.cpp)
+	endif()
+	
 	if (USE_NOIMGUI_MOTD)
 		list(APPEND CLDLL_SOURCES ui/hud/MOTD.cpp)
 	endif()
@@ -244,7 +250,6 @@ if(USE_IMGUI)
 		endif()
 	endif()
 endif()
-
 
 set_target_properties (${CLDLL_LIBRARY} PROPERTIES
 	POSITION_INDEPENDENT_CODE 1)

@@ -35,6 +35,11 @@ using namespace vgui;
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
 int g_ImGuiMouse = 0;
+
+#if !XASH_MOBILE_PLATFORM || !XASH_64BIT
+#include "steam_api.h"
+#endif
+
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
 #include "gl_export.h"
 #include "render_api.h"
@@ -170,8 +175,18 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 	// for now filterstuffcmd is last in the engine interface
 	memcpy( &gEngfuncs, pEnginefuncs, sizeof(cl_enginefunc_t) - sizeof( void * ) );
 
+#if USE_IMGUI && (!XASH_MOBILE_PLATFORM || !XASH_64BIT)
+	if (g_SteamAPI.initialize())
+	{
+		gEngfuncs.Con_Printf("\n[SteamAPI]: initialized\n");
+	}
+	else
+	{
+		gEngfuncs.Con_Printf("\n[SteamAPI]: failed to initialize\n");
+	}
+#endif
 
-	ConsolePrint( "\n\nAxion\n" );
+	ConsolePrint( "\nAxion\n" );
 	ConsolePrint( "GitHub page: https://github.com/Elinsrc/Axion/\n\n" );
 	char filePath[256];
 	sprintf(filePath, "%s/customconfig.cfg", gEngfuncs.pfnGetGameDirectory());
@@ -388,6 +403,10 @@ void DLLEXPORT HUD_Frame( double time )
 
 	if (!gViewPort)
 		gEngfuncs.VGui_ViewportPaintBackground(HUD_GetRect());
+
+#if USE_IMGUI && (!XASH_MOBILE_PLATFORM || !XASH_64BIT)
+	g_SteamAPI.RunCallbacks();
+#endif
 }
 
 /*
