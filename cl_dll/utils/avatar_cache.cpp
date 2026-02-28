@@ -11,7 +11,6 @@
 #include <windows.h>
 #include <winsani_out.h>
 #endif
-#endif
 #include <GL/gl.h>
 
 #include <string.h>
