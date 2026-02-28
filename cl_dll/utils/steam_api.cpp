@@ -40,7 +40,11 @@ bool CSteamAPI::LoadSteamFunctions()
 {
     m_SteamFriends = (void*(*)())get_proc("SteamAPI_SteamFriends_v017");
     m_SteamUtils = (void*(*)())get_proc("SteamAPI_SteamUtils_v010");
+#if XASH_WIN32
+    m_SteamUser = (void* (*)())get_proc("SteamAPI_SteamUser_v021");
+#else
     m_SteamUser = (void*(*)())get_proc("SteamAPI_SteamUser_v023");
+#endif
 
     if (!m_SteamFriends || !m_SteamUtils || !m_SteamUser)
     {

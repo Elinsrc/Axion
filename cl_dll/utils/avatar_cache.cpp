@@ -52,32 +52,20 @@ void CAvatarCache::ClearAvatar(int playerIndex)
     memset(&m_avatars[playerIndex], 0, sizeof(AvatarEntry));
 }
 
-SteamID64 CAvatarCache::SteamIdToSteam64(const char *steamId)
+SteamID64 CAvatarCache::SteamIdToSteam64(const char* steamId)
 {
-    if (!steamId || !steamId[0])
+    if (!steamId || !*steamId)
         return 0;
 
-    unsigned int parts[3] = {0, 0, 0};
-    int partIndex = 0;
+    unsigned int Y = 0, Z = 0;
 
-    const char *p = steamId;
-    while (*p && partIndex < 3)
+    if (sscanf(steamId, "STEAM_%*u:%u:%u", &Y, &Z) != 2 &&
+        sscanf(steamId, "%*u:%u:%u", &Y, &Z) != 2)
     {
-        if (*p == ':')
-        {
-            partIndex++;
-            p++;
-            continue;
-        }
-        if (*p >= '0' && *p <= '9')
-        {
-            parts[partIndex] = parts[partIndex] * 10 + (*p - '0');
-        }
-        p++;
+        return 0;
     }
 
-    const uint64_t BASE = 76561197960265728ULL;
-    return BASE + (uint64_t)parts[2] * 2 + (uint64_t)parts[1];
+    return 76561197960265728ULL + (static_cast<uint64_t>(Z) << 1) + Y;
 }
 
 ImTextureID CAvatarCache::CreateTextureFromRGBA(uint8_t *data, int width, int height)
