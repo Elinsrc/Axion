@@ -60,6 +60,9 @@ private:
     icon_flagstatus_t m_IconFlagScore;
 
     bool m_bMouseMode;
+
+    int m_iSelectedPlayer = 0;
+    bool m_bShowPlayerMenu = false; 
 };
 
 extern CImGuiScoreboard g_iScoreboard;

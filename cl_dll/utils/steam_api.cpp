@@ -60,6 +60,8 @@ bool CSteamAPI::LoadSteamFunctions()
     
     m_GetSteamID = (SteamID64(*)(void*))get_proc("SteamAPI_ISteamUser_GetSteamID");
 
+    m_ActivateGameOverlayToUser = (void(*)(void*, const char*, SteamID64))get_proc("SteamAPI_ISteamFriends_ActivateGameOverlayToUser");
+
     if (!m_GetSmallFriendAvatar || !m_GetImageSize || !m_GetImageRGBA || !m_GetSteamID)
     {
         return false;
@@ -175,3 +177,11 @@ SteamID64 CSteamAPI::GetLocalSteamID()
 {
     return m_GetSteamID(m_SteamUser());
 }
+
+void CSteamAPI::ActivateGameOverlayToUser(const char* pchDialog, SteamID64 steamID)
+{
+    if (m_ActivateGameOverlayToUser && m_SteamFriends)
+    {
+        m_ActivateGameOverlayToUser(m_SteamFriends(), pchDialog, steamID);
+    }
+} 

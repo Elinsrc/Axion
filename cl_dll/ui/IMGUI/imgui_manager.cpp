@@ -236,7 +236,7 @@ void CImGuiManager::SetupConfig()
 {
     ImGuiIO &io = ImGui::GetIO();
     io.IniFilename = NULL;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
 }
 

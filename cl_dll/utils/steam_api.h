@@ -21,6 +21,8 @@ public:
     bool GetImageRGBA(int iImage, uint8_t *pubDest, int nDestBufferSize);
     SteamID64 GetLocalSteamID();
 
+    void ActivateGameOverlayToUser(const char* pchDialog, SteamID64 steamID);
+
     bool IsInitialized() const { return m_initialized; }
 
 private:
@@ -53,6 +55,8 @@ private:
 
     // User
     SteamID64 (*m_GetSteamID)(void*) = nullptr;
+
+    void (*m_ActivateGameOverlayToUser)(void*, const char*, SteamID64) = nullptr;
 };
 
 extern CSteamAPI& g_SteamAPI;
