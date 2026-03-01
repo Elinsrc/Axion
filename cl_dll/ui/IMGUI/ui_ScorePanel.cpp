@@ -20,7 +20,7 @@ CImGuiScoreboard g_iScoreboard;
 
 bool CImGuiScoreboard::m_ShowScore = false;
 
-#if !XASH_MOBILE_PLATFORM || !XASH_64BIT
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
 
 #include "noavatar.h"
 #include "avatar_cache.h"
@@ -28,9 +28,6 @@ bool CImGuiScoreboard::m_ShowScore = false;
 ImGuiImage m_pNoAvatar;
 
 cvar_t* hud_scoreboard_showavatars;
-
-char g_PlayerSteamId[MAX_PLAYERS + 1][MAX_STEAMID + 1];
-bool g_PlayerIsBot[MAX_PLAYERS + 1];
 
 #endif
 
@@ -51,8 +48,13 @@ void CImGuiScoreboard::InitHUDData()
 	m_fLastKillTime = 0;
 	m_iPlayerNum = 0;
 	m_iNumTeams = 0;
-	memset(g_PlayerExtraInfo, 0, sizeof(g_PlayerExtraInfo));
-	memset(g_TeamInfo, 0, sizeof(g_TeamInfo));
+	
+	memset(g_PlayerIsBot, 0, sizeof(g_PlayerIsBot));
+	
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+	memset(g_PlayerSteamId, 0, sizeof(g_PlayerSteamId));
+	memset(g_PlayerSteamID64, 0, sizeof(g_PlayerSteamID64));
+#endif
 }
 
 void CImGuiScoreboard::VidInitialize()
@@ -572,6 +574,8 @@ void CImGuiScoreboard::DrawScoreboard()
 						ImU32 playerColor = IM_COL32(iTeamColors[teamColorIdx][0], iTeamColors[teamColorIdx][1], iTeamColors[teamColorIdx][2], 255);
 
 						float rowYScreen = ImGui::GetCursorScreenPos().y;
+
+						m_CustomUtils.UpdatePlayerInfo(iPlayerIndex);
 						
 						// PLAYER BG
 						ImVec2 row_min = ImVec2(lineStartX, rowYScreen);
@@ -704,11 +708,9 @@ void CImGuiScoreboard::DrawScoreboard()
 						ImGui::TableSetColumnIndex(4); 
 						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textVertOffset);
 						ImGui::PushStyleColor(ImGuiCol_Text, playerColor); 
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
 						if (g_PlayerIsBot[iPlayerIndex])
 							ImGui::Text("BOT");
 						else
-#endif
 							ImGui::Text("%d", pl->ping);
 						ImGui::PopStyleColor();
 

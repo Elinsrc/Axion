@@ -5,6 +5,7 @@
 #include "imgui_utils.h"
 #include "hud.h"
 #include "cl_util.h"
+#include "custom_utils.h"
 
 #define MAX_SCOREBOARD_TEAMS 5
 #define NUM_ROWS (MAX_PLAYERS + (MAX_SCOREBOARD_TEAMS * 2))
@@ -15,6 +16,7 @@
 
 class CImGuiScoreboard : public IImGuiWindow
 {
+    CustomUtils m_CustomUtils;
 public:
     static bool m_ShowScore;
     static bool isVisible() { return m_ShowScore; }

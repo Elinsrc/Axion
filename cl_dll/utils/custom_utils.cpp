@@ -21,6 +21,12 @@
 #include <time.h>
 #endif
 
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+char g_PlayerSteamId[MAX_PLAYERS + 1][MAX_STEAMID + 1];
+uint64_t g_PlayerSteamID64[MAX_PLAYERS + 1]; 
+#endif
+
+bool g_PlayerIsBot[MAX_PLAYERS + 1];
 
 float CustomUtils::GetCurrentSysTime()
 {
@@ -277,4 +283,114 @@ void CustomUtils::DrawBoxCornerOutline(int x, int y, int w, int h, int linewidth
     DrawBoxCorner(x + 1, y - 1, w, h, linewidth, 0, 0, 0, a);
 
     DrawBoxCorner(x, y, w, h, linewidth, r, g, b, a);
+}
+
+#if !XASH_MOBILE_PLATFORM || !XASH_64BIT
+uint64_t ParseSteamID(const char* steamId)
+{
+	if (!steamId || !*steamId) return 0;
+	unsigned int Y = 0, Z = 0;
+	if (sscanf(steamId, "STEAM_%*u:%u:%u", &Y, &Z) == 2 || sscanf(steamId, "%*u:%u:%u", &Y, &Z) == 2)
+	{
+		return 76561197960265728ULL + ((uint64_t)Z << 1) + Y;
+	}
+	return 0;
+}
+
+uint64_t ParseSteam64String(const char* str)
+{
+	uint64_t res = 0;
+	for (const char* p = str; *p; p++)
+	{
+		if (*p < '0' || *p > '9') return 0;
+		res = res * 10 + (*p - '0');
+	}
+	return res;
+}
+
+
+static bool ConvertSteam64ToSteamId(const char *steam64str, char *out, size_t outSize)
+{
+    if (!steam64str || !steam64str[0])
+        return false;
+
+
+    for (const char *p = steam64str; *p; p++)
+    {
+        if (*p < '0' || *p > '9')
+            return false;
+    }
+
+    unsigned long long steam64 = 0;
+    for (const char *p = steam64str; *p; p++)
+        steam64 = steam64 * 10 + (*p - '0');
+
+    const unsigned long long BASE = 76561197960265728ULL;
+
+    if (steam64 < BASE)
+        return false;
+
+    unsigned long long diff = steam64 - BASE;
+    unsigned int x = diff % 2;
+    unsigned int y = (unsigned int)(diff / 2);
+
+    snprintf(out, outSize, "0:%u:%u", x, y);
+    return true;
+}
+#endif
+
+void CustomUtils::UpdatePlayerInfo(int iPlayerIndex)
+{
+	g_PlayerIsBot[iPlayerIndex] = true; 
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+	g_PlayerSteamId[iPlayerIndex][0] = 0;
+	g_PlayerSteamID64[iPlayerIndex] = 0;
+#endif
+
+	const char *val = gEngfuncs.PlayerInfo_ValueForKey(iPlayerIndex, "*sid");
+
+	if (val && val[0])
+	{
+		g_PlayerIsBot[iPlayerIndex] = false;
+
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+		if (!strncmp(val, "STEAM_", 6) || !strncmp(val, "VALVE_", 6))
+		{
+			strncpy(g_PlayerSteamId[iPlayerIndex], val + 6, MAX_STEAMID);
+			g_PlayerSteamID64[iPlayerIndex] = ParseSteamID(val);
+		}
+		else if (val[0] >= '0' && val[0] <= '9' && strlen(val) > 10)
+		{
+			g_PlayerSteamID64[iPlayerIndex] = ParseSteam64String(val);
+			
+            char converted[64];
+			if (ConvertSteam64ToSteamId(val, converted, sizeof(converted)))
+				strncpy(g_PlayerSteamId[iPlayerIndex], converted, MAX_STEAMID);
+			else
+				strncpy(g_PlayerSteamId[iPlayerIndex], val, MAX_STEAMID);
+		}
+		else
+		{
+			strncpy(g_PlayerSteamId[iPlayerIndex], val, MAX_STEAMID);
+		}
+		g_PlayerSteamId[iPlayerIndex][MAX_STEAMID] = 0;
+#endif
+	}
+	else
+	{
+		val = gEngfuncs.PlayerInfo_ValueForKey(iPlayerIndex, "*bot");
+		if (val && atoi(val) > 0) 
+        {
+			g_PlayerIsBot[iPlayerIndex] = true;
+		} 
+        else 
+        {
+			const char* rate = gEngfuncs.PlayerInfo_ValueForKey(iPlayerIndex, "rate");
+			const char* updaterate = gEngfuncs.PlayerInfo_ValueForKey(iPlayerIndex, "cl_updaterate");
+			if ((rate && rate[0]) || (updaterate && updaterate[0]))
+				g_PlayerIsBot[iPlayerIndex] = false;
+			else
+				g_PlayerIsBot[iPlayerIndex] = true;
+		}
+	}
 }

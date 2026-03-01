@@ -3,6 +3,7 @@
 #include "hud.h"
 #include "cl_util.h"
 #include "ui_ScorePanel.h"
+#include "custom_utils.h"
 
 #include "build.h"
 
@@ -137,11 +138,8 @@ ImTextureID CAvatarCache::GetAvatar(int playerIndex)
     if (playerIndex < 1 || playerIndex >= MAX_AVATAR_PLAYERS)
         return 0;
 
-    const char *sidStr = g_PlayerSteamId[playerIndex];
-    if (!sidStr[0])
-        return 0; 
-
-    SteamID64 steam64 = SteamIdToSteam64(sidStr);
+    SteamID64 steam64 = g_PlayerSteamID64[playerIndex];
+    
     if (steam64 == 0)
         return 0;
 

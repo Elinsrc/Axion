@@ -292,72 +292,6 @@ bool SanitizeCommands(char *str)
 	return changed;
 }
 
-static bool InfoValueForKey(const char *infostring, const char *key, char *out, size_t outSize)
-{
-	out[0] = 0;
-
-	if (!infostring || !key || !key[0])
-		return false;
-
-	const char *s = infostring;
-
-	while (s && *s)
-	{
-		if (*s == '\\') s++;
-
-		char currentKey[256];
-		int i = 0;
-		while (*s && *s != '\\' && i < 255)
-			currentKey[i++] = *s++;
-		currentKey[i] = 0;
-
-		if (*s == '\\') s++;
-
-		char currentValue[256];
-		i = 0;
-		while (*s && *s != '\\' && i < 255)
-			currentValue[i++] = *s++;
-		currentValue[i] = 0;
-
-		if (!_stricmp(currentKey, key))
-		{
-			strncpy(out, currentValue, outSize - 1);
-			out[outSize - 1] = 0;
-			return true;
-		}
-	}
-
-	return false;
-}
-
-static bool ConvertSteam64ToSteamId(const char *steam64str, char *out, size_t outSize)
-{
-	if (!steam64str || !steam64str[0])
-		return false;
-
-	for (const char *p = steam64str; *p; p++)
-	{
-		if (*p < '0' || *p > '9')
-			return false;
-	}
-
-	unsigned long long steam64 = 0;
-	for (const char *p = steam64str; *p; p++)
-		steam64 = steam64 * 10 + (*p - '0');
-
-	const unsigned long long BASE = 76561197960265728ULL;
-
-	if (steam64 < BASE)
-		return false;
-
-	unsigned long long diff = steam64 - BASE;
-	unsigned int x = diff % 2;
-	unsigned int y = (unsigned int)(diff / 2);
-
-	snprintf(out, outSize, "0:%u:%u", x, y);
-	return true;
-}
-
 void SvcPrint(void)
 {
 	void **engineBuf = EngineHooks::EngineBuf();
@@ -375,7 +309,6 @@ void SvcPrint(void)
 			gHUD.m_Timer.DoResync();
 		}
 
-		// Clear cached steam id for disconnected player
 		int len = strlen(str);
 		if (len >= 9 && !strcmp(str + len - 9, " dropped\n"))
 		{
@@ -385,8 +318,6 @@ void SvcPrint(void)
 			{
 				if (g_PlayerInfoList[i].name != NULL && !strcmp(g_PlayerInfoList[i].name, str))
 				{
-					g_PlayerSteamId[i][0] = 0;
-					g_PlayerIsBot[i] = false;
 					g_AvatarCache.ClearAvatar(i);
 					break;
 				}
@@ -395,74 +326,6 @@ void SvcPrint(void)
 	}
 
 	pEngineMessages.pfnSvcPrint();
-}
-
-void SvcUpdateUserInfo(void)
-{
-	void **engineBuf = EngineHooks::EngineBuf();
-	int *engineBufSize = EngineHooks::EngineBufSize();
-	int *engineReadPos = EngineHooks::EngineReadPos();
-
-	if (engineBuf && engineBufSize && engineReadPos)
-	{
-		int savedReadPos = *engineReadPos;
-
-		BEGIN_READ(*engineBuf, *engineBufSize, *engineReadPos);
-		int slot = READ_BYTE();
-		long userid = READ_LONG();
-		char *infostring = READ_STRING();
-
-		if (slot >= 0 && slot < MAX_PLAYERS && infostring[0])
-		{
-			int playerIndex = slot + 1;
-			char val[256];
-
-			if (InfoValueForKey(infostring, "*sid", val, sizeof(val)) && val[0])
-			{
-				g_PlayerIsBot[playerIndex] = false;
-
-				if (!strncmp(val, "STEAM_", 6) || !strncmp(val, "VALVE_", 6))
-				{
-					strncpy(g_PlayerSteamId[playerIndex], val + 6, MAX_STEAMID);
-				}
-				else if (val[0] >= '0' && val[0] <= '9' && strlen(val) > 10)
-				{
-					char converted[64];
-					if (ConvertSteam64ToSteamId(val, converted, sizeof(converted)))
-						strncpy(g_PlayerSteamId[playerIndex], converted, MAX_STEAMID);
-					else
-						strncpy(g_PlayerSteamId[playerIndex], val, MAX_STEAMID);
-				}
-				else
-				{
-					strncpy(g_PlayerSteamId[playerIndex], val, MAX_STEAMID);
-				}
-				g_PlayerSteamId[playerIndex][MAX_STEAMID] = 0;
-			}
-			else
-			{
-				g_PlayerSteamId[playerIndex][0] = 0;
-
-				if (InfoValueForKey(infostring, "*bot", val, sizeof(val)) && val[0])
-				{
-					g_PlayerIsBot[playerIndex] = true;
-				}
-			
-				else if (InfoValueForKey(infostring, "rate", val, sizeof(val)) || InfoValueForKey(infostring, "cl_updaterate", val, sizeof(val)))
-				{
-					g_PlayerIsBot[playerIndex] = false;
-				}
-				else
-				{
-					g_PlayerIsBot[playerIndex] = true;
-				}
-			}
-		}
-
-		*engineReadPos = savedReadPos;
-	}
-
-	pEngineMessages.pfnSvcUpdateUserInfo();
 }
 
 void SvcNewUserMsg(void)
@@ -600,7 +463,6 @@ void HookSvcMessages(void)
 {
 	memset(&pEngineMessages, 0, sizeof(cl_enginemessages_t));
 	pEngineMessages.pfnSvcPrint = SvcPrint;
-	pEngineMessages.pfnSvcUpdateUserInfo = SvcUpdateUserInfo;
 	pEngineMessages.pfnSvcNewUserMsg = SvcNewUserMsg;
 	pEngineMessages.pfnSvcStuffText = SvcStuffText;
 	pEngineMessages.pfnSvcSendCvarValue = SvcSendCvarValue;
