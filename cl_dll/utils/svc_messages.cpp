@@ -386,6 +386,7 @@ void SvcPrint(void)
 				if (g_PlayerInfoList[i].name != NULL && !strcmp(g_PlayerInfoList[i].name, str))
 				{
 					g_PlayerSteamId[i][0] = 0;
+					g_PlayerIsBot[i] = false;
 					g_AvatarCache.ClearAvatar(i);
 					break;
 				}
@@ -414,29 +415,47 @@ void SvcUpdateUserInfo(void)
 		if (slot >= 0 && slot < MAX_PLAYERS && infostring[0])
 		{
 			int playerIndex = slot + 1;
+			char val[256];
 
-			char sid[256];
-			InfoValueForKey(infostring, "*sid", sid, sizeof(sid));
-
-			if (sid[0])
+			if (InfoValueForKey(infostring, "*sid", val, sizeof(val)) && val[0])
 			{
-				if (!strncmp(sid, "STEAM_", 6) || !strncmp(sid, "VALVE_", 6))
+				g_PlayerIsBot[playerIndex] = false;
+
+				if (!strncmp(val, "STEAM_", 6) || !strncmp(val, "VALVE_", 6))
 				{
-					strncpy(g_PlayerSteamId[playerIndex], sid + 6, MAX_STEAMID);
+					strncpy(g_PlayerSteamId[playerIndex], val + 6, MAX_STEAMID);
 				}
-				else if (sid[0] >= '0' && sid[0] <= '9' && strlen(sid) > 10)
+				else if (val[0] >= '0' && val[0] <= '9' && strlen(val) > 10)
 				{
 					char converted[64];
-					if (ConvertSteam64ToSteamId(sid, converted, sizeof(converted)))
+					if (ConvertSteam64ToSteamId(val, converted, sizeof(converted)))
 						strncpy(g_PlayerSteamId[playerIndex], converted, MAX_STEAMID);
 					else
-						strncpy(g_PlayerSteamId[playerIndex], sid, MAX_STEAMID);
+						strncpy(g_PlayerSteamId[playerIndex], val, MAX_STEAMID);
 				}
 				else
 				{
-					strncpy(g_PlayerSteamId[playerIndex], sid, MAX_STEAMID);
+					strncpy(g_PlayerSteamId[playerIndex], val, MAX_STEAMID);
 				}
 				g_PlayerSteamId[playerIndex][MAX_STEAMID] = 0;
+			}
+			else
+			{
+				g_PlayerSteamId[playerIndex][0] = 0;
+
+				if (InfoValueForKey(infostring, "*bot", val, sizeof(val)) && val[0])
+				{
+					g_PlayerIsBot[playerIndex] = true;
+				}
+			
+				else if (InfoValueForKey(infostring, "rate", val, sizeof(val)) || InfoValueForKey(infostring, "cl_updaterate", val, sizeof(val)))
+				{
+					g_PlayerIsBot[playerIndex] = false;
+				}
+				else
+				{
+					g_PlayerIsBot[playerIndex] = true;
+				}
 			}
 		}
 

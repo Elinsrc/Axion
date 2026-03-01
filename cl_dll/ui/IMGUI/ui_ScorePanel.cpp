@@ -30,6 +30,7 @@ ImGuiImage m_pNoAvatar;
 cvar_t* hud_scoreboard_showavatars;
 
 char g_PlayerSteamId[MAX_PLAYERS + 1][MAX_STEAMID + 1];
+bool g_PlayerIsBot[MAX_PLAYERS + 1];
 
 #endif
 
@@ -638,9 +639,18 @@ void CImGuiScoreboard::DrawScoreboard()
 							draw_list->PopClipRect();
 
 #if !XASH_MOBILE_PLATFORM && !XASH_64BIT
-							ImTextureID avatarTex = g_AvatarCache.GetAvatar(iPlayerIndex);
-							if (avatarTex) ImGui::Image(avatarTex, ImVec2(avatarSize, avatarSize));
-							else ImGui::Image(m_pNoAvatar.texture, ImVec2(avatarSize, avatarSize));
+							if (g_PlayerIsBot[iPlayerIndex])
+							{
+								ImGui::Image(m_pNoAvatar.texture, ImVec2(avatarSize, avatarSize));
+							}
+							else
+							{
+								ImTextureID avatarTex = g_AvatarCache.GetAvatar(iPlayerIndex);
+								if (avatarTex) 
+									ImGui::Image(avatarTex, ImVec2(avatarSize, avatarSize));
+								else 
+									ImGui::Image(m_pNoAvatar.texture, ImVec2(avatarSize, avatarSize));
+							}
 #endif
 							ImGui::SameLine();
 							
@@ -694,7 +704,12 @@ void CImGuiScoreboard::DrawScoreboard()
 						ImGui::TableSetColumnIndex(4); 
 						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textVertOffset);
 						ImGui::PushStyleColor(ImGuiCol_Text, playerColor); 
-						ImGui::Text("%d", pl->ping); 
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+						if (g_PlayerIsBot[iPlayerIndex])
+							ImGui::Text("BOT");
+						else
+#endif
+							ImGui::Text("%d", pl->ping);
 						ImGui::PopStyleColor();
 
 						// VOICE

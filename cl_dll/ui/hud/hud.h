@@ -354,6 +354,7 @@ extern int					g_IsSpectator[MAX_PLAYERS + 1];
 
 #if USE_IMGUI && (!XASH_MOBILE_PLATFORM || !XASH_64BIT)
 extern char					g_PlayerSteamId[MAX_PLAYERS + 1][MAX_STEAMID + 1];
+extern bool 				g_PlayerIsBot[MAX_PLAYERS + 1];
 #endif
 
 //
