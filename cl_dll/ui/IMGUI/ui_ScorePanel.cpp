@@ -30,6 +30,8 @@ ImGuiImage m_pNoAvatar;
 cvar_t* hud_scoreboard_showavatars;
 
 #endif
+cvar_t* hud_scoreboard_shownextmap;
+
 
 void CImGuiScoreboard::Initialize()
 {
@@ -37,6 +39,8 @@ void CImGuiScoreboard::Initialize()
 	hud_scoreboard_showavatars = CVAR_CREATE("hud_scoreboard_showavatars", "1", FCVAR_ARCHIVE);
 	g_AvatarCache.Initialize();
 #endif	
+	hud_scoreboard_shownextmap = CVAR_CREATE( "hud_scoreboard_shownextmap", "1", FCVAR_ARCHIVE );
+	
 	m_bMouseMode = false;
 
 	InitHUDData();
@@ -420,7 +424,9 @@ void CImGuiScoreboard::DrawScoreboard()
 		float line_y = ImGui::GetCursorPosY();
 
 		// SERVER NAME
-		m_ImguiUtils.TextWithColorCodes(g_ImGuiViewport.m_szServerName);
+		char server_name[256];
+		sprintf(server_name, "Server: %s", g_ImGuiViewport.m_szServerName);
+		m_ImguiUtils.TextWithColorCodes(server_name);
 
 		// PLAYER COUNT
 		char player_count[256];
@@ -435,8 +441,20 @@ void CImGuiScoreboard::DrawScoreboard()
 		// MAP NAME
 		char map_name[64];
 		get_map_name(map_name, ARRAYSIZE(map_name));
-		ImGui::Text("%s", map_name);
+		ImGui::Text("Map: %s", map_name);
+		
 		ImGui::Spacing();
+
+		/// NEXT MAP
+		const char* nextmap = gHUD.m_Timer.GetNextmap();
+		if (hud_scoreboard_shownextmap->value > 0)
+		{
+			if (nextmap[0])
+				ImGui::Text("Next: %s", nextmap);
+			else
+				ImGui::Text("Next: N/A");
+			ImGui::Spacing();
+		}
 
 		float contentAvail = ImGui::GetContentRegionAvail().x;
 		float commonTableWidth = contentAvail - scrollbarWidth;
