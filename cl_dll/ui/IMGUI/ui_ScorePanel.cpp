@@ -560,7 +560,10 @@ void CImGuiScoreboard::DrawScoreboard()
 					{
 						ImGui::TableNextRow(); 
 						ImGui::TableSetColumnIndex(0);
-						float teamOffY = (ImGui::GetTextLineHeightWithSpacing() - textHeight) * 0.5f;
+						
+						float rowStartY = ImGui::GetCursorScreenPos().y;
+						float teamRowH = ImGui::GetTextLineHeightWithSpacing();
+						float teamOffY = (teamRowH - textHeight) * 0.5f;
 						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + teamOffY);
 
 						// TEXT
@@ -569,7 +572,7 @@ void CImGuiScoreboard::DrawScoreboard()
 						ImGui::PopStyleColor();
 						
 						// SEPARATOR LINE
-						float y = ImGui::GetCursorScreenPos().y + textHeight + 2.0f;
+						float y = rowStartY + teamRowH;
 						draw_list->PushClipRect(childMin, childMax, true);
 						draw_list->AddLine(ImVec2(lineStartX, y), ImVec2(lineEndX, y), IM_COL32(255, 160, 0, 255), 1.0f);
 						draw_list->PopClipRect();
