@@ -306,6 +306,8 @@ typedef struct cl_enginefuncs_s
 
 	// added in 2019 update, not documented yet
 	int             (*pfnFilteredClientCmd)( const char *cmd );
+
+	struct  CommandLink *( *pfnGetCommandsList )( void );
 } cl_enginefunc_t;
 
 #define CLDLL_INTERFACE_VERSION	7

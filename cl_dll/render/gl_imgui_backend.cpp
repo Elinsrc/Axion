@@ -74,7 +74,7 @@ void CImGuiBackend::NewFrame()
 
     float ui_scale = ui_imgui_scale->value;
     if (!isfinite(ui_scale) || ui_scale < 1.0f)
-        ui_scale = 1.0f;
+        gEngfuncs.Cvar_SetValue("ui_imgui_scale", 1.0f);
 
     io.FontGlobalScale = ui_scale;
 

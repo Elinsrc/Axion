@@ -1,3 +1,4 @@
+#include "build.h"
 #include "imgui.h"
 #include "keydefs.h"
 #include "imgui_viewport.h"
@@ -19,8 +20,23 @@ CImGuiScoreboard g_iScoreboard;
 
 bool CImGuiScoreboard::m_ShowScore = false;
 
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+
+#include "noavatar.h"
+#include "avatar_cache.h"
+
+ImGuiImage m_pNoAvatar;
+
+cvar_t* hud_scoreboard_showavatars;
+
+#endif
+
 void CImGuiScoreboard::Initialize()
 {
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+	hud_scoreboard_showavatars = CVAR_CREATE("hud_scoreboard_showavatars", "1", FCVAR_ARCHIVE);
+	g_AvatarCache.Initialize();
+#endif	
 	m_bMouseMode = false;
 
 	InitHUDData();
@@ -32,8 +48,15 @@ void CImGuiScoreboard::InitHUDData()
 	m_fLastKillTime = 0;
 	m_iPlayerNum = 0;
 	m_iNumTeams = 0;
-	memset(g_PlayerExtraInfo, 0, sizeof(g_PlayerExtraInfo));
-	memset(g_TeamInfo, 0, sizeof(g_TeamInfo));
+	m_iSelectedPlayer = 0;
+	m_bShowPlayerMenu = false;
+	
+	memset(g_PlayerIsBot, 0, sizeof(g_PlayerIsBot));
+	
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+	memset(g_PlayerSteamId, 0, sizeof(g_PlayerSteamId));
+	memset(g_PlayerSteamID64, 0, sizeof(g_PlayerSteamID64));
+#endif
 }
 
 void CImGuiScoreboard::VidInitialize()
@@ -48,6 +71,10 @@ void CImGuiScoreboard::VidInitialize()
     m_pscoreboardVoiceSpeaking2 = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker2.tga");
     m_pscoreboardVoiceSpeaking3 = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker3.tga");
     m_pscoreboardVoiceSpeaking4 = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker4.tga");
+
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+	m_pNoAvatar = m_ImguiUtils.LoadImageFromMemory(noavatar, noavatar_len);
+#endif
 }
 
 void CImGuiScoreboard::Terminate()
@@ -57,6 +84,11 @@ void CImGuiScoreboard::Terminate()
 	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking2);
 	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking3);
 	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking4);
+
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+	m_ImguiUtils.FreeImage(m_pNoAvatar);
+	g_AvatarCache.Shutdown();
+#endif
 }
 
 void CImGuiScoreboard::Think()
@@ -64,6 +96,8 @@ void CImGuiScoreboard::Think()
 	if (!m_ShowScore)
 	{
 		m_bMouseMode = false;
+		m_bShowPlayerMenu = false;
+		m_iSelectedPlayer = 0;
 	}
 }
 
@@ -288,6 +322,12 @@ void CImGuiScoreboard::DrawScoreboard()
 
 	g_ImGuiViewport.GetAllPlayersInfo();
 
+	bool bShowAvatars = false;
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+	if (hud_scoreboard_showavatars->value > 0)
+		bShowAvatars = true;
+#endif
+
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.f);
 	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
@@ -308,31 +348,38 @@ void CImGuiScoreboard::DrawScoreboard()
 	strncpy(modelText, "MODEL", sizeof(modelText) - 1);
 	strncpy(voiceText, CHudTextMessage::BufferedLocaliseTextString("#VOICE"), sizeof(voiceText) - 1);
 
+	float avatarSize = 32.0f;
+	float textHeight = ImGui::GetTextLineHeight();
+	
+	float rowHeight = bShowAvatars ? (avatarSize + 8.0f) : (textHeight + 6.0f);
+	float textVertOffset = (rowHeight - textHeight) * 0.5f;
+
 	float colModel = ImGui::CalcTextSize(modelText).x + 24.f;
 	float colScore = ImGui::CalcTextSize(scoreText).x + 24.f;
 	float colDeath = ImGui::CalcTextSize(deathText).x + 24.f;
 	float colPing = ImGui::CalcTextSize(latencyText).x + 24.f;
 	float colVoice = ImGui::CalcTextSize(voiceText).x + 24.f;
 
-	float minNameWidth = 150.f;
+	float scrollbarWidth = 12.0f;
 
+	float minNameWidth = 200.f;
 	float fixedColumnsWidth = colModel + colScore + colDeath + colPing + colVoice;
-	float minWindowWidth = fixedColumnsWidth + minNameWidth + 40.f;
+	float minWindowWidth = fixedColumnsWidth + minNameWidth + 40.f + scrollbarWidth;
 
 	float padding_y = scrHeight * 0.05f;
-	float sb_width = scrWidth * 0.55f;
+	float sb_width = scrWidth * 0.6f;
 
-	if (sb_width < minWindowWidth)
+	if (sb_width < minWindowWidth) 
 		sb_width = minWindowWidth;
 
-	if (sb_width > scrWidth - 20.f)
+	if (sb_width > scrWidth - 20.f) 
 		sb_width = scrWidth - 20.f;
 
 	float sb_height = scrHeight - 2 * padding_y;
 	float sb_x = (scrWidth - sb_width) / 2;
 	float sb_y = padding_y;
 
-	if (sb_x < 10.f)
+	if (sb_x < 10.f) 
 		sb_x = 10.f;
 
 	ImGui::SetNextWindowPos(ImVec2(sb_x, sb_y));
@@ -350,16 +397,15 @@ void CImGuiScoreboard::DrawScoreboard()
 	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
 	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
 
-	ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
-		ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoCollapse;
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse;
 
-		if (!m_bMouseMode)
-			flags |= ImGuiWindowFlags_NoInputs;
-		else
-			flags |= ImGuiWindowFlags_NoNav;
+	if (!m_bMouseMode) 
+		flags |= ImGuiWindowFlags_NoInputs;
+	else 
+		flags |= ImGuiWindowFlags_NoNav;
+
+	// FLAG FOR DEFERRED POPUP OPENING
+	bool bNeedOpenPopup = false;
 
 	if (ImGui::Begin("##Scoreboard", &m_ShowScore, flags))
 	{
@@ -373,283 +419,465 @@ void CImGuiScoreboard::DrawScoreboard()
 
 		float line_y = ImGui::GetCursorPosY();
 
+		// SERVER NAME
 		m_ImguiUtils.TextWithColorCodes(g_ImGuiViewport.m_szServerName);
 
+		// PLAYER COUNT
 		char player_count[256];
 		sprintf(player_count, "%d/%d", get_player_count(), gEngfuncs.GetMaxClients());
 		float text_width = ImGui::CalcTextSize(player_count).x;
 		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - text_width - padding);
 		ImGui::SetCursorPosY(line_y);
 		ImGui::Text("%s", player_count);
-
+		
 		ImGui::Spacing();
+
+		// MAP NAME
 		char map_name[64];
 		get_map_name(map_name, ARRAYSIZE(map_name));
 		ImGui::Text("%s", map_name);
+		ImGui::Spacing();
 
-		float tableHeight = sb_height - ImGui::GetCursorPosY() - 20.f;
+		float contentAvail = ImGui::GetContentRegionAvail().x;
+		float commonTableWidth = contentAvail - scrollbarWidth;
 
-		if (ImGui::BeginTable("ScoreboardTableInvisible", 6, ImGuiTableFlags_SizingFixedFit, ImVec2(0, tableHeight)))
+		// HEADER TABLE
+		if (ImGui::BeginTable("##SBHeader", 6, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings, ImVec2(commonTableWidth, 0)))
 		{
-			if (!gHUD.m_Teamplay)
+			if (!gHUD.m_Teamplay) 
 			{
 				ImGui::TableSetupColumn(playersText, ImGuiTableColumnFlags_WidthStretch, 0.f);
 				ImGui::TableSetupColumn(modelText, ImGuiTableColumnFlags_WidthFixed, colModel);
 			}
-			else
+			else 
 			{
 				ImGui::TableSetupColumn(teamsText, ImGuiTableColumnFlags_WidthStretch, 0.f);
 				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, colModel);
 			}
-
 			ImGui::TableSetupColumn(scoreText, ImGuiTableColumnFlags_WidthFixed, colScore);
 			ImGui::TableSetupColumn(deathText, ImGuiTableColumnFlags_WidthFixed, colDeath);
 			ImGui::TableSetupColumn(latencyText, ImGuiTableColumnFlags_WidthFixed, colPing);
 			ImGui::TableSetupColumn(voiceText, ImGuiTableColumnFlags_WidthFixed, colVoice);
 			ImGui::TableHeadersRow();
+			ImGui::EndTable();
+		}
 
-			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
+		// HEADER SEPARATOR LINE
+		{
+			float y = ImGui::GetCursorScreenPos().y - 2.0f;
+			draw_list->AddLine(ImVec2(lineStartX, y), ImVec2(lineEndX, y), IM_COL32(100, 100, 100, 255), 1.0f);
+		}
 
-			ImVec2 line_start = ImGui::GetCursorScreenPos();
-			line_start.x = lineStartX;
-			line_start.y -= 2.0f;
-			ImVec2 line_end = ImVec2(lineEndX, line_start.y);
-			draw_list->AddLine(line_start, line_end, IM_COL32(100, 100, 100, 255), 1.0f);
+		float scrollHeight = sb_height - ImGui::GetCursorPosY() - 10.f;
 
-			ImGui::Spacing();
+		// SCROLLABLE BODY STYLES
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, IM_COL32(0, 0, 0, 80));
+		ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, IM_COL32(255, 160, 0, 100));
+		ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, IM_COL32(255, 160, 0, 180));
+		ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, IM_COL32(255, 160, 0, 255));
+		ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, scrollbarWidth);
+		ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, 4.0f);
 
-			for (int row = 0; row < m_iRows; row++)
+		ImGuiWindowFlags childFlags = ImGuiWindowFlags_None;
+		if (!m_bMouseMode) 
+			childFlags |= ImGuiWindowFlags_NoScrollWithMouse;
+
+		// SCROLLABLE BODY
+		if (ImGui::BeginChild("##SBBody", ImVec2(0, scrollHeight), false, childFlags))
+		{
+			ImVec2 childMin = ImGui::GetWindowPos();
+			ImVec2 childMax = ImVec2(childMin.x + ImGui::GetWindowSize().x, childMin.y + ImGui::GetWindowSize().y);
+			float contentMaxX = childMax.x - scrollbarWidth;
+
+			// PLAYERS TABLE
+			if (ImGui::BeginTable("##SBPlayers", 6, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings, ImVec2(commonTableWidth, 0)))
 			{
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
-
-				if (m_iIsATeam[row] == TEAM_YES)
+				if (!gHUD.m_Teamplay) 
 				{
-					team_info_t* team = &g_TeamInfo[m_iSortedRows[row]];
-					int teamColorIdx = team->teamnumber % iNumberOfTeamColors;
-					ImU32 teamColor = IM_COL32(iTeamColors[teamColorIdx][0], iTeamColors[teamColorIdx][1], iTeamColors[teamColorIdx][2], 255);
-
-					// TEAMS
-					ImGui::PushStyleColor(ImGuiCol_Text, teamColor);
-					ImGui::Text("%s - %d %s", team->name, team->players, CHudTextMessage::BufferedLocaliseTextString(team->players == 1 ? "#Player" : "#Player_plural"));
-					ImGui::PopStyleColor();
-
-					// SCORE
-					ImGui::TableSetColumnIndex(2);
-					ImGui::PushStyleColor(ImGuiCol_Text, teamColor);
-					ImGui::Text("%d", team->frags);
-					ImGui::PopStyleColor();
-
-					// DEATHS
-					ImGui::TableSetColumnIndex(3);
-					ImGui::PushStyleColor(ImGuiCol_Text, teamColor);
-					ImGui::Text("%d", team->deaths);
-					ImGui::PopStyleColor();
-
-					// PING
-					ImGui::TableSetColumnIndex(4);
-					ImGui::PushStyleColor(ImGuiCol_Text, teamColor);
-					ImGui::Text("%d", team->ping);
-					ImGui::PopStyleColor();
-
-					// LINE
-					ImVec2 team_line_start = ImGui::GetCursorScreenPos();
-					team_line_start.x = lineStartX;
-					team_line_start.y -= 2.0f;
-					ImVec2 team_line_end = ImVec2(lineEndX, team_line_start.y);
-					draw_list->AddLine(team_line_start, team_line_end, teamColor, 1.0f);
+					ImGui::TableSetupColumn("##p1", ImGuiTableColumnFlags_WidthStretch, 0.f);
+					ImGui::TableSetupColumn("##p2", ImGuiTableColumnFlags_WidthFixed, colModel);
+				} 
+				else 
+				{
+					ImGui::TableSetupColumn("##p1", ImGuiTableColumnFlags_WidthStretch, 0.f);
+					ImGui::TableSetupColumn("##p2", ImGuiTableColumnFlags_WidthFixed, colModel);
 				}
-				else if (m_iIsATeam[row] == TEAM_SPECTATORS)
+				ImGui::TableSetupColumn("##p3", ImGuiTableColumnFlags_WidthFixed, colScore);
+				ImGui::TableSetupColumn("##p4", ImGuiTableColumnFlags_WidthFixed, colDeath);
+				ImGui::TableSetupColumn("##p5", ImGuiTableColumnFlags_WidthFixed, colPing);
+				ImGui::TableSetupColumn("##p6", ImGuiTableColumnFlags_WidthFixed, colVoice);
+
+				for (int row = 0; row < m_iRows; row++)
 				{
-					// TEXT
-					ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 0, 255));
-					ImGui::Text("%s", CHudTextMessage::BufferedLocaliseTextString("#Spectators"));
-					ImGui::PopStyleColor();
-
-					// LINE
-					ImVec2 spec_line_start = ImGui::GetCursorScreenPos();
-					spec_line_start.x = lineStartX;
-					spec_line_start.y -= 2.0f;
-					ImVec2 spec_line_end = ImVec2(lineEndX, spec_line_start.y);
-					draw_list->AddLine(spec_line_start, spec_line_end, IM_COL32(255, 160, 0, 255), 1.0f);
-				}
-				else if (m_iIsATeam[row] == TEAM_BLANK)
-				{
-					ImGui::Text(" ");
-				}
-				else
-				{
-					ImGui::TableNextRow();
-					ImGui::TableSetColumnIndex(0);
-
-					int iPlayerIndex = m_iSortedRows[row];
-					hud_player_info_t* pl = &g_PlayerInfoList[iPlayerIndex];
-					extra_player_info_t* ex = &g_PlayerExtraInfo[iPlayerIndex];
-
-					int teamColorIdx = ex->teamnumber % iNumberOfTeamColors;
-					ImU32 playerColor = IM_COL32(iTeamColors[teamColorIdx][0], iTeamColors[teamColorIdx][1], iTeamColors[teamColorIdx][2], 255);
-
-					float textH = ImGui::GetTextLineHeight();
-
-					// PLAYER BG
-					ImVec2 row_min = ImGui::GetCursorScreenPos();
-					row_min.x = lineStartX;
-					ImVec2 row_max = ImVec2(lineEndX, row_min.y + ImGui::GetTextLineHeightWithSpacing());
-
-					if (pl->thisplayer)
+					if (m_iIsATeam[row] == TEAM_YES)
 					{
-						draw_list->AddRectFilled(row_min, row_max, IM_COL32(0, 0, 255, 70), 4.0f);
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+
+						team_info_t* team = &g_TeamInfo[m_iSortedRows[row]];
+						int teamColorIdx = team->teamnumber % iNumberOfTeamColors;
+						ImU32 teamColor = IM_COL32(iTeamColors[teamColorIdx][0], iTeamColors[teamColorIdx][1], iTeamColors[teamColorIdx][2], 255);
+
+						float teamRowH = ImGui::GetTextLineHeightWithSpacing();
+						float teamOffY = (teamRowH - textHeight) * 0.5f;
+
+						// TEAM NAME
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + teamOffY);
+						ImGui::PushStyleColor(ImGuiCol_Text, teamColor);
+						ImGui::Text("%s - %d %s", team->name, team->players, CHudTextMessage::BufferedLocaliseTextString(team->players == 1 ? "#Player" : "#Player_plural"));
+						ImGui::PopStyleColor();
+
+						// TEAM SCORE
+						ImGui::TableSetColumnIndex(2); 
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + teamOffY);
+						ImGui::PushStyleColor(ImGuiCol_Text, teamColor); 
+						ImGui::Text("%d", team->frags); 
+						ImGui::PopStyleColor();
+
+						// TEAM DEATHS
+						ImGui::TableSetColumnIndex(3); 
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + teamOffY);
+						ImGui::PushStyleColor(ImGuiCol_Text, teamColor); 
+						ImGui::Text("%d", team->deaths); 
+						ImGui::PopStyleColor();
+						
+						// TEAM PING
+						ImGui::TableSetColumnIndex(4); 
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + teamOffY);
+						ImGui::PushStyleColor(ImGuiCol_Text, teamColor); 
+						ImGui::Text("%d", team->ping); 
+						ImGui::PopStyleColor();
+
+						// TEAM SEPARATOR LINE
+						ImGui::TableSetColumnIndex(0);
+						float y = ImGui::GetCursorScreenPos().y + teamRowH - 2.0f;
+						draw_list->PushClipRect(childMin, childMax, true);
+						draw_list->AddLine(ImVec2(lineStartX, y), ImVec2(lineEndX, y), teamColor, 1.0f);
+						draw_list->PopClipRect();
 					}
-					else if (m_iSortedRows[row] == m_iLastKilledBy && m_fLastKillTime && m_fLastKillTime > gHUD.m_flTime)
+					else if (m_iIsATeam[row] == TEAM_SPECTATORS)
 					{
-						draw_list->AddRectFilled(row_min, row_max, IM_COL32(255, 0, 0, (int)(70.0f * (m_fLastKillTime - gHUD.m_flTime) / 10.0f)), 4.0f);
+						ImGui::TableNextRow(); 
+						ImGui::TableSetColumnIndex(0);
+						
+						float rowStartY = ImGui::GetCursorScreenPos().y;
+						float teamRowH = ImGui::GetTextLineHeightWithSpacing();
+						float teamOffY = (teamRowH - textHeight) * 0.5f;
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + teamOffY);
+
+						// TEXT
+						ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 0, 255));
+						ImGui::Text("%s", CHudTextMessage::BufferedLocaliseTextString("#Spectators"));
+						ImGui::PopStyleColor();
+						
+						// SEPARATOR LINE
+						float y = rowStartY + teamRowH;
+						draw_list->PushClipRect(childMin, childMax, true);
+						draw_list->AddLine(ImVec2(lineStartX, y), ImVec2(lineEndX, y), IM_COL32(255, 160, 0, 255), 1.0f);
+						draw_list->PopClipRect();
 					}
-					
-					ImGui::PushID(iPlayerIndex); 
-					ImVec2 cursorPosBeforeSelectable = ImGui::GetCursorPos();
-					
-					if (pl && !pl->thisplayer && pl->name && pl->name[0])
+					else if (m_iIsATeam[row] == TEAM_BLANK) 
 					{
-						if (ImGui::Selectable("##RowSelectable", false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap, ImVec2(0, textH)))
+						ImGui::TableNextRow(); 
+						ImGui::TableSetColumnIndex(0); 
+						ImGui::Text(" ");
+					}
+					else
+					{
+						ImGui::TableNextRow(0, rowHeight);
+						ImGui::TableSetColumnIndex(0);
+
+						int iPlayerIndex = m_iSortedRows[row];
+						hud_player_info_t* pl = &g_PlayerInfoList[iPlayerIndex];
+						extra_player_info_t* ex = &g_PlayerExtraInfo[iPlayerIndex];
+
+						int teamColorIdx = ex->teamnumber % iNumberOfTeamColors;
+						ImU32 playerColor = IM_COL32(iTeamColors[teamColorIdx][0], iTeamColors[teamColorIdx][1], iTeamColors[teamColorIdx][2], 255);
+
+						float rowYScreen = ImGui::GetCursorScreenPos().y;
+
+						m_CustomUtils.UpdatePlayerInfo(iPlayerIndex);
+						
+						// PLAYER BACKGROUND
+						ImVec2 row_min = ImVec2(lineStartX, rowYScreen);
+						ImVec2 row_max = ImVec2(contentMaxX, rowYScreen + rowHeight);
+
+						ImU32 bgColor = 0;
+						if (pl->thisplayer) 
+							bgColor = IM_COL32(0, 0, 255, 70);
+						else if (m_iSortedRows[row] == m_iLastKilledBy && m_fLastKillTime && m_fLastKillTime > gHUD.m_flTime)
+							bgColor = IM_COL32(255, 0, 0, (int)(70.0f * (m_fLastKillTime - gHUD.m_flTime) / 10.0f));
+
+						bool isHovered = false;
+						if (m_bMouseMode) 
 						{
-							char string[256];
+							ImVec2 mPos = ImGui::GetMousePos();
+							if (mPos.x >= row_min.x && mPos.x <= row_max.x && mPos.y >= row_min.y && mPos.y <= row_max.y)
+								isHovered = true;
+						}
 
-							if (GetClientVoiceMgr()->IsPlayerBlocked(iPlayerIndex))
+						// HOVER HIGHLIGHT (only when popup is NOT open)
+						if (isHovered && pl && !pl->thisplayer && !m_bShowPlayerMenu) 
+							bgColor = IM_COL32(255, 255, 255, 30);
+
+						// SELECTED PLAYER BG HIGHLIGHT (no border/outline)
+						if (m_bShowPlayerMenu && m_iSelectedPlayer == iPlayerIndex)
+						{
+							bgColor = IM_COL32(255, 255, 255, 30);
+						}
+
+						// DRAW PLAYER BACKGROUND
+						if (bgColor != 0) 
+						{
+							draw_list->PushClipRect(childMin, childMax, true);
+							draw_list->AddRectFilled(row_min, row_max, bgColor);
+							draw_list->PopClipRect();
+						}
+
+						// CLICK TO OPEN CONTEXT MENU (deferred)
+						if (m_bMouseMode && isHovered && ImGui::IsMouseClicked(0) && pl && !pl->thisplayer && pl->name && pl->name[0] && !m_bShowPlayerMenu)
+						{
+							m_iSelectedPlayer = iPlayerIndex;
+							m_bShowPlayerMenu = true;
+							bNeedOpenPopup = true;
+						}
+
+						ImGui::PushID(iPlayerIndex);
+
+						float startContentX = win_pos.x + padding;
+
+						// AVATAR
+						if (bShowAvatars)
+						{
+							float avatarY = rowYScreen + (rowHeight - avatarSize) * 0.5f;
+							
+							ImGui::SetCursorScreenPos(ImVec2(startContentX + 4.0f, avatarY));
+							ImVec2 p = ImGui::GetCursorScreenPos();
+
+							// AVATAR BORDER
+							draw_list->PushClipRect(childMin, childMax, true);
+							draw_list->AddRect(ImVec2(p.x - 1, p.y - 1), ImVec2(p.x + avatarSize + 1, p.y + avatarSize + 1), playerColor, 2.0f, 0, 1.5f);
+							draw_list->PopClipRect();
+
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+							// AVATAR IMAGE
+							if (g_PlayerIsBot[iPlayerIndex])
 							{
-								char string1[1024];
-								
-								GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, false);
-								sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Unmuted"), pl->name);
-								sprintf(string, "%c** %s\n", HUD_PRINTTALK, string1);
-								gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
+								ImGui::Image(m_pNoAvatar.texture, ImVec2(avatarSize, avatarSize));
 							}
 							else
 							{
-								char string1[1024];
-								char string2[1024];
-								
-								GetClientVoiceMgr()->SetPlayerBlockedState(iPlayerIndex, true);
-								sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Muted"), pl->name);
-								sprintf(string2, "%s", CHudTextMessage::BufferedLocaliseTextString("#No_longer_hear_that_player"));
-								sprintf(string, "%c** %s %s\n", HUD_PRINTTALK, string1, string2);
-								gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
+								ImTextureID avatarTex = g_AvatarCache.GetAvatar(iPlayerIndex);
+								if (avatarTex) 
+									ImGui::Image(avatarTex, ImVec2(avatarSize, avatarSize));
+								else 
+									ImGui::Image(m_pNoAvatar.texture, ImVec2(avatarSize, avatarSize));
 							}
+#endif
+							ImGui::SameLine();
+							
+							startContentX += (avatarSize + 20.0f);
 						}
 
-						if (ImGui::IsItemHovered())
+						float nameY = rowYScreen + textVertOffset;
+						ImGui::SetCursorScreenPos(ImVec2(startContentX, nameY));
+						
+						// PLAYER NAME
+						ImGui::PushStyleColor(ImGuiCol_Text, playerColor);
+						m_ImguiUtils.TextWithColorCodes(pl->name);
+						ImGui::PopStyleColor();
+
+						// CTF FLAG ICON
+						if (blue_flag_player_index == iPlayerIndex || red_flag_player_index == iPlayerIndex) 
 						{
-							draw_list->AddRectFilled(row_min, row_max, IM_COL32(255, 255, 255, 30), 4.0f);
+							float sprW = (float)(m_IconFlagScore.rc.right - m_IconFlagScore.rc.left);
+							float sprH = (float)(m_IconFlagScore.rc.bottom - m_IconFlagScore.rc.top);
+							float iconH = textHeight; 
+							float iconW = (sprH > 0) ? iconH * (sprW / sprH) : iconH;
+							int r = (blue_flag_player_index == iPlayerIndex) ? 80 : 255;
+							int g = (blue_flag_player_index == iPlayerIndex) ? 160 : 80;
+							int b = (blue_flag_player_index == iPlayerIndex) ? 255 : 80;
+							float col0Width = ImGui::GetColumnWidth(0);
+							m_ImguiUtils.ImGuiSpriteIcon(m_IconFlagScore.spr, m_IconFlagScore.rc, win_pos.x + padding + col0Width - iconW - 5.0f, nameY, iconW, iconH, textHeight, r, g, b, 255);
 						}
-					}
-					
-					ImGui::SetCursorPos(cursorPosBeforeSelectable);
 
-					// FLAG
-					if (blue_flag_player_index == m_iSortedRows[row] || red_flag_player_index == m_iSortedRows[row])
-					{
-						float sprW = (float)(m_IconFlagScore.rc.right - m_IconFlagScore.rc.left);
-						float sprH = (float)(m_IconFlagScore.rc.bottom - m_IconFlagScore.rc.top);
-
-						float iconH = textH;
-						float iconW = (sprH > 0) ? iconH * (sprW / sprH) : iconH;
-
-						int r, g, b;
-
-						if (blue_flag_player_index == m_iSortedRows[row])
-						{
-							r = 80;  g = 160; b = 255;
+						// MODEL (non-teamplay only)
+						if (!gHUD.m_Teamplay) {
+							ImGui::TableSetColumnIndex(1); 
+							ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textVertOffset);
+							m_ImguiUtils.DrawModelName(pl->topcolor, pl->bottomcolor, pl->model);
 						}
+
+						// PLAYER SCORE
+						ImGui::TableSetColumnIndex(2); 
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textVertOffset);
+						ImGui::PushStyleColor(ImGuiCol_Text, playerColor); 
+						ImGui::Text("%d", ex->frags); 
+						ImGui::PopStyleColor();
+
+						// PLAYER DEATHS
+						ImGui::TableSetColumnIndex(3); 
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textVertOffset);
+						ImGui::PushStyleColor(ImGuiCol_Text, playerColor); 
+						ImGui::Text("%d", ex->deaths); 
+						ImGui::PopStyleColor();
+
+						// PLAYER PING
+						ImGui::TableSetColumnIndex(4); 
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + textVertOffset);
+						ImGui::PushStyleColor(ImGuiCol_Text, playerColor); 
+						if (g_PlayerIsBot[iPlayerIndex])
+							ImGui::Text("BOT");
 						else
+							ImGui::Text("%d", pl->ping);
+						ImGui::PopStyleColor();
+
+						// VOICE ICON
+						ImGui::TableSetColumnIndex(5);
+						if (pl && pl->name && pl->name[0]) 
 						{
-							r = 255; g = 80;  b = 80;
-						}
-
-						m_ImguiUtils.ImGuiSpriteIcon(m_IconFlagScore.spr, m_IconFlagScore.rc, win_pos.x - iconW - 6.0f, row_min.y, iconW, iconH, textH, r, g, b, 255);
-					}
-
-					// NAME
-					ImGui::PushStyleColor(ImGuiCol_Text, playerColor);
-					m_ImguiUtils.TextWithColorCodes(pl->name);
-					ImGui::PopStyleColor();
-
-					// MODEL
-					if (!gHUD.m_Teamplay)
-					{
-						ImGui::TableSetColumnIndex(1);
-						m_ImguiUtils.DrawModelName(pl->topcolor, pl->bottomcolor, pl->model);
-					}
-
-					// SCORE
-					ImGui::TableSetColumnIndex(2);
-					ImGui::PushStyleColor(ImGuiCol_Text, playerColor);
-					ImGui::Text("%d", ex->frags);
-					ImGui::PopStyleColor();
-
-					// DEATHS
-					ImGui::TableSetColumnIndex(3);
-					ImGui::PushStyleColor(ImGuiCol_Text, playerColor);
-					ImGui::Text("%d", ex->deaths);
-					ImGui::PopStyleColor();
-
-					// PING
-					ImGui::TableSetColumnIndex(4);
-					ImGui::PushStyleColor(ImGuiCol_Text, playerColor);
-					ImGui::Text("%d", pl->ping);
-					ImGui::PopStyleColor();
-
-					// VOICE	
-					ImGui::TableSetColumnIndex(5);
-					if (pl && pl->name && pl->name[0])
-					{
-						double frameDuration = 0.5; // seconds per frame
-						int currentFrame = (int)(ImGui::GetTime() / frameDuration) % 3;
-
-						ImGuiImage* pCurrentImg = nullptr;
-						ImVec4 tint = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-
-						if (GetClientVoiceMgr()->IsPlayerBlocked(iPlayerIndex))
-						{
-							pCurrentImg = &m_pScoreboardVoiceBanned;
-							tint = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
-						}
-						else if (GetClientVoiceMgr()->IsPlayerSpeaking(iPlayerIndex))
-						{
-							switch (currentFrame)
+							float iconSize = textHeight; 
+							float iconOffset = (rowHeight - iconSize) * 0.5f;
+							ImGui::SetCursorPosY(ImGui::GetCursorPosY() + iconOffset);
+							double frameDuration = 0.5; 
+							int currentFrame = (int)(ImGui::GetTime() / frameDuration) % 3;
+							
+							ImGuiImage* pImg = nullptr; 
+							ImVec4 tint = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+							
+							// VOICE BLOCKED
+							if (GetClientVoiceMgr()->IsPlayerBlocked(iPlayerIndex)) 
+							{ 
+								pImg = &m_pScoreboardVoiceBanned; 
+								tint = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); 
+							}
+							// VOICE SPEAKING (animated)
+							else if (GetClientVoiceMgr()->IsPlayerSpeaking(iPlayerIndex)) 
 							{
-							case 0:
-								pCurrentImg = &m_pscoreboardVoiceSpeaking2;
-								break;
-							case 1:
-								pCurrentImg = &m_pscoreboardVoiceSpeaking3;
-								break;
-							case 2:
-								pCurrentImg = &m_pscoreboardVoiceSpeaking4;
-								break;
+								if (currentFrame == 0) 
+									pImg = &m_pscoreboardVoiceSpeaking2; 
+								else if (currentFrame == 1) 
+									pImg = &m_pscoreboardVoiceSpeaking3; 
+								else 
+									pImg = &m_pscoreboardVoiceSpeaking4;
+								tint = ImVec4(1.0f, 0.66f, 0.0f, 1.0f);
+							} 
+							// VOICE IDLE
+							else 
+							{ 
+								pImg = &m_pscoreboardVoiceSpeaking; 
 							}
-							tint = ImVec4(1.0f, 0.66f, 0.0f, 1.0f);
-						}
-						else
-						{
-							pCurrentImg = &m_pscoreboardVoiceSpeaking;
+							ImGui::Image(pImg->texture, ImVec2(iconSize, iconSize), ImVec2(0, 0), ImVec2(1, 1), tint, ImVec4(0, 0, 0, 0));
 						}
 
-						if (pCurrentImg)
-						{
-							float iconSize = ImGui::GetTextLineHeight();
-							ImGui::Image(pCurrentImg->texture, ImVec2(iconSize, iconSize), ImVec2(0, 0), ImVec2(1, 1), tint, ImVec4(0, 0, 0, 0));
-						}
+						ImGui::PopID();
 					}
-		
-					ImGui::PopID(); 
 				}
+
+				ImGui::EndTable();
 			}
-			ImGui::EndTable();
+		}
+		ImGui::EndChild();
+
+		ImGui::PopStyleVar(2);
+		ImGui::PopStyleColor(5);
+
+		// PLAYER CONTEXT MENU (at main window level)
+		if (bNeedOpenPopup)
+		{
+			ImGui::OpenPopup("##PlayerContextMenu");
+		}
+
+		if (m_bShowPlayerMenu)
+		{
+			// CONTEXT MENU STYLES
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 8));
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 6));
+			ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 2.0f);
+			
+			// NO BORDER FOR POPUP
+			ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f); 
+
+			ImGui::PushStyleColor(ImGuiCol_PopupBg, IM_COL32(20, 20, 20, 200));
+			ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(0, 0, 0, 0)); // Transparent border
+			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 0, 255));
+			ImGui::PushStyleColor(ImGuiCol_HeaderHovered, IM_COL32(255, 255, 255, 80));
+			ImGui::PushStyleColor(ImGuiCol_HeaderActive, IM_COL32(255, 255, 255, 120));
+
+			if (ImGui::BeginPopup("##PlayerContextMenu"))
+			{
+				hud_player_info_t* selPl = &g_PlayerInfoList[m_iSelectedPlayer];
+				extra_player_info_t* selEx = &g_PlayerExtraInfo[m_iSelectedPlayer];
+				
+				int selTeamColorIdx = selEx->teamnumber % iNumberOfTeamColors;
+				ImU32 selPlayerColor = IM_COL32(iTeamColors[selTeamColorIdx][0], iTeamColors[selTeamColorIdx][1], iTeamColors[selTeamColorIdx][2], 255);
+
+				// CONTEXT MENU HEADER - PLAYER NAME
+				ImGui::PushStyleColor(ImGuiCol_Text, selPlayerColor);
+				m_ImguiUtils.TextWithColorCodes(selPl->name);
+				ImGui::PopStyleColor();
+				ImGui::Separator();
+
+				// MUTE / UNMUTE OPTION
+				bool isMuted = GetClientVoiceMgr()->IsPlayerBlocked(m_iSelectedPlayer);
+				const char* muteLabel = isMuted ? "Unmute" : "Mute";
+				
+				if (ImGui::Selectable(muteLabel))
+				{
+					char string[256];
+					if (isMuted) 
+					{
+						// UNMUTE PLAYER
+						char string1[1024]; 
+						GetClientVoiceMgr()->SetPlayerBlockedState(m_iSelectedPlayer, false);
+						sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Unmuted"), selPl->name);
+						sprintf(string, "%c** %s\n", HUD_PRINTTALK, string1);
+					} 
+					else 
+					{
+						// MUTE PLAYER
+						char string1[1024];
+						char string2[1024]; 
+						GetClientVoiceMgr()->SetPlayerBlockedState(m_iSelectedPlayer, true);
+						sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Muted"), selPl->name);
+						sprintf(string2, "%s", CHudTextMessage::BufferedLocaliseTextString("#No_longer_hear_that_player"));
+						sprintf(string, "%c** %s %s\n", HUD_PRINTTALK, string1, string2);
+					}
+					gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
+					
+					m_bShowPlayerMenu = false;
+					m_iSelectedPlayer = 0;
+				}
+
+				// STEAM PROFILE OPTION
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+				if (!g_PlayerIsBot[m_iSelectedPlayer] && g_PlayerSteamID64[m_iSelectedPlayer])
+				{
+					if (ImGui::Selectable("Steam Profile"))
+					{
+						// OPEN STEAM OVERLAY TO PLAYER PROFILE
+						g_SteamAPI.ActivateGameOverlayToUser("steamid", g_PlayerSteamID64[m_iSelectedPlayer]);
+						m_bShowPlayerMenu = false;
+						m_iSelectedPlayer = 0;
+					}
+				}
+#endif
+				ImGui::EndPopup();
+			}
+			else
+			{
+				// CONTEXT MENU WAS CLOSED (clicked outside)
+				m_bShowPlayerMenu = false;
+				m_iSelectedPlayer = 0;
+			}
+
+			ImGui::PopStyleColor(5);
+			ImGui::PopStyleVar(4);
 		}
 
 		ImGui::End();
 	}
-
 	ImGui::PopStyleColor(11);
 	ImGui::PopStyleVar(7);
 }

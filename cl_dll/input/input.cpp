@@ -36,7 +36,12 @@ extern "C"
 extern cvar_t *ui_imgui_scoreboard;
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
 #include "gl_export.h"
+#else
+#include "engine_hooks.h"
+#include "steam_api.h"
+#include "svc_messages.h"
 #endif
+
 #endif
 
 extern "C" 
@@ -1284,6 +1289,9 @@ void DLLEXPORT HUD_Shutdown( void )
 	GL_Shutdown();
 #else
 	g_ImGuiManager.Terminate();
+	UnHookSvcMessages();
+	EngineHooks::UnpatchEngine();
+	g_SteamAPI.shutdown();	
 #endif
 #endif
 

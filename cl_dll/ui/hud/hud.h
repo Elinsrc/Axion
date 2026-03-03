@@ -32,6 +32,8 @@
 #include "cvardef.h"
 #include "rgb_color.h"
 
+#include <stdint.h> 
+
 #define DHN_DRAWZERO 1
 #define DHN_2DIGITS  2
 #define DHN_3DIGITS  4
@@ -67,6 +69,8 @@ typedef struct cvar_s cvar_t;
 
 #define MAX_SERVERNAME_LENGTH	64
 #define MAX_TEAMNAME_SIZE 32
+
+#define MAX_STEAMID 32
 
 extern int iTeamColors[5][3];
 extern int iNumberOfTeamColors;
@@ -251,8 +255,10 @@ protected:
 #endif
 
 #if !USE_IMGUI || USE_NOIMGUI_SCOREBOARD
+#include "custom_utils.h"
 class CHudScoreboard : public CHudBase
 {
+	CustomUtils m_CustomUtils;
 public:
 	int Init( void );
 	void InitHUDData( void );
@@ -349,6 +355,12 @@ extern hud_player_info_t	g_PlayerInfoList[MAX_PLAYERS + 1];	   // player info fr
 extern extra_player_info_t  g_PlayerExtraInfo[MAX_PLAYERS + 1];   // additional player info sent directly to the client dll
 extern team_info_t			g_TeamInfo[MAX_TEAMS + 1];
 extern int					g_IsSpectator[MAX_PLAYERS + 1];
+extern bool 				g_PlayerIsBot[MAX_PLAYERS + 1];
+
+#if USE_IMGUI && (!XASH_MOBILE_PLATFORM || !XASH_64BIT)
+extern char					g_PlayerSteamId[MAX_PLAYERS + 1][MAX_STEAMID + 1];
+extern uint64_t 			g_PlayerSteamID64[MAX_PLAYERS + 1];
+#endif
 
 //
 //-----------------------------------------------------

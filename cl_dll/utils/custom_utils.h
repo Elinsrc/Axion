@@ -1,5 +1,6 @@
 #pragma once
 #include "pmtrace.h"
+#include <stdint.h> 
 
 class CustomUtils
 {
@@ -23,4 +24,6 @@ public:
     void DrawBoxOutline(float x, float y, float w, float h, float linewidth, int r, int g, int b, int a);
     void DrawBoxCorner(int x, int y, int w, int h, int linewidth, int r, int g, int b, int a);
     void DrawBoxCornerOutline(int x, int y, int w, int h, int linewidth, int r, int g, int b, int a);
+
+    void UpdatePlayerInfo(int iPlayerIndex);
 };

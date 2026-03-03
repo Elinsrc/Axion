@@ -26,6 +26,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "custom_utils.h"
+
 #if USE_IMGUI
 #include "imgui_viewport.h"
 #endif
@@ -84,6 +86,7 @@ void CHudScoreboard::InitHUDData( void )
 	m_iPlayerNum = 0;
 	m_iNumTeams = 0;
 	memset( g_TeamInfo, 0, sizeof g_TeamInfo );
+	memset(g_PlayerIsBot, 0, sizeof(g_PlayerIsBot));
 
 	m_iFlags &= ~HUD_ACTIVE;  // starts out inactive
 
@@ -419,6 +422,8 @@ int CHudScoreboard::DrawPlayers( int xpos_rel, float list_slot, int nameoffset, 
 			FillRGBA( xpos - 5, ypos, FAR_RIGHT, ROW_GAP, 0, 0, 255, 70 );
 		}
 
+		m_CustomUtils.UpdatePlayerInfo(best_player);
+
 		if( blue_flag_player_index == best_player || red_flag_player_index == best_player )
 		{
 			SPR_Set(m_IconFlagScore.spr, 200, 200, 200 );
@@ -455,7 +460,10 @@ int CHudScoreboard::DrawPlayers( int xpos_rel, float list_slot, int nameoffset, 
 
 		// draw ping & packetloss
 		static char buf[64];
-		sprintf( buf, "%d/%d", g_PlayerInfoList[best_player].ping, g_PlayerInfoList[best_player].packetloss );
+		if (g_PlayerIsBot[best_player])
+			sprintf(buf, "BOT");
+		else
+			sprintf( buf, "%d/%d", g_PlayerInfoList[best_player].ping, g_PlayerInfoList[best_player].packetloss );
 		xpos = ( ( PING_RANGE_MAX - PING_RANGE_MIN ) / 2 ) + PING_RANGE_MIN + xpos_rel + 40;
 		gHUD.DrawHudStringReverse( xpos, ypos, buf, r, g, b );
 

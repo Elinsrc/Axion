@@ -5,6 +5,7 @@
 #include "imgui_utils.h"
 #include "hud.h"
 #include "cl_util.h"
+#include "custom_utils.h"
 
 #define MAX_SCOREBOARD_TEAMS 5
 #define NUM_ROWS (MAX_PLAYERS + (MAX_SCOREBOARD_TEAMS * 2))
@@ -13,9 +14,9 @@
 #define TEAM_SPECTATORS 2
 #define TEAM_BLANK 3
 
-
 class CImGuiScoreboard : public IImGuiWindow
 {
+    CustomUtils m_CustomUtils;
 public:
     static bool m_ShowScore;
     static bool isVisible() { return m_ShowScore; }
@@ -59,6 +60,9 @@ private:
     icon_flagstatus_t m_IconFlagScore;
 
     bool m_bMouseMode;
+
+    int m_iSelectedPlayer = 0;
+    bool m_bShowPlayerMenu = false; 
 };
 
 extern CImGuiScoreboard g_iScoreboard;
