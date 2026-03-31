@@ -48,8 +48,6 @@ project (AXION)
 option(USE_IMGUI "Enable IMGUI" ON)
 option(USE_NOIMGUI_MOTD "Prefer non-IMGUI MOTD when USE_IMGUI is enabled" OFF)
 option(USE_NOIMGUI_SCOREBOARD "Prefer non-IMGUI Scoreboard when USE_IMGUI is enabled" OFF)
-option(BUILD_SERVER "Build server dll" ON)
-
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4 OR
 	((WIN32 OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
@@ -186,7 +184,5 @@ if(USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
     add_subdirectory(external/openvgui)
 	add_subdirectory(external)
 endif()
-
-
 
 add_subdirectory(cl_dll)
