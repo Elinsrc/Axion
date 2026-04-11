@@ -2,19 +2,30 @@ package su.xash.axion;
 
 import android.app.Activity;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 public class MainActivity extends AppCompatActivity {
+    private SharedPreferences prefs;
+    private static final String PREF_NAME = "AxionPrefs";
+    private static final String KEY_ARGV = "last_argv";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
 
         androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -23,14 +34,39 @@ public class MainActivity extends AppCompatActivity {
         Button runButton = findViewById(R.id.runButton);
         Button infoButton = findViewById(R.id.infoButton);
 
-        runButton.setOnClickListener(v -> startGame(argvInput.getText().toString()));
+        String defaultArgs = argvInput.getText().toString(); 
+        argvInput.setText(prefs.getString(KEY_ARGV, defaultArgs));
+
+        argvInput.setSingleLine(true);
+        argvInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        argvInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                saveArgs(argvInput.getText().toString());
+                argvInput.clearFocus();
+                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                }
+                return true;
+            }
+            return false;
+        });
+
+        runButton.setOnClickListener(v -> {
+            String userArgs = argvInput.getText().toString();
+            saveArgs(userArgs);
+            startGame(userArgs.trim());
+        });
+
         infoButton.setOnClickListener(v -> {
             String url = "https://github.com/Elinsrc/Axion";
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            startActivity(intent);
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         });
     }
 
+    private void saveArgs(String args) {
+        prefs.edit().putString(KEY_ARGV, args).apply();
+    }
 
     private void startGame(String argv) {
         String pkg = "su.xash.engine.test";
@@ -42,8 +78,15 @@ public class MainActivity extends AppCompatActivity {
                 pkg = "su.xash.engine";
                 getPackageManager().getPackageInfo(pkg, 0);
             } catch (PackageManager.NameNotFoundException ex) {
-                startActivity(new Intent(Intent.ACTION_VIEW,
-                        Uri.parse("https://github.com/FWGS/xash3d-fwgs/releases/tag/continuous")));
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.engine_not_found_title)
+                        .setMessage(R.string.engine_not_found_msg)
+                        .setPositiveButton(android.R.string.yes, (dialog, which) -> {
+                            startActivity(new Intent(Intent.ACTION_VIEW,
+                                    Uri.parse("https://github.com/FWGS/xash3d-fwgs/releases/tag/continuous")));
+                        })
+                        .setNegativeButton(android.R.string.no, null)
+                        .show();
                 return;
             }
         }
