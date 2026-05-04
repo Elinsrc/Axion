@@ -96,7 +96,7 @@ bool CSteamAPI::initialize()
 
     if (!m_library)
     {
-        gEngfuncs.Con_Printf("\n[SteamAPI] Failed to load: %s\n", dlerror());
+        gEngfuncs.Con_Printf("\n[SteamAPI] Failed to load steam_api library\n");
         return false;
     }
 
