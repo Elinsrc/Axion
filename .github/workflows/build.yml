@@ -67,7 +67,6 @@ jobs:
       - name: Install development tools
         if: startsWith(matrix.os, 'ubuntu')
         run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo dpkg --add-architecture i386
           sudo apt update
           sudo apt install aptitude
