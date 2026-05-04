@@ -1,6 +1,6 @@
 #pragma once
 #include "pmtrace.h"
-#include <stdint.h> 
+#include <stdint.h>
 
 class CustomUtils
 {

@@ -25,9 +25,10 @@ public:
 
     bool IsInitialized() const { return m_initialized; }
 
+    void* get_proc(const char* name);
 private:
     CSteamAPI() = default;
-    void* get_proc(const char* name);
+
     bool LoadSteamFunctions();
 
     void* m_library = nullptr;

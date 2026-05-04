@@ -16,12 +16,13 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 CAvatarCache g_AvatarCache;
 
 void CAvatarCache::Initialize()
 {
-    ClearAll();
+    memset(m_avatars, 0, sizeof(m_avatars));
 }
 
 void CAvatarCache::Shutdown()
@@ -33,44 +34,70 @@ void CAvatarCache::Shutdown()
             DeleteTexture(m_avatars[i].texture);
         }
     }
-    ClearAll();
+    
+    memset(m_avatars, 0, sizeof(m_avatars));
 }
 
 void CAvatarCache::ClearAll()
 {
-    memset(m_avatars, 0, sizeof(m_avatars));
+    for(int i = 0; i < MAX_AVATAR_PLAYERS; i++)
+    {
+        ClearAvatar(i);
+    }
 }
 
 void CAvatarCache::ClearAvatar(int playerIndex)
 {
-    if (playerIndex < 0 || playerIndex >= MAX_AVATAR_PLAYERS)
+    if(!IsValidPlayerIndex(playerIndex))
         return;
 
-    if (m_avatars[playerIndex].texture)
+    AvatarEntry &entry = m_avatars[playerIndex];
+
+    if( entry.texture )
     {
-        DeleteTexture(m_avatars[playerIndex].texture);
+        DeleteTexture(entry.texture);
+        entry.texture = 0;
     }
-    memset(&m_avatars[playerIndex], 0, sizeof(AvatarEntry));
+
+    memset(&entry, 0, sizeof(AvatarEntry));
 }
 
-SteamID64 CAvatarCache::SteamIdToSteam64(const char* steamId)
+SteamID64 CAvatarCache::SteamIdToSteam64(const char *steamId)
 {
-    if (!steamId || !*steamId)
+    if(!steamId || !*steamId)
         return 0;
 
-    unsigned int Y = 0, Z = 0;
+    unsigned int authServer = 0;
+    unsigned int authBit = 0;
+    unsigned int accountId  = 0;
 
-    if (sscanf(steamId, "STEAM_%*u:%u:%u", &Y, &Z) != 2 &&
-        sscanf(steamId, "%*u:%u:%u", &Y, &Z) != 2)
+
+    if( sscanf(steamId, "STEAM_%u:%u:%u",&authServer, &authBit, &accountId) == 3 )
     {
-        return 0;
+        return 76561197960265728ULL + (static_cast<uint64_t>(accountId) << 1) + authBit;
     }
 
-    return 76561197960265728ULL + (static_cast<uint64_t>(Z) << 1) + Y;
+    if( sscanf(steamId, "%u:%u:%u", &authServer, &authBit, &accountId) == 3)
+    {
+        return 76561197960265728ULL + (static_cast<uint64_t>(accountId) << 1) + authBit;
+    }
+
+    char *endPtr = nullptr;
+    uint64_t numericId = strtoull(steamId, &endPtr, 10);
+
+    if(endPtr != steamId && numericId > 76561197960265728ULL)
+    {
+        return static_cast<SteamID64>(numericId);
+    }
+
+    return 0;
 }
 
 ImTextureID CAvatarCache::CreateTextureFromRGBA(uint8_t *data, int width, int height)
 {
+    if(!data || width <= 0 || height <= 0)
+        return 0;
+
     GLuint texId = 0;
     glGenTextures(1, &texId);
     glBindTexture(GL_TEXTURE_2D, texId);
@@ -85,7 +112,9 @@ ImTextureID CAvatarCache::CreateTextureFromRGBA(uint8_t *data, int width, int he
 
 void CAvatarCache::DeleteTexture(ImTextureID tex)
 {
-    if (!tex) return;
+    if (!tex) 
+        return;
+    
     GLuint texId = (GLuint)(intptr_t)tex;
     glDeleteTextures(1, &texId);
 }
@@ -97,7 +126,7 @@ bool CAvatarCache::LoadAvatar(int playerIndex, SteamID64 steam64)
 
     int imageHandle = g_SteamAPI.GetMediumFriendAvatar(steam64);
 
-    if (imageHandle <= 0)
+    if (imageHandle == 0 || imageHandle == -1)
     {
         return false;
     }
@@ -123,22 +152,22 @@ bool CAvatarCache::LoadAvatar(int playerIndex, SteamID64 steam64)
     if (m_avatars[playerIndex].texture)
     {
         DeleteTexture(m_avatars[playerIndex].texture);
+        m_avatars[playerIndex].texture = 0;
     }
 
     m_avatars[playerIndex].texture = CreateTextureFromRGBA(rgbaData, width, height);
     m_avatars[playerIndex].steamId = steam64;
     m_avatars[playerIndex].loaded = true;
 
-    free(rgbaData);
     return true;
 }
 
 ImTextureID CAvatarCache::GetAvatar(int playerIndex)
 {
-    if (playerIndex < 1 || playerIndex >= MAX_AVATAR_PLAYERS)
+    if(!IsValidPlayerIndex(playerIndex))
         return 0;
 
-    SteamID64 steam64 = g_PlayerSteamID64[playerIndex];
+    const SteamID64 steam64 = g_PlayerSteamID64[playerIndex];
     
     if (steam64 == 0)
         return 0;
@@ -154,9 +183,11 @@ ImTextureID CAvatarCache::GetAvatar(int playerIndex)
         entry.steamId = steam64;
     }
 
-    float now = gHUD.m_flTime;
-    if (entry.requested && (now - entry.lastRequestTime) < 2.0f)
+    const float now = gHUD.m_flTime;
+    if(entry.requested && (now - entry.lastRequestTime) < AVATAR_REQUEST_COOLDOWN)
+    {
         return 0;
+    }
 
     entry.requested = true;
     entry.lastRequestTime = now;

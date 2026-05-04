@@ -27,6 +27,20 @@ CSteamAPI& CSteamAPI::GetInstance()
     return instance;
 }
 
+template<typename T>
+bool LoadSteamFunction(T& out, const char* name)
+{
+    out = reinterpret_cast<T>(g_SteamAPI.get_proc(name));
+
+    if (!out)
+    {
+        gEngfuncs.Con_Printf("\n[SteamAPI] Missing: %s\n", name);
+        return false;
+    }
+
+    return true;
+}
+
 void* CSteamAPI::get_proc(const char* name)
 {
 #if XASH_WIN32
@@ -38,34 +52,31 @@ void* CSteamAPI::get_proc(const char* name)
 
 bool CSteamAPI::LoadSteamFunctions()
 {
-    m_SteamFriends = (void*(*)())get_proc("SteamAPI_SteamFriends_v017");
-    m_SteamUtils = (void*(*)())get_proc("SteamAPI_SteamUtils_v010");
+    if (!LoadSteamFunction(m_SteamFriends, "SteamAPI_SteamFriends_v017"))
+        return false;
+    if (!LoadSteamFunction(m_SteamUtils, "SteamAPI_SteamUtils_v010"))
+        return false;
 #if XASH_WIN32
-    m_SteamUser = (void* (*)())get_proc("SteamAPI_SteamUser_v021");
+    if (!LoadSteamFunction(m_SteamUser, "SteamAPI_SteamUser_v021"))
+        return false;
 #else
-    m_SteamUser = (void*(*)())get_proc("SteamAPI_SteamUser_v023");
+    if (!LoadSteamFunction(m_SteamUser, "SteamAPI_SteamUser_v023"))
+        return false;
 #endif
-
-    if (!m_SteamFriends || !m_SteamUtils || !m_SteamUser)
-    {
+    if (!LoadSteamFunction(m_GetSmallFriendAvatar, "SteamAPI_ISteamFriends_GetSmallFriendAvatar"))
         return false;
-    }
-
-    m_GetSmallFriendAvatar = (int(*)(void*, SteamID64))get_proc("SteamAPI_ISteamFriends_GetSmallFriendAvatar");
-    m_GetMediumFriendAvatar = (int(*)(void*, SteamID64))get_proc("SteamAPI_ISteamFriends_GetMediumFriendAvatar");
-    m_GetLargeFriendAvatar = (int(*)(void*, SteamID64))get_proc("SteamAPI_ISteamFriends_GetLargeFriendAvatar");
-    
-    m_GetImageSize = (bool(*)(void*, int, uint32_t*, uint32_t*))get_proc("SteamAPI_ISteamUtils_GetImageSize");
-    m_GetImageRGBA = (bool(*)(void*, int, uint8_t*, int))get_proc("SteamAPI_ISteamUtils_GetImageRGBA");
-    
-    m_GetSteamID = (SteamID64(*)(void*))get_proc("SteamAPI_ISteamUser_GetSteamID");
-
-    m_ActivateGameOverlayToUser = (void(*)(void*, const char*, SteamID64))get_proc("SteamAPI_ISteamFriends_ActivateGameOverlayToUser");
-
-    if (!m_GetSmallFriendAvatar || !m_GetImageSize || !m_GetImageRGBA || !m_GetSteamID)
-    {
+    if (!LoadSteamFunction(m_GetMediumFriendAvatar, "SteamAPI_ISteamFriends_GetMediumFriendAvatar"))
         return false;
-    }
+    if (!LoadSteamFunction(m_GetLargeFriendAvatar, "SteamAPI_ISteamFriends_GetLargeFriendAvatar"))
+        return false;
+    if (!LoadSteamFunction(m_GetImageSize, "SteamAPI_ISteamUtils_GetImageSize"))
+        return false;
+    if (!LoadSteamFunction(m_GetImageRGBA, "SteamAPI_ISteamUtils_GetImageRGBA"))
+        return false;
+    if (!LoadSteamFunction(m_GetSteamID, "SteamAPI_ISteamUser_GetSteamID"))
+        return false;
+    if (!LoadSteamFunction(m_ActivateGameOverlayToUser, "SteamAPI_ISteamFriends_ActivateGameOverlayToUser"))
+        return false;
 
     return true;
 }
@@ -73,7 +84,9 @@ bool CSteamAPI::LoadSteamFunctions()
 bool CSteamAPI::initialize()
 {
     if (m_initialized)
+    {
         return true;
+    }
 
 #if XASH_WIN32
     m_library = LoadLibraryA("steam_api.dll");
@@ -83,35 +96,36 @@ bool CSteamAPI::initialize()
 
     if (!m_library)
     {
-        gEngfuncs.Con_DPrintf("[SteamAPI] Failed to load steam_api library\n");
+        gEngfuncs.Con_Printf("\n[SteamAPI] Failed to load: %s\n", dlerror());
         return false;
     }
 
-    gEngfuncs.Con_DPrintf("[SteamAPI] Library loaded: %p\n", m_library);
+    gEngfuncs.Con_Printf("\n[SteamAPI] Library loaded: %p\n", m_library);
 
     m_SteamAPI_Init = (bool(*)())get_proc("SteamAPI_Init");
     m_SteamAPI_Shutdown = (void(*)())get_proc("SteamAPI_Shutdown");
     m_SteamAPI_RunCallbacks = (void(*)())get_proc("SteamAPI_RunCallbacks");
 
-    if (!m_SteamAPI_Init || !m_SteamAPI_Shutdown)
+    if (!m_SteamAPI_Init())
     {
-        gEngfuncs.Con_DPrintf("[SteamAPI] Failed to get basic API functions\n");
+        gEngfuncs.Con_Printf("\n[SteamAPI] SteamAPI_Init failed (Steam not running?)\n");
         shutdown();
         return false;
     }
 
-    if (!m_SteamAPI_Init())
-    {
-        gEngfuncs.Con_Printf("[SteamAPI] SteamAPI_Init() Failed — Steam client not running?\n");
-    }
-    else
-    {
-        gEngfuncs.Con_Printf("[SteamAPI] SteamAPI_Init() OK\n");
-    }
+    gEngfuncs.Con_Printf("\n[SteamAPI] Steam initialized successfully!\n");
 
-    LoadSteamFunctions();
+    if (!LoadSteamFunctions())
+    {
+        gEngfuncs.Con_Printf("\n[SteamAPI] Failed to load Steam interfaces!\n");
+        shutdown();
+        return false;
+    }
 
     m_initialized = true;
+
+    gEngfuncs.Con_Printf("\n[SteamAPI] Fully initialized!\n");
+
     return true;
 }
 
@@ -140,6 +154,8 @@ void CSteamAPI::shutdown()
     m_RequestUserInformation = nullptr;
     m_GetImageSize = nullptr;
     m_GetImageRGBA = nullptr;
+
+    gEngfuncs.Con_Printf("\n[SteamAPI] Shutdown!\n");
 }
 
 void CSteamAPI::RunCallbacks()
@@ -180,8 +196,5 @@ SteamID64 CSteamAPI::GetLocalSteamID()
 
 void CSteamAPI::ActivateGameOverlayToUser(const char* pchDialog, SteamID64 steamID)
 {
-    if (m_ActivateGameOverlayToUser && m_SteamFriends)
-    {
-        m_ActivateGameOverlayToUser(m_SteamFriends(), pchDialog, steamID);
-    }
+    return m_ActivateGameOverlayToUser(m_SteamFriends(), pchDialog, steamID);
 } 

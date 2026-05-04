@@ -7,6 +7,8 @@
 
 #define MAX_AVATAR_PLAYERS 32
 
+#define AVATAR_REQUEST_COOLDOWN 2.0f
+
 struct AvatarEntry
 {
     ImTextureID texture;
@@ -30,15 +32,18 @@ public:
 private:
     AvatarEntry m_avatars[MAX_AVATAR_PLAYERS];
 
-
     SteamID64 SteamIdToSteam64(const char *steamId);
-
 
     ImTextureID CreateTextureFromRGBA(uint8_t *data, int width, int height);
 
     void DeleteTexture(ImTextureID tex);
 
     bool LoadAvatar(int playerIndex, SteamID64 steam64);
+
+    inline bool IsValidPlayerIndex(int playerIndex) const
+    {
+        return playerIndex >= 1 && playerIndex < MAX_AVATAR_PLAYERS;
+    }
 };
 
 extern CAvatarCache g_AvatarCache;

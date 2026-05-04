@@ -185,14 +185,7 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 	EngineHooks::PatchEngine();
 	HookSvcMessages();
 
-	if (g_SteamAPI.initialize())
-	{
-		gEngfuncs.Con_Printf("\n[SteamAPI]: initialized\n");
-	}
-	else
-	{
-		gEngfuncs.Con_Printf("\n[SteamAPI]: failed to initialize\n");
-	}
+	g_SteamAPI.initialize();
 #endif
 
 	ConsolePrint( "\nAxion\n" );
