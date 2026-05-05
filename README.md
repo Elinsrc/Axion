@@ -38,7 +38,7 @@
 | hud_strafeguide_height | 0 | - | - | Strafeguide vertical position |
 | hud_strafeguide_size | 0 | - | - | Strafeguide size |
 | hud_watermark | 1 | - | - | Displays client watermark |
-| hud_rainbow | 1 | 0 | 1 | Enables rainbow HUD effect |
+| hud_rainbow | 0 | 0 | 1 | Enables rainbow HUD effect |
 | hud_rainbow_sat | 100 | - | - | Rainbow saturation |
 | hud_rainbow_val | 100 | - | - | Rainbow brightness |
 | hud_rainbow_speed | 40 | - | - | Rainbow animation speed |
@@ -76,7 +76,7 @@
 | hud_timer | 1 | 0 | 3 | HUD timer mode (0 off / 1 time left / 2 time passed / 3 clock) |
 | hud_nextmap | 1 | 0 | 1 | Displays next map info |
 | ui_imgui_demo | - | - | - | Opens ImGui demo window |
-| ui_commands | 0 | - | - | Opens Axion settings menu |
+| ui_commands | - | - | - | Opens Axion settings menu |
 | ui_imgui_scale | 0 | 1 | * | UI scaling factor |
 
 ## Building
