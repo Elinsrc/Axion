@@ -29,6 +29,10 @@
 
 #include "demo_api.h"
 
+#if USE_IMGUI && (XASH_MOBILE_PLATFORM || XASH_64BIT)
+#include "gl_cvars.h"
+#endif
+
 // Spectator Mode
 extern "C" 
 {
@@ -1737,6 +1741,10 @@ void V_Init( void )
 	cl_weaponlag = gEngfuncs.pfnRegisterVariable( "cl_weaponlag", "1", FCVAR_ARCHIVE );
 	cl_weaponsway = gEngfuncs.pfnRegisterVariable( "cl_weaponsway", "1", FCVAR_ARCHIVE );
 	cl_weaponlowering = gEngfuncs.pfnRegisterVariable( "cl_weaponlowering", "1", FCVAR_ARCHIVE );
+
+#if USE_IMGUI && (XASH_MOBILE_PLATFORM || XASH_64BIT)
+	R_InitializeConVars();
+#endif
 
 	// OpenAG
 	cl_viewmodel_ofs_right		= gEngfuncs.pfnRegisterVariable( "cl_viewmodel_ofs_right","0", FCVAR_ARCHIVE ); // x = right

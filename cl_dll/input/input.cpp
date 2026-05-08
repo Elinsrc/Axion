@@ -35,7 +35,8 @@ extern "C"
 #include "imgui_viewport.h"
 extern cvar_t *ui_imgui_scoreboard;
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
-#include "gl_export.h"
+#include "gl_local.h"
+extern bool g_fRenderInitialized;
 #else
 #include "engine_hooks.h"
 #include "steam_api.h"
@@ -1286,7 +1287,8 @@ void DLLEXPORT HUD_Shutdown( void )
 
 #if USE_IMGUI
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
-	GL_Shutdown();
+	if (g_fRenderInitialized)
+		GL_Shutdown();
 #else
 	g_ImGuiManager.Terminate();
 	UnHookSvcMessages();

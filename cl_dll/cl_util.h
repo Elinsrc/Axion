@@ -92,6 +92,8 @@ inline struct cvar_s *CVAR_CREATE( const char *cv, const char *val, const int fl
 #define SetCrosshair ( *gEngfuncs.pfnSetCrosshair )
 #define AngleVectors ( *gEngfuncs.pfnAngleVectors )
 
+#define CVAR_TO_BOOL( x ) ((x) && ((x)->value != 0.0f) ? true : false )
+
 // Gets the height & width of a sprite,  at the specified frame
 inline int SPR_Height( HSPRITE x, int f )	{ return gEngfuncs.pfnSPR_Height(x, f); }
 inline int SPR_Width( HSPRITE x, int f )	{ return gEngfuncs.pfnSPR_Width(x, f); }

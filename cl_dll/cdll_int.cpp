@@ -40,9 +40,10 @@ int g_ImGuiMouse = 0;
 
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
 
-#include "gl_export.h"
+#include "gl_local.h"
 #include "render_api.h"
-render_api_t gRenderAPI;
+render_api_t gRenderfuncs;
+bool g_fRenderInitialized = false;
 
 #else 
 
@@ -331,7 +332,8 @@ void DLLEXPORT HUD_Init(void)
 	g_ImGuiViewport.Initialize();
 
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
-	GL_Init();
+	if (g_fRenderInitialized)
+		GL_Init();
 #else
 	SvcMessagesInit();
 	g_ImGuiManager.Initialize();
@@ -437,7 +439,7 @@ Called when a director event message was received
 
 void DLLEXPORT HUD_DirectorMessage( int iSize, void *pbuf )
 {
-	 gHUD.m_Spectator.DirectorMessage( iSize, pbuf );
+	gHUD.m_Spectator.DirectorMessage( iSize, pbuf );
 }
 
 int DLLEXPORT HUD_MobilityInterface( mobile_engfuncs_t *gpMobileEngfuncs )
@@ -485,10 +487,34 @@ int DLLEXPORT HUD_GetRenderInterface( int version, render_api_t *renderfuncs, re
 		return false;
 	}
 
-	gRenderAPI = *renderfuncs;
+	// copy new physics interface
+	memcpy( &gRenderfuncs, renderfuncs, sizeof( render_api_t ));
 
-	// we didn't send callbacks to engine, because we don't use it
-	// *callback = renderInterface;
+	// check that engine started with ref_gl renderer
+	const char *refName = gEngfuncs.pfnGetCvarString("r_refdll_loaded");
+
+#if XASH_MOBILE_PLATFORM
+	if (refName && strcmp(refName, "gl4es") != 0)
+	{
+		gRenderfuncs.Host_Error("Axion requires \"GL4ES\" renderer! "
+			"Please, select \"GL4ES\" renderer in game settings, "
+			"otherwise you can use \"-ref gl4es\" startup parameter. "
+		);
+		return false;
+	}
+#else
+	if (refName && strcmp(refName, "gl") != 0)
+	{
+		gRenderfuncs.Host_Error("Axion requires \"OpenGL\" renderer! "
+			"Please, select \"OpenGL\" renderer in game settings, "
+			"otherwise you can use \"-ref gl\" startup parameter, "
+			"or remove your \"video.cfg\" configuration file."
+		);
+		return false;
+	}
+#endif
+
+	g_fRenderInitialized = true;
 
 	return true;
 }

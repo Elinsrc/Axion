@@ -31,6 +31,12 @@
 #define FCVAR_FILTERCHARS	(1<<12) // This cvar's string will be filtered for 'bad' characters (e.g. ';', '\n')
 #define FCVAR_NOBADPATHS	(1<<13) // This cvar's string cannot contain file paths that are above the current directory
 
+// Xash3D extensions
+#define FCVAR_GLCONFIG		(1<<12)	// write it into <renderer>.cfg(see RefAPI)
+#define FCVAR_CHANGED		(1<<13)	// set each time the cvar is changed
+#define FCVAR_GAMEUIDLL		(1<<14)	// defined by the menu DLL
+#define FCVAR_CHEAT			(1<<15)	// can not be changed if cheats are disabled
+
 typedef struct cvar_s
 {
 	const char	*name;

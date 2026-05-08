@@ -31,13 +31,6 @@ GNU General Public License for more details.
 #define EXTERN extern
 #endif
 
-typedef struct {
-    const char *name;
-    void **func;
-} dllfunc_t;
-
-extern render_api_t gRenderAPI;
-
 typedef unsigned int GLenum;
 typedef unsigned char GLboolean;
 typedef unsigned int GLbitfield;
@@ -1452,6 +1445,4 @@ EXTERN void (APIENTRY *glAlphaToCoverageDitherControlNV)(GLenum mode);
 #define GL_UNPACK_ROW_LENGTH 0x0CF2
 #define GL_COLOR_WRITEMASK 0x0C23
 
-bool GL_Init(void);
-void GL_Shutdown(void);
 #endif // GL_EXPORT_H

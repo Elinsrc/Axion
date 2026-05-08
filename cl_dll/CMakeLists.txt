@@ -195,6 +195,7 @@ endif()
 
 if (USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
     list(APPEND CLDLL_SOURCES
+		render/gl_cvars.cpp
         render/gl_export.cpp
     )
 endif()

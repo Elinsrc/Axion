@@ -15,9 +15,24 @@ GNU General Public License for more details.
 
 #define EXTERN
 #include "gl_export.h"
+#include "cl_util.h"
+#include "gl_cvars.h"
+#include "gl_local.h"
 #include "imgui_manager.h"
 
-extern render_api_t gRenderAPI;
+#include "build.h"
+
+extern render_api_t gRenderfuncs;
+extern bool g_fRenderInitialized;
+
+glConfig_t	glConfig;
+
+#ifdef XASH_WIN32
+#define strnicmp _strnicmp
+#else
+#define strnicmp strncasecmp
+#endif
+
 
 static dllfunc_t opengl_110funcs[] =
 {
@@ -212,21 +227,221 @@ static dllfunc_t opengl_200funcs[] =
     { NULL, NULL }
 };
 
-/*
- * ==================
- * GL_LoadFunctions
- * ==================
- */
-static void GL_LoadFunctions(const dllfunc_t *funcs)
+static dllfunc_t drawrangeelementsextfuncs[] =
 {
-    for (const dllfunc_t *f = funcs; f->name; f++)
-    {
-        *f->func = (void *)gRenderAPI.GL_GetProcAddress(f->name);
-        if (*f->func)
-            gEngfuncs.Con_Printf("Loaded %s\n", f->name);
-        else
-            gEngfuncs.Con_Printf("Not load %s\n", f->name);
-    }
+    { "glDrawRangeElementsEXT" , (void **)&glDrawRangeElements },
+    { NULL, NULL }
+};
+
+static dllfunc_t debugoutputfuncs[] =
+{
+    { "glDebugMessageControlARB" , (void **)&glDebugMessageControlARB },
+    { "glDebugMessageInsertARB" , (void **)&glDebugMessageInsertARB },
+    { "glDebugMessageCallbackARB" , (void **)&glDebugMessageCallbackARB },
+    { "glGetDebugMessageLogARB" , (void **)&glGetDebugMessageLogARB },
+    { NULL, NULL }
+};
+
+static dllfunc_t khr_debug_funcs[] =
+{
+    { "glGetObjectLabel"	, (void **)&glGetObjectLabel },
+    { "glGetObjectPtrLabel"	, (void **)&glGetObjectPtrLabel },
+    { "glObjectLabel"		, (void **)&glObjectLabel },
+    { "glObjectPtrLabel"	, (void **)&glObjectPtrLabel },
+    { "glPopDebugGroup"		, (void **)&glPopDebugGroup },
+    { "glPushDebugGroup"	, (void **)&glPushDebugGroup },
+    { NULL, NULL }
+};
+
+static dllfunc_t blendseparatefunc[] =
+{
+    { "glBlendFuncSeparateEXT", (void **)&glBlendFuncSeparate },
+    { NULL, NULL }
+};
+
+static dllfunc_t shaderobjectsfuncs[] =
+{
+    { "glGetInfoLogARB"               , (void **)&glGetInfoLogARB },
+    { "glGetAttachedObjectsARB"       , (void **)&glGetAttachedObjectsARB },
+    { "glGetUniformfvARB"             , (void **)&glGetUniformfvARB },
+    { "glGetUniformivARB"             , (void **)&glGetUniformivARB },
+    { NULL, NULL }
+};
+
+static dllfunc_t binaryshaderfuncs[] =
+{
+    { "glProgramBinary"              , (void **)&glProgramBinary },
+    { "glGetProgramBinary"           , (void **)&glGetProgramBinary },
+    { "glProgramParameteri"          , (void **)&glProgramParameteri },
+    { NULL, NULL }
+};
+
+static dllfunc_t vbofuncs[] =
+{
+    { "glBindBufferARB"    , (void **)&glBindBufferARB },
+    { "glDeleteBuffersARB" , (void **)&glDeleteBuffersARB },
+    { "glGenBuffersARB"    , (void **)&glGenBuffersARB },
+    { "glIsBufferARB"      , (void **)&glIsBufferARB },
+    { "glMapBufferARB"     , (void **)&glMapBufferARB },
+    { "glUnmapBufferARB"   , (void **)&glUnmapBufferARB },
+    { "glBufferDataARB"    , (void **)&glBufferDataARB },
+    { "glBufferSubDataARB" , (void **)&glBufferSubDataARB },
+    { NULL, NULL }
+};
+
+static dllfunc_t vaofuncs[] =
+{
+    { "glBindVertexArray"    , (void **)&glBindVertexArray },
+    { "glDeleteVertexArrays" , (void **)&glDeleteVertexArrays },
+    { "glGenVertexArrays"    , (void **)&glGenVertexArrays },
+    { "glIsVertexArray"      , (void **)&glIsVertexArray },
+    { NULL, NULL }
+};
+
+static dllfunc_t fbofuncs[] =
+{
+    { "glIsRenderbuffer"                      , (void **)&glIsRenderbuffer },
+    { "glBindRenderbuffer"                    , (void **)&glBindRenderbuffer },
+    { "glDeleteRenderbuffers"                 , (void **)&glDeleteRenderbuffers },
+    { "glGenRenderbuffers"                    , (void **)&glGenRenderbuffers },
+    { "glRenderbufferStorage"                 , (void **)&glRenderbufferStorage },
+    { "glGetRenderbufferParameteriv"          , (void **)&glGetRenderbufferParameteriv },
+    { "glIsFramebuffer"                       , (void **)&glIsFramebuffer },
+    { "glBindFramebuffer"                     , (void **)&glBindFramebuffer },
+    { "glBlitFramebuffer"                     , (void **)&glBlitFramebuffer },
+    { "glDeleteFramebuffers"                  , (void **)&glDeleteFramebuffers },
+    { "glGenFramebuffers"                     , (void **)&glGenFramebuffers },
+    { "glCheckFramebufferStatus"              , (void **)&glCheckFramebufferStatus },
+    { "glFramebufferTexture1D"                , (void **)&glFramebufferTexture1D },
+    { "glFramebufferTexture2D"                , (void **)&glFramebufferTexture2D },
+    { "glFramebufferTexture3D"                , (void **)&glFramebufferTexture3D },
+    { "glFramebufferRenderbuffer"             , (void **)&glFramebufferRenderbuffer },
+    { "glGetFramebufferAttachmentParameteriv" , (void **)&glGetFramebufferAttachmentParameteriv },
+    { "glGenerateMipmap"                      , (void **)&glGenerateMipmap },
+    { "glColorMaski"                          , (void **)&glColorMaski },
+    { NULL, NULL }
+};
+
+static dllfunc_t occlusionfunc[] =
+{
+    { "glGenQueriesARB"        , (void **)&glGenQueriesARB },
+    { "glDeleteQueriesARB"     , (void **)&glDeleteQueriesARB },
+    { "glIsQueryARB"           , (void **)&glIsQueryARB },
+    { "glBeginQueryARB"        , (void **)&glBeginQueryARB },
+    { "glEndQueryARB"          , (void **)&glEndQueryARB },
+    { "glGetQueryivARB"        , (void **)&glGetQueryivARB },
+    { "glGetQueryObjectivARB"  , (void **)&glGetQueryObjectivARB },
+    { "glGetQueryObjectuivARB" , (void **)&glGetQueryObjectuivARB },
+    { NULL, NULL }
+};
+
+static dllfunc_t nv_dither_control_func[] =
+{
+    { "glAlphaToCoverageDitherControlNV", (void **)&glAlphaToCoverageDitherControlNV },
+    { NULL, NULL }
+};
+
+/*
+=================
+GL_SetExtension
+=================
+*/
+void GL_SetExtension(int r_ext, int enable)
+{
+	if(r_ext >= 0 && r_ext < R_EXTCOUNT)
+		glConfig.extension[r_ext] = enable ? GL_TRUE : GL_FALSE;
+    else gEngfuncs.Con_Printf("GL_SetExtension: invalid extension %d\n", r_ext);
+}
+
+/*
+=================
+GL_Support
+=================
+*/
+bool GL_Support(int r_ext)
+{
+	if(r_ext >= 0 && r_ext < R_EXTCOUNT)
+		return glConfig.extension[r_ext] ? true : false;
+	gEngfuncs.Con_Printf("GL_Support: invalid extension %d\n", r_ext);
+	return false;		
+}
+
+bool GL_SupportExtension(const char *name)
+{
+	if (name && name[0] && !strstr(glConfig.extensions_string, name))
+		return true;
+	else
+		return false;
+}
+
+/*
+=================
+GL_CheckExtension
+=================
+*/
+static void GL_CheckExtension( const char *name, const dllfunc_t *funcs, const char *cvarname, int r_ext, bool cvar_from_engine = false )
+{
+	const dllfunc_t	*func;
+	cvar_t		*parm;
+
+	gEngfuncs.Con_Printf("GL_CheckExtension: %s ", name);
+
+	// ugly hack for p1 opengl32.dll
+	if((name[0] == 'P' || name[2] == '_' || name[3] == '_') && !strstr(glConfig.extensions_string, name))
+	{
+		GL_SetExtension( r_ext, false );	// update render info
+		gEngfuncs.Con_Printf( "- ^1failed\n" );
+		return;
+	}
+
+	if( cvarname )
+	{
+		// NOTE: engine will be ignore cvar value if variable already exitsts (e.g. created on exec opengl.cfg)
+		// so this call just update variable description (because Host_WriteOpenGLConfig won't archive cvars without it)
+		if( cvar_from_engine ) parm = CVAR_GET_POINTER( cvarname );
+		else parm = gEngfuncs.pfnRegisterVariable( (char *)cvarname, "1", FCVAR_GLCONFIG );
+
+		if( !CVAR_TO_BOOL( parm ) || ( !CVAR_TO_BOOL( gl_extensions ) && r_ext != R_OPENGL_110 ))
+		{
+			gEngfuncs.Con_Printf( "- ^3disabled\n" );
+			GL_SetExtension( r_ext, false );
+			return; // nothing to process at
+		}
+		GL_SetExtension( r_ext, true );
+	}
+
+	// clear exports
+	for( func = funcs; func && func->name; func++ )
+		*func->func = NULL;
+
+	GL_SetExtension( r_ext, true ); // predict extension state
+	for( func = funcs; func && func->name != NULL; func++ )
+	{
+		// functions are cleared before all the extensions are evaluated
+		if(!(*func->func = (void *)gRenderfuncs.GL_GetProcAddress(func->name)))
+			GL_SetExtension( r_ext, false ); // one or more functions are invalid, extension will be disabled
+	}
+
+	if( GL_Support( r_ext ))
+		gEngfuncs.Con_Printf( "- ^2enabled\n" );
+	else 
+		gEngfuncs.Con_Printf( "- ^1failed\n" );
+}
+
+static void GL_InitExtensions( void )
+{
+	// initialize gl extensions
+	GL_CheckExtension("OpenGL 1.1.0", opengl_110funcs, NULL, R_OPENGL_110);
+	GL_CheckExtension("OpenGL 2.0", opengl_200funcs, NULL, R_OPENGL_200);
+
+	if (!GL_Support(R_OPENGL_110))
+	{
+		gEngfuncs.Con_Printf( "OpenGL 1.0 can't be installed. Custom renderer disabled\n" );
+		// TODO this is used in P2 but not here 
+		// g_fRenderInterfaceValid = false;
+		g_fRenderInitialized = false;
+		return;
+	}
 }
 
 /*
@@ -236,11 +451,14 @@ static void GL_LoadFunctions(const dllfunc_t *funcs)
  */
 bool GL_Init(void)
 {
-    gEngfuncs.Con_Printf("Loading OpenGL 1.1 functions...\n");
-    GL_LoadFunctions(opengl_110funcs);
+	GL_InitExtensions();
 
-    gEngfuncs.Con_Printf("Loading OpenGL 2.0 functions...\n");
-    GL_LoadFunctions(opengl_200funcs);
+    if( !g_fRenderInitialized )
+	{
+		gEngfuncs.Cvar_SetValue( "gl_renderer", 0 );
+		GL_Shutdown();
+		return false;
+	}
 
     g_ImGuiManager.Initialize();
 
@@ -255,5 +473,7 @@ bool GL_Init(void)
 void GL_Shutdown(void)
 {
     g_ImGuiManager.Terminate();
-    gEngfuncs.Con_Printf("OpenGL functions unloaded.\n");
+    
+    // now all extensions are disabled
+	memset( glConfig.extension, 0, sizeof( glConfig.extension[0] ) * R_EXTCOUNT );
 }
