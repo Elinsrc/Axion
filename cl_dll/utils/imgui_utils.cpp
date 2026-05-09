@@ -386,3 +386,27 @@ void CImguiUtils::FreeImage(ImGuiImage& image)
         image.width = image.height = 0;
     }
 }
+
+void CImguiUtils::DrawTextShadow(float fontSize, const ImVec2& pos, const char* text, ImU32 color)
+{
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    ImFont* font = ImGui::GetFont();
+
+    dl->AddText(font, fontSize, ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 200), text);
+    dl->AddText(font, fontSize, pos, color, text);
+}
+
+void CImguiUtils::DrawTextShadowCenter(float fontSize, const ImVec2& pos,  const char* text, ImU32 color)
+{
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    ImFont* font = ImGui::GetFont();
+
+    ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, text);
+
+    ImVec2 finalPos;
+    finalPos.x = pos.x - (textSize.x * 0.5f);
+    finalPos.y = pos.y - (textSize.y * 0.5f);
+
+    dl->AddText(font, fontSize, ImVec2(finalPos.x + 1.0f, finalPos.y + 1.0f), IM_COL32(0, 0, 0, 200), text);
+    dl->AddText(font, fontSize, finalPos, color, text);
+}

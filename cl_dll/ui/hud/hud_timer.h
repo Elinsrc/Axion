@@ -11,6 +11,10 @@ public:
 	void Think(void);
 	int Draw(float flTime);
 
+#if USE_IMGUI
+	void ImGui_Timer();
+#endif
+
 	int MsgFunc_Timer(const char *pszName, int iSize, void *pbuf);
 
 	void DoResync(void);

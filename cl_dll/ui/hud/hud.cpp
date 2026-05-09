@@ -438,6 +438,7 @@ void CHud::Init( void )
 	//
 
 	CVAR_CREATE( "hud_vis", "0", FCVAR_ARCHIVE );
+	CVAR_CREATE( "hud_new", "1", FCVAR_ARCHIVE );
 	CVAR_CREATE( "cl_gauss_balls", "1", FCVAR_ARCHIVE );
 	CVAR_CREATE( "cl_gauss_hits", "1", FCVAR_ARCHIVE );
 	CVAR_CREATE( "cl_hidecorpses", "0", FCVAR_ARCHIVE );

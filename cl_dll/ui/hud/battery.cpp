@@ -25,6 +25,13 @@
 #include <string.h>
 #include <stdio.h>
 
+#if USE_IMGUI
+#include "imgui_manager.h"
+#include "imgui_viewport.h"
+#include "imgui_utils.h"
+#include "imgui_internal.h"
+#endif
+
 cvar_t *vis_battery100;
 cvar_t *vis_battery80;
 cvar_t *vis_battery60;
@@ -169,6 +176,11 @@ void CHudBattery::GetPainColor( int &r, int &g, int &b )
 
 int CHudBattery::Draw( float flTime )
 {
+#if USE_IMGUI
+	if ( CVAR_GET_FLOAT("hud_new") )
+		return 1;
+#endif
+
 	if( gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH )
 		return 1;
 
@@ -234,3 +246,67 @@ int CHudBattery::Draw( float flTime )
 
 	return 1;
 }
+
+#if USE_IMGUI
+void CHudBattery::ImGui_BatteryBar()
+{
+	if (!(CVAR_GET_FLOAT("hud_new"))) 
+		return;
+	
+	if ((gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH) || gEngfuncs.IsSpectateOnly()) 
+		return;
+	
+	if (!(gHUD.m_iWeaponBits & (1 << (WEAPON_SUIT)))) 
+		return;
+
+	ImDrawList* dl = ImGui::GetBackgroundDrawList();
+	ImVec2 center = ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
+
+	int bat = m_iBat;
+	static int s_maxBat = 100;
+	if (bat > s_maxBat) 
+		s_maxBat = bat;
+	if (gHUD.m_Health.m_iHealth <= 0) 
+		s_maxBat = 100;
+
+	float frac = ImClamp((float)bat / (float)s_maxBat, 0.0f, 1.0f);
+	static float smoothBat = 0.0f;
+	smoothBat = ImLerp(smoothBat, frac, 0.1f);
+
+	float radius = 85.0f; 
+	float thickness = 4.0f;
+	float startAngle = -IM_PI * 0.28f; 
+	float endAngle = IM_PI * 0.28f;
+	float currentAngle = endAngle - (endAngle - startAngle) * smoothBat;
+
+	dl->PathArcTo(center, radius, startAngle, endAngle, 40);
+	dl->PathStroke(IM_COL32(0, 0, 0, 80), 0, thickness + 2.0f);
+
+	if (smoothBat > 0.001f) 
+	{
+		dl->PathArcTo(center, radius, currentAngle, endAngle, 40);
+		dl->PathStroke(IM_COL32(255, 180, 0, 220), 0, thickness);
+	}
+
+	char buf[16]; 
+	sprintf(buf, "%d", bat);
+	float fontSize = 22.0f;
+	ImFont* font = ImGui::GetFont();
+	ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, buf);
+
+	int iSuitFull = gHUD.GetSpriteIndex("suit_full");
+	wrect_t rc = gHUD.GetSpriteRect(iSuitFull);
+	float sw = (float)(rc.right - rc.left);
+	float sh = (float)(rc.bottom - rc.top);
+	float iconH = 20.0f; 
+	float iconW = (sh > 0) ? sw * (iconH / sh) : 20.0f;
+
+	float blockCenterX = center.x + radius + 25.0f; 
+
+	float iconY = center.y - iconH - 2.0f;
+	float textY = center.y + 2.0f;
+
+	m_ImguiUtils.ImGuiSpriteIcon(gHUD.GetSprite(iSuitFull), rc, blockCenterX - (iconW * 0.5f), iconY, iconW, iconH, iconH, 255, 180, 0, 220);
+	m_ImguiUtils.DrawTextShadow(fontSize, ImVec2(blockCenterX - (textSize.x * 0.5f), textY), buf, IM_COL32(255, 180, 0, 220));
+}
+#endif

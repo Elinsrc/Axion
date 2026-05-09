@@ -1,3 +1,5 @@
+#pragma once
+
 #include "imgui_window.h"
 
 class CImGuiCrosshairs

@@ -30,6 +30,8 @@ public:
     ImGuiImage LoadImageFromMemory(const unsigned char* buffer, int bufferSize);
     float DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r = 255, int g = 255, int b = 255, int alpha = 255);
     void FreeImage(ImGuiImage& image);
+    void DrawTextShadow(float fontSize, const ImVec2& pos, const char* text, ImU32 color = IM_COL32(255, 180, 0, 230));
+    void DrawTextShadowCenter(float fontSize, const ImVec2& pos, const char* text, ImU32 color = IM_COL32(255, 180, 0, 230));
 };
 
 extern CImguiUtils m_ImguiUtils;

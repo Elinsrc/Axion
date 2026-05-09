@@ -1,8 +1,13 @@
 # Axion (formerly Client-Mod) [![Build Status](https://github.com/Elinsrc/Axion/actions/workflows/build.yml/badge.svg)](https://github.com/Elinsrc/Axion/actions) <img align="right" src="https://raw.githubusercontent.com/Elinsrc/Axion/refs/heads/master/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Axion" />
 
- - **Axion** is a modification of the **Half-Life** client for **Xash3D FWGS** and **GoldSource**, based on [hlsdk-portable](https://github.com/FWGS/hlsdk-portable) and [PrimeXT](https://github.com/SNMetamorph/PrimeXT).
+- **Axion** is a modification of the **Half-Life** client for **Xash3D FWGS** and **GoldSource**, based on [hlsdk-portable](https://github.com/FWGS/hlsdk-portable) and [PrimeXT](https://github.com/SNMetamorph/PrimeXT).
 
 ## Configuration (CVars)
+
+**Attention:** The `hud_new` cvar is set to `1` by default.  
+It enables the new HUD made with ImGui.  
+If you don't like it, you can restore the classic HUD by setting `hud_new` to `0`.
+
 | CVar | Default | Min | Max | Description |
 |------|--------|-----|-----|-------------|
 | cl_autojump | 1 | 0 | 1 | Automatically jumps when landing while holding +jump |

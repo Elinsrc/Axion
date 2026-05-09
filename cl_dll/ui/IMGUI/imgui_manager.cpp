@@ -58,6 +58,11 @@ void CImGuiManager::NewFrame()
     g_ImGuiCrosshairs.Draw();
     g_ImGuiDebug.Draw();
     gHUD.m_DeathNotice.ImGui_DeathNotice();
+    gHUD.m_Health.ImGui_HealthBar();
+    gHUD.m_Battery.ImGui_BatteryBar();
+    gHUD.m_Timer.ImGui_Timer();
+    gHUD.m_Ammo.ImGui_DrawWList( gHUD.m_flTime );
+    gHUD.m_Ammo.ImGui_AmmoBar();
     GetClientVoiceMgr()->ImGui_DrawVoiceHUD();
     ImGui::Render();
     m_pBackend->RenderDrawData(ImGui::GetDrawData());

@@ -30,6 +30,10 @@
 #if USE_IMGUI
 #include "ui_crosshairs.h"
 extern cvar_t *cl_cross;
+#include "imgui_manager.h"
+#include "imgui_viewport.h"
+#include "imgui_utils.h"
+#include "imgui_internal.h"
 #endif
 
 #include "ammohistory.h"
@@ -866,11 +870,21 @@ int CHudAmmo::Draw( float flTime )
 	if( ( gHUD.m_iHideHUDDisplay & ( HIDEHUD_WEAPONS | HIDEHUD_ALL ) ) )
 		return 1;
 
+#if USE_IMGUI
+	if (!(CVAR_GET_FLOAT("hud_new")))
+		DrawWList( flTime );
+#else
 	// Draw Weapon Menu
 	DrawWList( flTime );
+#endif
 
 	// Draw ammo pickup history
 	gHR.DrawAmmoHistory( flTime );
+
+#if USE_IMGUI
+	if (CVAR_GET_FLOAT("hud_new"))
+		return 1;
+#endif
 
 	if( !( m_iFlags & HUD_ACTIVE ) )
 		return 0;
@@ -1007,6 +1021,268 @@ int CHudAmmo::Draw( float flTime )
 	}
 	return 1;
 }
+
+#if USE_IMGUI
+void CHudAmmo::ImGui_DrawWList(float flTime)
+{
+	if (!CVAR_GET_FLOAT("hud_new"))
+		return;
+
+	if (!gpActiveSel) 
+		return;
+
+	ImDrawList* dl = ImGui::GetBackgroundDrawList();
+	ImVec2 center = ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
+
+	float fontSize = 24.0f;
+	float menuY = center.y - 220.0f;
+	float slotW = 140.0f;
+	float slotH = 90.0f;
+	float spacing = 10.0f;
+
+	int iActiveSlot;
+	if (gpActiveSel == (WEAPON*)1)
+		iActiveSlot = -1;
+	else 
+		iActiveSlot = gpActiveSel->iSlot;
+
+	float totalBucketsW = (MAX_WEAPON_SLOTS * 30.0f) + ((MAX_WEAPON_SLOTS - 1) * 8.0f);
+	float bucketX = center.x - (totalBucketsW * 0.5f);
+	float bucketY = menuY - 35.0f;
+
+	for (int i = 0; i < MAX_WEAPON_SLOTS; i++)
+	{
+		bool hasWeapons = (gWR.GetFirstPos(i) != nullptr);
+		ImU32 col = (iActiveSlot == i) ? IM_COL32(255, 160, 0, 255) : (hasWeapons ? IM_COL32(255, 255, 255, 160) : IM_COL32(255, 255, 255, 50));
+		
+		char bBuf[4]; 
+		sprintf(bBuf, "%d", i + 1);
+		m_ImguiUtils.DrawTextShadowCenter(fontSize * 0.8f, ImVec2(bucketX + 15, bucketY), bBuf, col);
+		
+		if (iActiveSlot == i)
+			dl->AddRectFilled(ImVec2(bucketX, bucketY + 18), ImVec2(bucketX + 30, bucketY + 21), col, 1.0f);
+		
+		bucketX += 38.0f;
+	}
+
+	if (iActiveSlot != -1) 
+	{
+		int weaponCount = 0;
+		for (int i = 0; i < MAX_WEAPON_POSITIONS; i++) 
+		{
+			if (gWR.GetWeaponSlot(iActiveSlot, i)) 
+				weaponCount++;
+		}
+
+		float totalW = (weaponCount * slotW) + ((weaponCount - 1) * spacing);
+		float startX = center.x - (totalW * 0.5f);
+
+		for (int iPos = 0; iPos < MAX_WEAPON_POSITIONS; iPos++) 
+		{
+			WEAPON* p = gWR.GetWeaponSlot(iActiveSlot, iPos);
+			if (!p || !p->iId) 
+				continue;
+
+			bool isSelected = (gpActiveSel == p);
+			bool hasAmmo = gWR.HasAmmo(p);
+
+			int r, g, b, a;
+			if (isSelected) 
+			{
+				r = 255; 
+				g = 160; 
+				b = 0; 
+				a = 255;
+			} 
+			else 
+			{
+				if (hasAmmo) 
+				{
+					r = 255; 
+					g = 255; 
+					b = 255; 
+					a = 192;
+				} 
+				else 
+				{
+					r = 255; 
+					g = 60; 
+					b = 60; 
+					a = 128;
+				}
+			}
+
+			ImVec2 pMin(startX, menuY);
+			ImVec2 pMax(startX + slotW, menuY + slotH);
+
+			dl->AddRectFilled(pMin, pMax, IM_COL32(0, 0, 0, (int)(a * 0.6f)), 8.0f);
+			
+			if (isSelected)
+				dl->AddRect(pMin, pMax, IM_COL32(255, 160, 0, a), 8.0f, 0, 1.0f);
+
+			char nameBuf[64];
+			sprintf(nameBuf, "%s", p->szName);
+			const char* displayName = (strncmp(nameBuf, "weapon_", 7) == 0) ? nameBuf + 7 : nameBuf;
+			m_ImguiUtils.DrawTextShadowCenter(fontSize * 0.8f, ImVec2(startX + slotW * 0.5f, menuY + 10.0f), displayName, IM_COL32(255, 255, 255, a));
+
+			float textTopPadding = 10.0f;
+			float textHeight = (fontSize * 0.8f);
+			float gap = 2.0f;
+			float barAreaH = 10.0f;
+			
+			wrect_t rc = isSelected ? p->rcActive : p->rcInactive;
+			float iconAreaY = menuY + textTopPadding + textHeight + gap;
+			float iconAreaH = slotH - (textTopPadding + textHeight + gap) - barAreaH;
+			
+			float iconScale = ImMin((slotW * 0.9f) / (rc.right - rc.left), iconAreaH / (rc.bottom - rc.top));
+			float finalW = (rc.right - rc.left) * iconScale;
+			float finalH = (rc.bottom - rc.top) * iconScale;
+
+			m_ImguiUtils.ImGuiSpriteIcon(isSelected ? p->hActive : p->hInactive, rc, startX + (slotW - finalW) * 0.5f, iconAreaY + (iconAreaH - finalH) * 0.5f, finalW, finalH, finalH, r, g, b, a);
+			
+			if (p->iAmmoType != -1) 
+			{
+				float f = ImClamp((float)gWR.CountAmmo(p->iAmmoType) / (float)p->iMax1, 0.0f, 1.0f);
+				dl->AddRectFilled(ImVec2(pMin.x + 8, pMax.y - 8), ImVec2(pMax.x - 8, pMax.y - 4), IM_COL32(0, 0, 0, 120));
+				
+				ImU32 barCol = hasAmmo ? IM_COL32(0, 255, 128, a) : IM_COL32(255, 60, 60, a);
+				dl->AddRectFilled(ImVec2(pMin.x + 8, pMax.y - 8), ImVec2(pMin.x + 8 + (slotW - 16) * f, pMax.y - 4), barCol, 2.0f);
+			}
+
+			startX += slotW + spacing;
+		}
+	}
+}
+
+float CHudAmmo::ImGui_DrawBar(float x, float y, float width, float height, float f)
+{
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    
+    f = ImClamp(f, 0.0f, 1.0f);
+    float rounding = 2.0f;
+
+    dl->AddRectFilled(ImVec2(x, y), ImVec2(x + width, y + height), IM_COL32(0, 0, 0, 100), rounding);
+
+    if (f > 0.0f)
+    {
+        float w = f * width;
+        if (w < 1.0f) w = 1.0f;
+
+        int r, g, b;
+        UnpackRGB(r, g, b, RGB_GREENISH);
+        
+        dl->AddRectFilled(ImVec2(x, y), ImVec2(x + w, y + height), IM_COL32(r, g, b, 255), rounding);
+    }
+
+    dl->AddRect(ImVec2(x, y), ImVec2(x + width, y + height), IM_COL32(255, 255, 255, 30), rounding);
+
+    return x + width;
+}
+
+void CHudAmmo::ImGui_DrawAmmoBar(WEAPON *p, float x, float y, float width, float height)
+{
+    if (!p) 
+		return;
+
+    if (p->iAmmoType != -1)
+    {
+        int count1 = gWR.CountAmmo(p->iAmmoType);
+        if (count1 > 0)
+        {
+            float f1 = (float)count1 / (float)p->iMax1;
+            float nextX = ImGui_DrawBar(x, y, width, height, f1);
+
+            if (p->iAmmo2Type != -1)
+            {
+                int count2 = gWR.CountAmmo(p->iAmmo2Type);
+                if (count2 > 0)
+                {
+                    float f2 = (float)count2 / (float)p->iMax2;
+					
+                    ImGui_DrawBar(nextX + 5.0f, y, width, height, f2);
+                }
+            }
+        }
+    }
+}
+
+void CHudAmmo::ImGui_AmmoBar()
+{
+	if (!(CVAR_GET_FLOAT("hud_new"))) 
+		return;
+	
+	if ((gHUD.m_iHideHUDDisplay & (HIDEHUD_WEAPONS | HIDEHUD_ALL))) 
+		return;
+	
+	if (!(gHUD.m_iWeaponBits & (1 << (WEAPON_SUIT)))) 
+		return;
+	
+	if (!m_pWeapon) 
+		return;
+
+	WEAPON* pw = m_pWeapon;
+	if (pw->iAmmoType < 0 && pw->iAmmo2Type < 0) 
+		return;
+
+	ImDrawList* dl = ImGui::GetBackgroundDrawList();
+	ImVec2 center = ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
+	
+	float radius = 85.0f; 
+	float fontSize = 24.0f;
+	float iconH = 20.0f;
+	ImFont* font = ImGui::GetFont();
+
+	char buf[64];
+	float baseY = center.y + radius;
+
+	if (pw->iAmmo2Type > 0)
+	{
+		int iAmmo2 = gWR.CountAmmo(pw->iAmmo2Type);
+		if (iAmmo2 > 0)
+		{
+			sprintf(buf, "%d", iAmmo2);
+			ImVec2 tSizeAlt = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, buf);
+			
+			wrect_t rc2 = pw->rcAmmo2;
+			float sw2 = (float)(rc2.right - rc2.left);
+			float sh2 = (float)(rc2.bottom - rc2.top);
+	
+			float sc2 = (sh2 > 0) ? (iconH / sh2) : 1.0f;
+			float iw2 = sw2 * sc2;
+			float ih2 = sh2 * sc2;
+
+			float textX2 = center.x - (tSizeAlt.x * 0.5f);
+			float y2 = baseY - fontSize - 8.0f;
+
+			m_ImguiUtils.DrawTextShadow(fontSize, ImVec2(textX2, y2), buf, IM_COL32(255, 160, 0, 255));
+			m_ImguiUtils.ImGuiSpriteIcon(pw->hAmmo2, rc2, textX2 + tSizeAlt.x + 10.0f, y2, iw2, ih2, fontSize, 255, 160, 0, 255);
+		}
+	}
+
+	if (pw->iAmmoType > 0)
+	{
+		if (pw->iClip >= 0)
+			sprintf(buf, "%d | %d", pw->iClip, gWR.CountAmmo(pw->iAmmoType));
+		else
+			sprintf(buf, "%d", gWR.CountAmmo(pw->iAmmoType));
+
+		ImVec2 tSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, buf);
+		
+		wrect_t rc = pw->rcAmmo;
+		float sw = (float)(rc.right - rc.left);
+		float sh = (float)(rc.bottom - rc.top);
+
+		float sc = (sh > 0) ? (iconH / sh) : 1.0f;
+		float iw = sw * sc;
+		float ih = sh * sc;
+
+		float textX = center.x - (tSize.x * 0.5f);
+
+		m_ImguiUtils.DrawTextShadow(fontSize, ImVec2(textX, baseY), buf, IM_COL32(255, 160, 0, 255));
+		m_ImguiUtils.ImGuiSpriteIcon(pw->hAmmo, rc, textX + tSize.x + 10.0f, baseY, iw, ih, fontSize, 255, 160, 0, 255);
+	}
+}
+#endif
 
 //
 // Draws the ammo bar on the hud

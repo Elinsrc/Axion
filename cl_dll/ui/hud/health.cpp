@@ -29,6 +29,13 @@
 
 #include "mobility_int.h"
 
+#if USE_IMGUI
+#include "imgui_manager.h"
+#include "imgui_viewport.h"
+#include "imgui_utils.h"
+#include "imgui_internal.h"
+#endif
+
 cvar_t *vis_health100;
 cvar_t *vis_health80;
 cvar_t *vis_health60;
@@ -277,6 +284,11 @@ void CHudHealth::GetPainColor( int &r, int &g, int &b )
 
 int CHudHealth::Draw( float flTime )
 {
+#if USE_IMGUI
+	if ( CVAR_GET_FLOAT("hud_new") )
+		return 1;
+#endif
+
 	int r, g, b;
 	int a = 0, x, y;
 	int HealthWidth;
@@ -339,6 +351,86 @@ int CHudHealth::Draw( float flTime )
 	DrawDamage( flTime );
 	return DrawPain( flTime );
 }
+
+#if USE_IMGUI
+void CHudHealth::ImGui_HealthBar()
+{
+	if (!(CVAR_GET_FLOAT("hud_new"))) 
+		return;
+	
+	if ((gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH) || gEngfuncs.IsSpectateOnly())
+		return;
+	
+	if (!(gHUD.m_iWeaponBits & (1 << (WEAPON_SUIT)))) 
+		return;
+
+	ImDrawList* dl = ImGui::GetBackgroundDrawList();
+	ImVec2 center = ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
+
+	int hp = m_iHealth;
+	static int s_maxHp = 100;
+	if (hp > s_maxHp) 
+		s_maxHp = hp;
+	if (hp <= 0) 
+		s_maxHp = 100;
+	
+	float frac = ImClamp((float)hp / (float)s_maxHp, 0.0f, 1.0f);
+	static float smoothHp = 0.0f;
+	smoothHp = ImLerp(smoothHp, frac, 0.1f);
+
+	float r, g, b;
+	if (smoothHp > 0.5f) 
+	{
+		float t = (smoothHp - 0.5f) * 2.0f;
+		r = ImLerp(255.0f, 0.0f, t);
+		g = ImLerp(200.0f, 255.0f, t);
+		b = 0.0f;
+	} else 
+	{
+		float t = smoothHp * 2.0f;
+		r = ImLerp(255.0f, 255.0f, t);
+		g = ImLerp(0.0f, 200.0f, t);
+		b = 0.0f;
+	}
+	ImU32 hpColor = IM_COL32((int)r, (int)g, (int)b, 230);
+
+	float radius = 85.0f; 
+	float thickness = 4.0f;
+	float startAngle = IM_PI * 0.72f;
+	float endAngle = IM_PI * 1.28f;
+	float currentAngle = startAngle + (endAngle - startAngle) * smoothHp;
+
+	dl->PathArcTo(center, radius, startAngle, endAngle, 40);
+	dl->PathStroke(IM_COL32(0, 0, 0, 80), 0, thickness + 2.0f);
+
+	if (smoothHp > 0.001f) 
+	{
+		dl->PathArcTo(center, radius, startAngle, currentAngle, 40);
+		dl->PathStroke(hpColor, 0, thickness);
+	}
+
+	char buf[16]; 
+	sprintf(buf, "%d", hp);
+	float fontSize = 22.0f;
+	ImFont* font = ImGui::GetFont();
+	float textLineHeight = ImGui::GetTextLineHeight();
+	ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, buf);
+
+	wrect_t rc = gHUD.GetSpriteRect(m_HUD_cross);
+	float sw = (float)(rc.right - rc.left);
+	float sh = (float)(rc.bottom - rc.top);
+	float iconH = 20.0f;
+	float iconW = sw * (iconH / sh);
+
+	float blockCenterX = center.x - radius - 25.0f; 
+	
+	float iconY = center.y - iconH - 2.0f;
+	float textY = center.y + 2.0f;
+
+	m_ImguiUtils.ImGuiSpriteIcon(gHUD.GetSprite(m_HUD_cross), rc, blockCenterX - (iconW * 0.5f), iconY, iconW, iconH, iconH, (int)r, (int)g, (int)b, 230);
+	m_ImguiUtils.DrawTextShadow(fontSize, ImVec2(blockCenterX - (textSize.x * 0.5f), textY), buf, hpColor);
+}
+#endif
 
 void CHudHealth::CalcDamageDirection( vec3_t vecFrom )
 {

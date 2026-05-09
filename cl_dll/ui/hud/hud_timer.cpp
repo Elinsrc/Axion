@@ -19,6 +19,13 @@
 #include "demo.h"
 #include "demo_api.h"
 
+#if USE_IMGUI
+#include "imgui_manager.h"
+#include "imgui_viewport.h"
+#include "imgui_utils.h"
+#include "imgui_internal.h"
+#endif
+
 #define NET_API gEngfuncs.pNetAPI
 
 enum RulesRequestStatus
@@ -44,6 +51,10 @@ int CHudTimer::Init()
 	m_pCvarHudTimer = CVAR_CREATE("hud_timer", "1", FCVAR_ARCHIVE);
 	m_pCvarHudTimerSync = CVAR_CREATE("hud_timer_sync", "1", FCVAR_ARCHIVE);
 	m_pCvarHudNextmap = CVAR_CREATE("hud_nextmap", "1", FCVAR_ARCHIVE);
+
+#if USE_IMGUI
+	CVAR_CREATE( "hud_timer_new", "1", FCVAR_ARCHIVE );
+#endif
 
 	return 1;
 };
@@ -435,6 +446,11 @@ void CHudTimer::ReadDemoTimerBuffer(int type, const unsigned char *buffer)
 
 int CHudTimer::Draw(float fTime)
 {
+#if USE_IMGUI
+	if (CVAR_GET_FLOAT("hud_timer_new"))
+		return 1;
+#endif
+
 	char text[64];
 
 	if (gHUD.m_iHideHUDDisplay & HIDEHUD_ALL)
@@ -501,6 +517,79 @@ int CHudTimer::Draw(float fTime)
 	return 1;
 }
 
+#if USE_IMGUI
+void CHudTimer::ImGui_Timer()
+{
+	if (!(CVAR_GET_FLOAT("hud_timer_new")))
+		return;
+
+	char text[64];
+
+	if (gHUD.m_iHideHUDDisplay & HIDEHUD_ALL)
+		return;
+
+	// We will take time from demo stream if playingback
+	float currentTime;
+	if (gEngfuncs.pDemoAPI->IsPlayingback())
+	{
+		if (m_bDemoSyncTimeValid)
+			currentTime = m_flDemoSyncTime + gEngfuncs.GetClientTime();
+		else
+			currentTime = 0;
+	}
+	else
+	{
+		currentTime = gEngfuncs.GetClientTime();
+	}
+
+	// Get the paint color
+	int r, g, b;
+	float a = 255 * gHUD.GetHudTransparency();
+	UnpackRGB(r, g, b, gHUD.m_iDefaultHUDColor);
+
+	// Draw timer
+	float timeleft = m_flSynced ? (int)(m_flEndTime - currentTime) + 1 : (int)(m_flEndTime - m_flEffectiveTime);
+	int hud_timer = (int)m_pCvarHudTimer->value;
+
+	float fontSize = 28.0f;
+	float centerX = ImGui::GetIO().DisplaySize.x * 0.5f;
+
+	switch(hud_timer)
+	{
+		case 1:	// time left
+			if (currentTime > 0 && timeleft > 0)
+				DrawTimerInternal((int)timeleft, r, g, b, true);
+			break;
+		case 2:	// time passed
+			if (currentTime > 0)
+				DrawTimerInternal((int)currentTime, r, g, b, false);
+			break;
+		case 3:	// local PC time
+			time_t rawtime;
+			struct tm *timeinfo;
+			time(&rawtime);
+			timeinfo = localtime(&rawtime);
+			sprintf(text, "Clock %ld:%02ld:%02ld", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+
+			m_ImguiUtils.DrawTextShadowCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight), text, IM_COL32(r, g, b, (int)a));
+			break;
+	}
+
+	// Draw next map
+	int hud_nextmap = (int)m_pCvarHudNextmap->value;
+	if (m_szNextmap[0] && timeleft < 60 && timeleft >= 0 && m_flEndTime > 0 && (hud_nextmap == 2 || (hud_nextmap == 1 && timeleft >= 37)))
+	{
+		sprintf(text, "Nextmap is %s", m_szNextmap);
+
+		float nextmap_a = (timeleft >= 40 || hud_nextmap > 1 ? 255.0 : 255.0 / 3 * ((m_flEndTime - currentTime) + 1 - 37)) * gHUD.GetHudTransparency();
+		UnpackRGB(r, g, b, gHUD.m_iDefaultHUDColor);
+
+		m_ImguiUtils.DrawTextShadowCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight * 2), text, IM_COL32(r, g, b, (int)nextmap_a));
+	}
+}
+#endif
+
+
 void CHudTimer::DrawTimerInternal(int time, int r, int g, int b, bool redOnLow)
 {
 	div_t q;
@@ -545,5 +634,18 @@ void CHudTimer::DrawTimerInternal(int time, int r, int g, int b, bool redOnLow)
 		}
 	}
 
+#if USE_IMGUI
+	if (CVAR_GET_FLOAT("hud_timer_new"))
+	{
+		float fontSize = 28.0f; 
+		float centerX = ImGui::GetIO().DisplaySize.x * 0.5f;
+		m_ImguiUtils.DrawTextShadowCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight), text, IM_COL32(r, g, b, (int)(255 * gHUD.GetHudTransparency())));
+	}
+	else
+	{
+		gHUD.DrawHudStringCentered(ScreenWidth / 2, gHUD.m_scrinfo.iCharHeight, text, r, g, b);
+	}
+#else
 	gHUD.DrawHudStringCentered(ScreenWidth / 2, gHUD.m_scrinfo.iCharHeight, text, r, g, b);
+#endif
 }

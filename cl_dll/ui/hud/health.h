@@ -104,6 +104,9 @@ public:
 	virtual int Init( void );
 	virtual int VidInit( void );
 	virtual int Draw( float fTime );
+#if USE_IMGUI
+	virtual void ImGui_HealthBar();
+#endif
 	virtual void Reset( void );
 	int MsgFunc_Health( const char *pszName,  int iSize, void *pbuf );
 	int MsgFunc_Damage( const char *pszName,  int iSize, void *pbuf );

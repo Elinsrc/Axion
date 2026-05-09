@@ -134,6 +134,12 @@ public:
 	int Init( void );
 	int VidInit( void );
 	int Draw( float flTime );
+#if USE_IMGUI
+	void ImGui_DrawWList( float flTime );
+	void ImGui_AmmoBar();
+	void ImGui_DrawAmmoBar(WEAPON *p, float x, float y, float width, float height);
+	float ImGui_DrawBar(float x, float y, float width, float height, float f);
+#endif
 	void Think( void );
 	void Reset( void );
 	int DrawWList( float flTime );
@@ -433,6 +439,9 @@ public:
 	void GetPainColor( int &r, int &g, int &b );
 	int Draw( float flTime );
 	int MsgFunc_Battery( const char *pszName,  int iSize, void *pbuf );
+#if USE_IMGUI
+	void ImGui_BatteryBar();
+#endif
 	
 private:
 	HSPRITE m_hSprite1;
