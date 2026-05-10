@@ -364,6 +364,11 @@ void CHudHealth::ImGui_HealthBar()
 	if (!(gHUD.m_iWeaponBits & (1 << (WEAPON_SUIT)))) 
 		return;
 
+	float scale = CVAR_GET_FLOAT("hud_new_scale");
+	
+	if (scale <= 1.0f) 
+		scale = 1.0f;
+
 	ImDrawList* dl = ImGui::GetBackgroundDrawList();
 	ImVec2 center = ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
 
@@ -394,14 +399,14 @@ void CHudHealth::ImGui_HealthBar()
 	}
 	ImU32 hpColor = IM_COL32((int)r, (int)g, (int)b, 230);
 
-	float radius = 85.0f; 
-	float thickness = 4.0f;
+	float radius = 85.0f * scale; 
+	float thickness = 4.0f * scale;
 	float startAngle = IM_PI * 0.72f;
 	float endAngle = IM_PI * 1.28f;
 	float currentAngle = startAngle + (endAngle - startAngle) * smoothHp;
 
 	dl->PathArcTo(center, radius, startAngle, endAngle, 40);
-	dl->PathStroke(IM_COL32(0, 0, 0, 80), 0, thickness + 2.0f);
+	dl->PathStroke(IM_COL32(0, 0, 0, 80), 0, thickness + (2.0f * scale));
 
 	if (smoothHp > 0.001f) 
 	{
@@ -411,7 +416,7 @@ void CHudHealth::ImGui_HealthBar()
 
 	char buf[16]; 
 	sprintf(buf, "%d", hp);
-	float fontSize = 22.0f;
+	float fontSize = 22.0f * scale;
 	ImFont* font = ImGui::GetFont();
 	float textLineHeight = ImGui::GetTextLineHeight();
 	ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, buf);
@@ -419,13 +424,13 @@ void CHudHealth::ImGui_HealthBar()
 	wrect_t rc = gHUD.GetSpriteRect(m_HUD_cross);
 	float sw = (float)(rc.right - rc.left);
 	float sh = (float)(rc.bottom - rc.top);
-	float iconH = 20.0f;
+	float iconH = 20.0f * scale;
 	float iconW = sw * (iconH / sh);
 
-	float blockCenterX = center.x - radius - 25.0f; 
+	float blockCenterX = center.x - radius - (25.0f * scale); 
 	
-	float iconY = center.y - iconH - 2.0f;
-	float textY = center.y + 2.0f;
+	float iconY = center.y - iconH - (2.0f * scale);
+	float textY = center.y + (2.0f * scale);
 
 	m_ImguiUtils.ImGuiSpriteIcon(gHUD.GetSprite(m_HUD_cross), rc, blockCenterX - (iconW * 0.5f), iconY, iconW, iconH, iconH, (int)r, (int)g, (int)b, 230);
 	m_ImguiUtils.DrawTextShadow(fontSize, ImVec2(blockCenterX - (textSize.x * 0.5f), textY), buf, hpColor);

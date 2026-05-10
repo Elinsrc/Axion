@@ -259,6 +259,11 @@ void CHudBattery::ImGui_BatteryBar()
 	if (!(gHUD.m_iWeaponBits & (1 << (WEAPON_SUIT)))) 
 		return;
 
+	float scale = CVAR_GET_FLOAT("hud_new_scale");
+	
+	if (scale <= 1.0f) 
+		scale = 1.0f;
+
 	ImDrawList* dl = ImGui::GetBackgroundDrawList();
 	ImVec2 center = ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
 
@@ -273,14 +278,14 @@ void CHudBattery::ImGui_BatteryBar()
 	static float smoothBat = 0.0f;
 	smoothBat = ImLerp(smoothBat, frac, 0.1f);
 
-	float radius = 85.0f; 
-	float thickness = 4.0f;
+	float radius = 85.0f * scale; 
+	float thickness = 4.0f * scale;
 	float startAngle = -IM_PI * 0.28f; 
 	float endAngle = IM_PI * 0.28f;
 	float currentAngle = endAngle - (endAngle - startAngle) * smoothBat;
 
 	dl->PathArcTo(center, radius, startAngle, endAngle, 40);
-	dl->PathStroke(IM_COL32(0, 0, 0, 80), 0, thickness + 2.0f);
+	dl->PathStroke(IM_COL32(0, 0, 0, 80), 0, thickness + (2.0f * scale));
 
 	if (smoothBat > 0.001f) 
 	{
@@ -290,7 +295,7 @@ void CHudBattery::ImGui_BatteryBar()
 
 	char buf[16]; 
 	sprintf(buf, "%d", bat);
-	float fontSize = 22.0f;
+	float fontSize = 22.0f * scale;
 	ImFont* font = ImGui::GetFont();
 	ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, buf);
 
@@ -298,13 +303,13 @@ void CHudBattery::ImGui_BatteryBar()
 	wrect_t rc = gHUD.GetSpriteRect(iSuitFull);
 	float sw = (float)(rc.right - rc.left);
 	float sh = (float)(rc.bottom - rc.top);
-	float iconH = 20.0f; 
-	float iconW = (sh > 0) ? sw * (iconH / sh) : 20.0f;
+	float iconH = 20.0f * scale; 
+	float iconW = (sh > 0) ? sw * (iconH / sh) : (20.0f * scale);
 
-	float blockCenterX = center.x + radius + 25.0f; 
+	float blockCenterX = center.x + radius + (25.0f * scale); 
 
-	float iconY = center.y - iconH - 2.0f;
-	float textY = center.y + 2.0f;
+	float iconY = center.y - iconH - (2.0f * scale);
+	float textY = center.y + (2.0f * scale);
 
 	m_ImguiUtils.ImGuiSpriteIcon(gHUD.GetSprite(iSuitFull), rc, blockCenterX - (iconW * 0.5f), iconY, iconW, iconH, iconH, 255, 180, 0, 220);
 	m_ImguiUtils.DrawTextShadow(fontSize, ImVec2(blockCenterX - (textSize.x * 0.5f), textY), buf, IM_COL32(255, 180, 0, 220));

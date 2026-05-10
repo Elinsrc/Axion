@@ -6,10 +6,11 @@
 
 **Attention:** The `hud_new` cvar is set to `1` by default.  
 It enables the new HUD made with ImGui.  
-If you don't like it, you can restore the classic HUD by setting `hud_new` to `0`.
+If you don't like it, you can restore the classic HUD by setting `hud_new` to `0`
 
 | CVar | Default | Min | Max | Description |
 |------|--------|-----|-----|-------------|
+| hud_new_scale | 1.4 | 1 | * | Adjusts the overall scale and size of the new ImGui HUD elements |
 | cl_autojump | 1 | 0 | 1 | Automatically jumps when landing while holding +jump |
 | +ducktap | - | - | - | Performs a duck tap on landing (1-frame +duck) |
 | hud_color | "255 160 0" | - | - | Sets HUD color (RGB) |
