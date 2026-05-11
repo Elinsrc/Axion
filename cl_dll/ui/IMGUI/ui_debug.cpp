@@ -36,9 +36,9 @@ const unsigned char* getColorForFPS(int fps)
 
 void CImGuiDebug::Draw()
 {
-    const float fixedFontSize = 16.0f;
+    float font_scale = CVAR_GET_FLOAT("ui_imgui_font_scale");
     const float fixedPadding = 2.0f;
-    float lineHeight = fixedFontSize + fixedPadding;
+    float lineHeight = font_scale + fixedPadding;
 
     float xpos = g_ImGuiViewport.scrWidth() / 1.4f;
     float ypos = g_ImGuiViewport.scrHeight() / 50.0f;
@@ -55,11 +55,11 @@ void CImGuiDebug::Draw()
     if (DebugMode > 0 || cl_debug_showfps->value > 0.0f)
     {
         sprintf(str, "FPS: %.0f", fps);
-        m_ImguiUtils.DrawTextShadow(fixedFontSize, ImVec2(xpos, currentY), str, col_fps);
+        m_ImguiUtils.DrawTextShadow(font_scale, ImVec2(xpos, currentY), str, col_fps);
         currentY += lineHeight;
 
         sprintf(str, "Frame Time: %.0f ms", 1000.f / fps);
-        m_ImguiUtils.DrawTextShadow(fixedFontSize, ImVec2(xpos, currentY), str, col_fps);
+        m_ImguiUtils.DrawTextShadow(font_scale, ImVec2(xpos, currentY), str, col_fps);
         currentY += lineHeight * 2.0f;
     }
 
@@ -72,18 +72,18 @@ void CImGuiDebug::Draw()
         const char* version = (const char *)(glGetString(GL_VERSION));
 
         sprintf(str, "GL_VENDOR: %s", vendor);
-        m_ImguiUtils.DrawTextShadow(fixedFontSize, ImVec2(xpos, currentY), str, col_sys);
+        m_ImguiUtils.DrawTextShadow(font_scale, ImVec2(xpos, currentY), str, col_sys);
         currentY += lineHeight;
 
         sprintf(str, "GL_RENDERER: %s", renderer);
-        m_ImguiUtils.DrawTextShadow(fixedFontSize, ImVec2(xpos, currentY), str, col_sys);
+        m_ImguiUtils.DrawTextShadow(font_scale, ImVec2(xpos, currentY), str, col_sys);
         currentY += lineHeight;
 
         sprintf(str, "GL_VERSION: %s", version);
-        m_ImguiUtils.DrawTextShadow(fixedFontSize, ImVec2(xpos, currentY), str, col_sys);
+        m_ImguiUtils.DrawTextShadow(font_scale, ImVec2(xpos, currentY), str, col_sys);
         currentY += lineHeight;
 
         sprintf(str, "MODE: %dx%d", g_ImGuiViewport.scrWidth(), g_ImGuiViewport.scrHeight());
-        m_ImguiUtils.DrawTextShadow(fixedFontSize, ImVec2(xpos, currentY), str, col_sys);
+        m_ImguiUtils.DrawTextShadow(font_scale, ImVec2(xpos, currentY), str, col_sys);
     }
 }

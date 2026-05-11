@@ -97,10 +97,12 @@ void CImGuiManager::LoadFonts()
     ImGuiIO &io = ImGui::GetIO();
     io.Fonts->Clear();
 
-    m_pDefaultFont = io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, 16.0f);
+    const ImWchar* ranges = io.Fonts->GetGlyphRangesCyrillic();
+
+    m_pDefaultFont = io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, 16.0f, NULL, ranges);
     io.FontDefault = m_pDefaultFont;
 
-    m_pHudFont = io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, 26.0f);
+    m_pHudFont = io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, 26.0f, NULL, ranges);
 }
 void CImGuiManager::ApplyStyles()
 {

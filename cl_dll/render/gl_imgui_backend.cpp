@@ -45,6 +45,7 @@ bool CImGuiBackend::Init()
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;       // We can honor ImGuiPlatformIO::Textures[] requests during render.
 
     ui_imgui_scale = CVAR_CREATE("ui_imgui_scale", "1", FCVAR_ARCHIVE);
+    ui_imgui_font_scale = CVAR_CREATE("ui_imgui_font_scale", "24", FCVAR_ARCHIVE);
 
     return true;
 }
@@ -75,6 +76,10 @@ void CImGuiBackend::NewFrame()
     float ui_scale = ui_imgui_scale->value;
     if (!isfinite(ui_scale) || ui_scale < 1.0f)
         gEngfuncs.Cvar_SetValue("ui_imgui_scale", 1.0f);
+
+    float ui_font_scale = ui_imgui_font_scale->value;
+    if (!isfinite(ui_font_scale) || ui_font_scale < 1.0f)
+        gEngfuncs.Cvar_SetValue("ui_imgui_font_scale", 24.0f);   
 
     io.FontGlobalScale = ui_scale;
 

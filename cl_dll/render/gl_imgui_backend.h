@@ -5,7 +5,7 @@
 
 class CImGuiBackend
 {
-    cvar_t *ui_imgui_scale;
+    cvar_t *ui_imgui_scale;    cvar_t *ui_imgui_font_scale;
 
 public:
     CImGuiBackend();

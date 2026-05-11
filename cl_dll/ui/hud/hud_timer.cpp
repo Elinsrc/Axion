@@ -551,7 +551,7 @@ void CHudTimer::ImGui_Timer()
 	float timeleft = m_flSynced ? (int)(m_flEndTime - currentTime) + 1 : (int)(m_flEndTime - m_flEffectiveTime);
 	int hud_timer = (int)m_pCvarHudTimer->value;
 
-	float fontSize = 28.0f;
+	float fontSize = CVAR_GET_FLOAT("ui_imgui_font_scale");
 	float centerX = ImGui::GetIO().DisplaySize.x * 0.5f;
 
 	switch(hud_timer)
@@ -637,7 +637,7 @@ void CHudTimer::DrawTimerInternal(int time, int r, int g, int b, bool redOnLow)
 #if USE_IMGUI
 	if (CVAR_GET_FLOAT("hud_timer_new"))
 	{
-		float fontSize = 28.0f; 
+		float fontSize = CVAR_GET_FLOAT("ui_imgui_font_scale");
 		float centerX = ImGui::GetIO().DisplaySize.x * 0.5f;
 		m_ImguiUtils.DrawTextShadowCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight), text, IM_COL32(r, g, b, (int)(255 * gHUD.GetHudTransparency())));
 	}
