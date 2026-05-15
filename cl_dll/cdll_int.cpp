@@ -290,8 +290,8 @@ int DLLEXPORT HUD_VidInit( void )
 {
 	gHUD.VidInit();
 	Panel* root=(vgui::Panel*)gEngfuncs.VGui_GetPanel();
-	if (root) {
-		gEngfuncs.Con_Printf( "Root VGUI panel exists\n" );
+	if (root) 
+	{
 		root->setBgColor(128,128,0,0);
 
 		if (gViewPort != NULL)
@@ -303,8 +303,6 @@ int DLLEXPORT HUD_VidInit( void )
 			gViewPort = new TeamFortressViewport(0,0,root->getWide(),root->getTall());
 			gViewPort->setParent(root);
 		}
-	} else {
-		gEngfuncs.Con_Printf( "Root VGUI panel does not exist\n" );
 	}
 
 #if USE_IMGUI

@@ -455,7 +455,6 @@ bool GL_Init(void)
 
     if( !g_fRenderInitialized )
 	{
-		gEngfuncs.Cvar_SetValue( "gl_renderer", 0 );
 		GL_Shutdown();
 		return false;
 	}
