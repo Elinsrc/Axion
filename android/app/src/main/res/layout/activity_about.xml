@@ -191,6 +191,7 @@
                 app:icon="@drawable/ic_github"
                 app:iconTint="@color/hl_orange"
                 app:iconPadding="8dp"
+                app:iconGravity="textStart"
                 app:backgroundTint="@color/hl_grey"
                 app:cornerRadius="16dp" />
 
