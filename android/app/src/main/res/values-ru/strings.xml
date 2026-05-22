@@ -11,6 +11,7 @@
     <string name="build_date">Собранно: %1$s</string>
     <string name="author">Автор</string>
     <string name="repository">РЕПОЗИТОРИЙ</string>
+    <string name="update_check">Проверка обновлений…</string>
     <string name="update_available">Доступно обновление</string>
     <string name="version_outdated">Ваша версия приложения устарела</string>
     <string name="up_to_date">У вас последняя версия</string>

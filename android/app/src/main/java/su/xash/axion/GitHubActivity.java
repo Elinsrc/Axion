@@ -98,13 +98,12 @@ public class GitHubActivity extends AppCompatActivity {
 
     private void simulateUpdate(boolean outdated) {
         TextView statusText = findViewById(R.id.updateStatusText);
-        statusText.setVisibility(View.VISIBLE);
         if (outdated) {
             statusText.setText(R.string.version_outdated);
             statusText.setTextColor(getResources().getColor(android.R.color.holo_red_light));
+            statusText.setVisibility(View.VISIBLE);
         } else {
-            statusText.setText(R.string.up_to_date);
-            statusText.setTextColor(getResources().getColor(android.R.color.holo_green_light));
+            statusText.setVisibility(View.GONE);
         }
     }
 
@@ -142,6 +141,8 @@ public class GitHubActivity extends AppCompatActivity {
                     TextView statusText = findViewById(R.id.updateStatusText);
                     if (!sTestMode) {
                         statusText.setText(R.string.update_error);
+                        statusText.setTextColor(getResources().getColor(android.R.color.holo_red_light));
+                        statusText.setVisibility(View.VISIBLE);
                     }
                 });
             }

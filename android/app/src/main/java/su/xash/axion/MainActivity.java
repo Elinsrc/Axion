@@ -86,7 +86,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showUpdateInfo(String hash, String message) {
-        findViewById(R.id.updateStatusText).setVisibility(View.VISIBLE);
+        TextView statusText = findViewById(R.id.updateStatusText);
+        statusText.setText(R.string.update_available);
+        statusText.setTextColor(getResources().getColor(android.R.color.holo_red_light));
+        statusText.setVisibility(View.VISIBLE);
         
         View latestCommitArea = findViewById(R.id.latestCommitArea);
         TextView latestCommitHash = findViewById(R.id.latestCommitHash);
@@ -103,10 +106,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkUpdates(String currentHash) {
+        TextView statusText = findViewById(R.id.updateStatusText);
+        Button runButton = findViewById(R.id.runButton);
+
         if (GitHubActivity.sTestMode) {
             showUpdateInfo("aec0789150e64b5b7ac1b88625353bab473695c3", "Test latest commit message");
             return;
         }
+
+        runButton.setEnabled(false);
+        runButton.setAlpha(0.5f);
+        statusText.setText(R.string.update_check);
+        statusText.setTextColor(getResources().getColor(android.R.color.white));
+        statusText.setAlpha(0.7f);
+        statusText.setVisibility(View.VISIBLE);
 
         new Thread(() -> {
             try {
@@ -114,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("User-Agent", "Axion-App");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 StringBuilder responseBuilder = new StringBuilder();
@@ -140,16 +155,29 @@ public class MainActivity extends AppCompatActivity {
                 final String finalLatestHash = latestHash;
                 final String finalLatestMsg = latestMsg;
                 runOnUiThread(() -> {
+                    runButton.setEnabled(true);
+                    runButton.setAlpha(1.0f);
                     if (finalOutdated || GitHubActivity.sTestMode) {
                         showUpdateInfo(finalLatestHash, finalLatestMsg);
                     } else {
-                        findViewById(R.id.updateStatusText).setVisibility(View.GONE);
+                        statusText.setText(R.string.up_to_date);
+                        statusText.setTextColor(getResources().getColor(android.R.color.holo_green_light));
+                        statusText.setAlpha(1.0f);
+                        statusText.setVisibility(View.VISIBLE);
                         findViewById(R.id.latestCommitArea).setVisibility(View.GONE);
                         findViewById(R.id.updateButton).setVisibility(View.GONE);
                     }
                 });
 
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    runButton.setEnabled(true);
+                    runButton.setAlpha(1.0f);
+                    statusText.setText(R.string.update_error);
+                    statusText.setTextColor(getResources().getColor(android.R.color.holo_red_light));
+                    statusText.setAlpha(1.0f);
+                });
+            }
         }).start();
     }
 

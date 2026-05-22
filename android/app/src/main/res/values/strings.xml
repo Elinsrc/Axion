@@ -11,6 +11,7 @@
     <string name="build_date">Built: %1$s</string>
     <string name="author">Author</string>
     <string name="repository">REPOSITORY</string>
+    <string name="update_check">Checking for updates...</string>
     <string name="update_available">Update available</string>
     <string name="version_outdated">Your version is outdated</string>
     <string name="up_to_date">App is up to date</string>
