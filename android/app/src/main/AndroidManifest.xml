@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools">
 
+	<uses-permission android:name="android.permission.INTERNET" />
+
 	<application
 		android:forceQueryable="true"
 		android:icon="@mipmap/ic_launcher"
@@ -26,6 +28,10 @@
 				<action android:name="su.xash.engine.MOD" />
 			</intent-filter>
 		</activity>
+
+		<activity
+			android:name=".GitHubActivity"
+			android:label="@string/commit_info" />
 	</application>
 
 	<queries>

@@ -11,9 +11,12 @@ android {
 
     dependencies {
         implementation 'com.google.android.material:material:1.13.0'
-
+        implementation 'com.github.bumptech.glide:glide:4.16.0'
     }
 
+    buildFeatures {
+        buildConfig true
+    }
 
     defaultConfig {
         applicationId 'su.xash.axion'
@@ -21,6 +24,9 @@ android {
         versionCode getBuildNum()
         minSdkVersion 21
         targetSdk 36
+
+        buildConfigField "String", "COMMIT_HASH", "\"${getGitHash()}\""
+        buildConfigField "String", "COMMIT_MESSAGE", "\"${getGitMessage()}\""
     }
 
     compileOptions {
@@ -77,4 +83,20 @@ static def getBuildNum() {
     int qBuildNum = releaseDate.until(now, ChronoUnit.DAYS)
     int minuteOfDay = now.getHour() * 60 + now.getMinute()
     return qBuildNum * 10000 + minuteOfDay
+}
+
+static def getGitHash() {
+    try {
+        return 'git rev-parse HEAD'.execute().text.trim()
+    } catch (ignored) {
+        return "unknown"
+    }
+}
+
+static def getGitMessage() {
+    try {
+        return 'git log -1 --format=%s'.execute().text.trim().replaceAll('"', '\\\\"')
+    } catch (ignored) {
+        return "unknown"
+    }
 }

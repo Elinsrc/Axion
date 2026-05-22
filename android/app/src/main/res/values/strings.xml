@@ -6,4 +6,15 @@
     <string name="info">INFO</string>
     <string name="engine_not_found_title">Engine not found!</string>
     <string name="engine_not_found_msg">Xash3D FWGS not installed on your device. Would you like to download it from GitHub?</string>
+    <string name="commit_info">Build Info</string>
+    <string name="commit_hash">Commit: %1$s</string>
+    <string name="build_date">Built: %1$s</string>
+    <string name="author">Author</string>
+    <string name="repository">REPOSITORY</string>
+    <string name="update_available">Update available</string>
+    <string name="version_outdated">Your version is outdated</string>
+    <string name="up_to_date">App is up to date</string>
+    <string name="download_update">DOWNLOAD UPDATE</string>
+    <string name="update_error">Failed to check for updates</string>
+    <string name="test_mode_enabled">Testing mode enabled</string>
 </resources>

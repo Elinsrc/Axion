@@ -46,41 +46,111 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:padding="16dp"
-        android:gravity="end"
         android:layout_gravity="bottom">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/infoButton"
-            android:layout_width="0dp"
+        <TextView
+            android:id="@+id/updateStatusText"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/info"
-            android:textColor="@color/hl_orange"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            app:icon="@drawable/baseline_info_24"
-            app:iconTint="@color/hl_orange"
-            app:cornerRadius="16dp"
-            app:backgroundTint="@color/hl_grey"
-            app:iconPadding="8dp"/>
+            android:text="@string/update_available"
+            android:textAlignment="center"
+            android:textColor="@android:color/holo_red_light"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/latestCommitArea"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/hl_grey"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/latestCommitHash"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.7"
+                    android:textColor="@android:color/white"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/latestCommitMessage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.7"
+                    android:textColor="@android:color/white"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/runButton"
-            android:layout_width="0dp"
+            android:id="@+id/updateButton"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="@string/launch"
+            android:text="@string/download_update"
             android:textColor="@color/hl_orange"
             android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            app:icon="@drawable/baseline_play_arrow_24"
+            app:icon="@drawable/baseline_download_24"
             app:iconTint="@color/hl_orange"
-            app:cornerRadius="16dp"
+            app:iconPadding="8dp"
             app:backgroundTint="@color/hl_grey"
-            app:iconPadding="8dp"/>
+            app:cornerRadius="16dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/infoButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/info"
+                android:textColor="@color/hl_orange"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                app:icon="@drawable/baseline_info_24"
+                app:iconTint="@color/hl_orange"
+                app:cornerRadius="16dp"
+                app:backgroundTint="@color/hl_grey"
+                app:iconPadding="8dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/runButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="@string/launch"
+                android:textColor="@color/hl_orange"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                app:icon="@drawable/baseline_play_arrow_24"
+                app:iconTint="@color/hl_orange"
+                app:cornerRadius="16dp"
+                app:backgroundTint="@color/hl_grey"
+                app:iconPadding="8dp"/>
+        </LinearLayout>
     </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

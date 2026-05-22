@@ -6,4 +6,15 @@
     <string name="info">ИНФО</string>
     <string name="engine_not_found_title">Движок не найден!</string>
     <string name="engine_not_found_msg">Xash3D FWGS не установлен на вашем девайсе. Вы хотите скачать движок с GitHub?</string>
+    <string name="commit_info">Информация о сборке</string>
+    <string name="commit_hash">Коммит: %1$s</string>
+    <string name="build_date">Собранно: %1$s</string>
+    <string name="author">Автор</string>
+    <string name="repository">РЕПОЗИТОРИЙ</string>
+    <string name="update_available">Доступно обновление</string>
+    <string name="version_outdated">Ваша версия приложения устарела</string>
+    <string name="up_to_date">У вас последняя версия</string>
+    <string name="download_update">СКАЧАТЬ ОБНОВЛЕНИЕ</string>
+    <string name="update_error">Не удалось проверить обновления</string>
+    <string name="test_mode_enabled">Включен режим тестирования</string>
 </resources>
