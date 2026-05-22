@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
         latestCommitArea.setVisibility(View.VISIBLE);
         updateButton.setVisibility(View.VISIBLE);
         
-        latestCommitArea.setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(GitHubActivity.DOWNLOAD_URL))));
+        latestCommitArea.setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(GitHubActivity.REPO_URL + "/commit/" + hash))));
     }
 
     private void checkUpdates(String currentHash) {

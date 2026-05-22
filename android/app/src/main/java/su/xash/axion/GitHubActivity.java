@@ -31,6 +31,7 @@ public class GitHubActivity extends AppCompatActivity {
 
     public static final String COMMITS_API = "https://api.github.com/repos/Elinsrc/Axion/commits?per_page=100";
     public static final String DOWNLOAD_URL = "https://github.com/Elinsrc/Axion/releases/download/continuous/Axion-android.apk";
+    public static final String REPO_URL = "https://github.com/Elinsrc/Axion";
     public static boolean sTestMode = false;
     private final Handler handler = new Handler();
 
@@ -49,8 +50,7 @@ public class GitHubActivity extends AppCompatActivity {
         final String author = "Elinsrc";
         final String fullCommitHash = BuildConfig.COMMIT_HASH;
         final String commitMessage = BuildConfig.COMMIT_MESSAGE;
-        final String repoUrl = "https://github.com/Elinsrc/Axion";
-        final String commitUrl = repoUrl + "/commit/" + fullCommitHash;
+        final String commitUrl = REPO_URL + "/commit/" + fullCommitHash;
         final String buildDate = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(new Date());
 
         ((TextView) findViewById(R.id.buildDateText)).setText(getString(R.string.build_date, buildDate));
@@ -62,7 +62,7 @@ public class GitHubActivity extends AppCompatActivity {
         loadAvatar(author, findViewById(R.id.authorAvatar));
         findViewById(R.id.authorClickArea).setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/" + author))));
 
-        findViewById(R.id.repoLinkButton).setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(repoUrl))));
+        findViewById(R.id.repoLinkButton).setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(REPO_URL))));
 
         if (sTestMode) {
             findViewById(R.id.testModeText).setVisibility(View.VISIBLE);
