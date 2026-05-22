@@ -114,25 +114,29 @@ void CImGuiManager::UpdateMouseState()
     ImGuiIO &io = ImGui::GetIO();
 
 #if XASH_MOBILE_PLATFORM
-    io.AddMousePosEvent(m_TouchX, m_TouchY);
-
-    if (m_TouchID == 0 || m_TouchID == 2)
-        io.MouseDown[0] = true;
-    else if (m_TouchID == 1)
-        io.MouseDown[0] = false;
-#else
-    int mx, my;
-    gEngfuncs.GetMousePosition(&mx, &my);
-
-    io.MouseDown[0] = m_MouseButtonsState.left;
-    io.MouseDown[1] = m_MouseButtonsState.right;
-    io.MouseDown[2] = m_MouseButtonsState.middle;
-    io.MousePos = ImVec2((float)mx, (float)my);
+    if (CVAR_GET_FLOAT("touch_enable"))
+    {
+        io.AddMousePosEvent(m_TouchX, m_TouchY);
+        
+        if (m_TouchID == 0 || m_TouchID == 2)
+            io.AddMouseButtonEvent(0, true);
+        else if (m_TouchID == 1)
+            io.AddMouseButtonEvent(0, false);
+    }
+    else
 #endif
+    {
+        int mx, my;
+        gEngfuncs.GetMousePosition(&mx, &my);
+    
+        io.AddMousePosEvent((float)mx, (float)my);
+        io.AddMouseButtonEvent(0, m_MouseButtonsState.left);
+        io.AddMouseButtonEvent(1, m_MouseButtonsState.right);
+        io.AddMouseButtonEvent(2, m_MouseButtonsState.middle);
+    }
 
     UpdateCursorState();
 }
-
 
 void CImGuiManager::UpdateCursorState()
 {
@@ -203,7 +207,6 @@ void CImGuiManager::UpdateCursorState()
 
     m_bWasCursorRequired = cursorRequired;
 }
-
 
 void CImGuiManager::HandleKeyInput(bool keyDown, int keyNumber)
 {

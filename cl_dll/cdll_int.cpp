@@ -521,7 +521,11 @@ int DLLEXPORT HUD_GetRenderInterface( int version, render_api_t *renderfuncs, re
 #if USE_IMGUI && XASH_MOBILE_PLATFORM
 int DLLEXPORT IN_ClientTouchEvent(int fingerID, float x, float y, float dx, float dy)
 {
-	g_ImGuiManager.TouchEvent(fingerID, x, y, dx, dy);
-	return g_ImGuiManager.IsCursorRequired() ? 1 : 0;
+	if (CVAR_GET_FLOAT("touch_enable"))
+	{
+		g_ImGuiManager.TouchEvent(fingerID, x, y, dx, dy);
+		return g_ImGuiManager.IsCursorRequired() ? 1 : 0;
+	}
+	return 0;
 }
 #endif
