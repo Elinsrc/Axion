@@ -1033,8 +1033,8 @@ void CHudAmmo::ImGui_DrawWList(float flTime)
 
     float scale = CVAR_GET_FLOAT("hud_new_scale");
     
-	if (scale <= 1.0f) 
-		scale = 1.0f;
+    if (scale <= 1.0f) 
+        scale = 1.0f;
 
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     ImVec2 center = ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
@@ -1044,6 +1044,7 @@ void CHudAmmo::ImGui_DrawWList(float flTime)
     float slotW = 140.0f * scale;
     float slotH = 90.0f * scale;
     float spacing = 10.0f * scale;
+    float padding = 8.0f * scale;
 
     int iActiveSlot;
     if (gpActiveSel == (WEAPON*)1)
@@ -1072,14 +1073,26 @@ void CHudAmmo::ImGui_DrawWList(float flTime)
 
     if (iActiveSlot != -1) 
     {
-        int weaponCount = 0;
-        for (int i = 0; i < MAX_WEAPON_POSITIONS; i++) 
+        float totalW = 0.0f;
+        int activeCount = 0;
+
+        for (int iPos = 0; iPos < MAX_WEAPON_POSITIONS; iPos++) 
         {
-            if (gWR.GetWeaponSlot(iActiveSlot, i)) 
-                weaponCount++;
+            WEAPON* p = gWR.GetWeaponSlot(iActiveSlot, iPos);
+            if (!p || !p->iId) 
+                continue;
+
+            wrect_t rc = (gpActiveSel == p) ? p->rcActive : p->rcInactive;
+            float iconScale = ImMin((slotW * 0.9f) / (rc.right - rc.left), (slotH - (24.0f * scale)) / (rc.bottom - rc.top));
+            float finalW = (rc.right - rc.left) * iconScale;
+            
+            totalW += finalW + (padding * 2.0f);
+            activeCount++;
         }
 
-        float totalW = (weaponCount * slotW) + ((weaponCount - 1) * spacing);
+        if (activeCount > 0)
+            totalW += (activeCount - 1) * spacing;
+
         float startX = center.x - (totalW * 0.5f);
 
         for (int iPos = 0; iPos < MAX_WEAPON_POSITIONS; iPos++) 
@@ -1093,68 +1106,68 @@ void CHudAmmo::ImGui_DrawWList(float flTime)
 
             int r, g, b, a;
             if (isSelected) 
-			{ 
-				r = 255; 
-				g = 160; 
-				b = 0; 
-				a = 255; 
-			} 
+            { 
+                r = 255; 
+                g = 160; 
+                b = 0; 
+                a = 255; 
+            } 
             else 
-			{
+            {
                 if (hasAmmo) 
-				{ 
-					r = 255; 
-					g = 255; 
-					b = 255; 
-					a = 192; 
-				} 
+                { 
+                    r = 255; 
+                    g = 255; 
+                    b = 255; 
+                    a = 192; 
+                } 
                 else 
-				{ 
-					r = 255; 
-					g = 60; 
-					b = 60; 
-					a = 128; 
-				}
+                { 
+                    r = 255; 
+                    g = 60; 
+                    b = 60; 
+                    a = 128; 
+                }
             }
 
-            ImVec2 pMin(startX, menuY);
-            ImVec2 pMax(startX + slotW, menuY + slotH);
-
-            dl->AddRectFilled(pMin, pMax, IM_COL32(0, 0, 0, (int)(a * 0.6f)), 8.0f * scale);
-            
-            if (isSelected)
-                dl->AddRect(pMin, pMax, IM_COL32(255, 160, 0, a), 8.0f * scale, 0, 1.0f);
-
-            char nameBuf[64];
-            sprintf(nameBuf, "%s", p->szName);
-            const char* displayName = (strncmp(nameBuf, "weapon_", 7) == 0) ? nameBuf + 7 : nameBuf;
-            m_ImguiUtils.DrawTextShadowCenter(fontSize * 0.8f, ImVec2(startX + slotW * 0.5f, menuY + (10.0f * scale)), displayName, IM_COL32(255, 255, 255, a));
-
-            float textTopPadding = 10.0f * scale;
-            float textHeight = (fontSize * 0.8f);
-            float gap = 2.0f * scale;
-            float barAreaH = 10.0f * scale;
-            
             wrect_t rc = isSelected ? p->rcActive : p->rcInactive;
-            float iconAreaY = menuY + textTopPadding + textHeight + gap;
-            float iconAreaH = slotH - (textTopPadding + textHeight + gap) - barAreaH;
-            
-            float iconScale = ImMin((slotW * 0.9f) / (rc.right - rc.left), iconAreaH / (rc.bottom - rc.top));
+            float iconScale = ImMin((slotW * 0.9f) / (rc.right - rc.left), (slotH - (24.0f * scale)) / (rc.bottom - rc.top));
             float finalW = (rc.right - rc.left) * iconScale;
             float finalH = (rc.bottom - rc.top) * iconScale;
 
-            m_ImguiUtils.ImGuiSpriteIcon(isSelected ? p->hActive : p->hInactive, rc, startX + (slotW - finalW) * 0.5f, iconAreaY + (iconAreaH - finalH) * 0.5f, finalW, finalH, finalH, r, g, b, a);
+            float boxW = finalW + (padding * 2.0f);
+            float boxH = finalH + (padding * 2.0f);
+            
+            if (p->iAmmoType != -1) 
+                boxH += 10.0f * scale;
+
+            ImVec2 pMin(startX, menuY);
+            ImVec2 pMax(startX + boxW, menuY + boxH);
+
+            dl->AddRectFilled(pMin, pMax, IM_COL32(0, 0, 0, (int)(a * 0.6f)), 6.0f * scale);
+            
+            if (isSelected)
+                dl->AddRect(pMin, pMax, IM_COL32(255, 160, 0, a), 6.0f * scale, 0, 1.0f);
+
+            m_ImguiUtils.ImGuiSpriteIcon(isSelected ? p->hActive : p->hInactive, rc, startX + padding, menuY + padding, finalW, finalH, finalH, r, g, b, a);
             
             if (p->iAmmoType != -1) 
             {
                 float f = ImClamp((float)gWR.CountAmmo(p->iAmmoType) / (float)p->iMax1, 0.0f, 1.0f);
-                dl->AddRectFilled(ImVec2(pMin.x + (8*scale), pMax.y - (8*scale)), ImVec2(pMax.x - (8*scale), pMax.y - (4*scale)), IM_COL32(0, 0, 0, 120));
                 
-                ImU32 barCol = hasAmmo ? IM_COL32(0, 255, 128, a) : IM_COL32(255, 60, 60, a);
-                dl->AddRectFilled(ImVec2(pMin.x + (8*scale), pMax.y - (8*scale)), ImVec2(pMin.x + (8*scale) + (slotW - (16*scale)) * f, pMax.y - (4*scale)), barCol, 2.0f * scale);
+                ImVec2 bgMin(pMin.x + padding, pMax.y - (12 * scale));
+                ImVec2 bgMax(pMax.x - padding, pMax.y - (8 * scale));
+                dl->AddRectFilled(bgMin, bgMax, IM_COL32(0, 0, 0, 120), 2.0f * scale);
+                
+                if (f > 0.0f)
+                {
+                    ImU32 barCol = hasAmmo ? IM_COL32(0, 255, 128, a) : IM_COL32(255, 60, 60, a);
+                    ImVec2 barMax(bgMin.x + (bgMax.x - bgMin.x) * f, bgMax.y);
+                    dl->AddRectFilled(bgMin, barMax, barCol, 2.0f * scale);
+                }
             }
 
-            startX += slotW + spacing;
+            startX += boxW + spacing;
         }
     }
 }
