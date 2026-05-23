@@ -28,7 +28,7 @@ import java.net.URL;
 public class GitHubActivity extends AppCompatActivity {
 
     public static final String COMMITS_API = "https://api.github.com/repos/Elinsrc/Axion/commits?per_page=100";
-    public static final String DOWNLOAD_URL = "https://github.com/Elinsrc/Axion/releases/download/continuous/Axion-android.apk";
+    public static final String DOWNLOAD_URL = "https://github.com/Elinsrc/Axion/releases/tag/continuous";
     public static final String REPO_URL = "https://github.com/Elinsrc/Axion";
     public static boolean sTestMode = false;
     private final Handler handler = new Handler();
