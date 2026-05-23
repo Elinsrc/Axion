@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.GlideException;
@@ -31,6 +32,7 @@ public class GitHubActivity extends AppCompatActivity {
     public static final String REPO_URL = "https://github.com/Elinsrc/Axion";
     public static boolean sTestMode = false;
     private final Handler handler = new Handler();
+    private TextView statusText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,30 +46,36 @@ public class GitHubActivity extends AppCompatActivity {
         }
         toolbar.setNavigationOnClickListener(v -> finish());
 
+        statusText = findViewById(R.id.updateStatusText);
         final String author = "Elinsrc";
         final String fullCommitHash = BuildConfig.COMMIT_HASH;
-        final String commitMessage = BuildConfig.COMMIT_MESSAGE;
-        final String commitUrl = REPO_URL + "/commit/" + fullCommitHash;
-        final String buildDate = BuildConfig.BUILD_DATE;
 
-        ((TextView) findViewById(R.id.buildDateText)).setText(getString(R.string.build_date, buildDate));
+        ((TextView) findViewById(R.id.buildDateText)).setText(getString(R.string.build_date, BuildConfig.BUILD_DATE));
         ((TextView) findViewById(R.id.commitHashText)).setText(getString(R.string.commit_hash, fullCommitHash));
-        ((TextView) findViewById(R.id.commitMessageText)).setText(commitMessage);
-        findViewById(R.id.commitClickableArea).setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(commitUrl))));
+        ((TextView) findViewById(R.id.commitMessageText)).setText(BuildConfig.COMMIT_MESSAGE);
+
+        TextView repoLinkText = findViewById(R.id.repoLinkText);
+        repoLinkText.setText(REPO_URL);
+        repoLinkText.setOnClickListener(v -> openUrl(REPO_URL));
+
+        findViewById(R.id.commitClickableArea).setOnClickListener(v -> openUrl(REPO_URL + "/commit/" + fullCommitHash));
+        findViewById(R.id.githubButton).setOnClickListener(v -> openUrl("https://github.com/" + author));
+        findViewById(R.id.telegramButton).setOnClickListener(v -> openUrl("https://t.me/" + author));
 
         ((TextView) findViewById(R.id.authorName)).setText(author);
         loadAvatar(author, findViewById(R.id.authorAvatar));
-        findViewById(R.id.authorClickArea).setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/" + author))));
-
-        findViewById(R.id.repoLinkButton).setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(REPO_URL))));
 
         if (sTestMode) {
             findViewById(R.id.testModeText).setVisibility(View.VISIBLE);
-            simulateUpdate(true);
+            showStatus(R.string.version_outdated);
         }
 
         setupTestMode();
         checkUpdates(fullCommitHash);
+    }
+
+    private void openUrl(String url) {
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
     }
 
     private void setupTestMode() {
@@ -75,7 +83,7 @@ public class GitHubActivity extends AppCompatActivity {
         Runnable testModeRunnable = () -> {
             sTestMode = true;
             findViewById(R.id.testModeText).setVisibility(View.VISIBLE);
-            simulateUpdate(true);
+            showStatus(R.string.version_outdated);
         };
 
         appIcon.setOnTouchListener((v, event) -> {
@@ -93,22 +101,20 @@ public class GitHubActivity extends AppCompatActivity {
         });
     }
 
-    private void simulateUpdate(boolean outdated) {
-        TextView statusText = findViewById(R.id.updateStatusText);
-        if (outdated) {
-            statusText.setText(R.string.version_outdated);
-            statusText.setTextColor(getResources().getColor(android.R.color.holo_red_light));
-            statusText.setVisibility(View.VISIBLE);
-        } else {
+    private void showStatus(int stringResId) {
+        if (stringResId == 0) {
             statusText.setVisibility(View.GONE);
+        } else {
+            statusText.setText(stringResId);
+            statusText.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_light));
+            statusText.setVisibility(View.VISIBLE);
         }
     }
 
     private void checkUpdates(String currentHash) {
         new Thread(() -> {
             try {
-                URL url = new URL(COMMITS_API);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                HttpURLConnection conn = (HttpURLConnection) new URL(COMMITS_API).openConnection();
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("User-Agent", "Axion-App");
 
@@ -121,25 +127,18 @@ public class GitHubActivity extends AppCompatActivity {
                 reader.close();
 
                 JSONArray commits = new JSONArray(response.toString());
-                boolean outdated = true;
-                if (commits.length() > 0 && commits.getJSONObject(0).getString("sha").equals(currentHash)) {
-                    outdated = false;
-                }
+                boolean current = commits.length() > 0 && commits.getJSONObject(0).getString("sha").equals(currentHash);
 
-                final boolean finalOutdated = outdated;
                 runOnUiThread(() -> {
                     if (!sTestMode) {
-                        simulateUpdate(finalOutdated);
+                        showStatus(current ? 0 : R.string.version_outdated);
                     }
                 });
 
             } catch (Exception e) {
                 runOnUiThread(() -> {
-                    TextView statusText = findViewById(R.id.updateStatusText);
                     if (!sTestMode) {
-                        statusText.setText(R.string.update_error);
-                        statusText.setTextColor(getResources().getColor(android.R.color.holo_red_light));
-                        statusText.setVisibility(View.VISIBLE);
+                        showStatus(R.string.update_error);
                     }
                 });
             }
@@ -148,21 +147,21 @@ public class GitHubActivity extends AppCompatActivity {
 
     private void loadAvatar(String username, final ImageView imageView) {
         Glide.with(this)
-            .load("https://github.com/" + username + ".png")
-            .circleCrop()
-            .listener(new RequestListener<>() {
-                @Override
-                public boolean onLoadFailed(@Nullable GlideException e, Object model, @NonNull Target<Drawable> target, boolean isFirstResource) {
-                    imageView.setVisibility(View.GONE);
-                    return false;
-                }
+                .load("https://github.com/" + username + ".png")
+                .circleCrop()
+                .listener(new RequestListener<>() {
+                    @Override
+                    public boolean onLoadFailed(@Nullable GlideException e, Object model, @NonNull Target<Drawable> target, boolean isFirstResource) {
+                        imageView.setVisibility(View.GONE);
+                        return false;
+                    }
 
-                @Override
-                public boolean onResourceReady(@NonNull Drawable resource, @NonNull Object model, Target<Drawable> target, @NonNull DataSource dataSource, boolean isFirstResource) {
-                    imageView.setVisibility(View.VISIBLE);
-                    return false;
-                }
-            })
-            .into(imageView);
+                    @Override
+                    public boolean onResourceReady(@NonNull Drawable resource, @NonNull Object model, Target<Drawable> target, @NonNull DataSource dataSource, boolean isFirstResource) {
+                        imageView.setVisibility(View.VISIBLE);
+                        return false;
+                    }
+                })
+                .into(imageView);
     }
 }
