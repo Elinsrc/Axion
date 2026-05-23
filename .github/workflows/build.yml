@@ -70,19 +70,31 @@ jobs:
           sudo dpkg --add-architecture i386
           sudo apt update
           sudo apt install aptitude
-          sudo aptitude --without-recommends install -y cmake build-essential gcc-multilib g++-multilib libsdl2-dev:i386 libgl1-mesa-dev:i386
+          sudo aptitude --without-recommends install -y cmake build-essential gcc-multilib g++-multilib libsdl2-dev:i386 libgl1-mesa-dev:i386 libssl-dev libssl-dev:i386 libzstd-dev libzstd-dev:i386
 
       - name: Build on Linux
         if: startsWith(matrix.os, 'ubuntu')
         run: |
-          cmake -B build -S . -DCMAKE_EXE_LINKER_FLAGS="-Wl,--no-undefined" -DCMAKE_INSTALL_PREFIX="$PWD/dist"
+          cmake -B build -S . \
+            -DCMAKE_C_FLAGS="-m32" \
+            -DCMAKE_CXX_FLAGS="-m32" \
+            -DCMAKE_EXE_LINKER_FLAGS="-m32 -Wl,--no-undefined" \
+            -DCMAKE_SHARED_LINKER_FLAGS="-m32" \
+            -DOPENSSL_ROOT_DIR=/usr/lib/i386-linux-gnu \
+            -DCMAKE_LIBRARY_PATH=/usr/lib/i386-linux-gnu \
+            -DCMAKE_INSTALL_PREFIX="$PWD/dist"
+
           cmake --build build --target all
           cmake --build build --target install
 
       - name: Build on Linux x64
         if: startsWith(matrix.os, 'ubuntu') && matrix.cc == 'gcc'
         run: |
-          cmake -B build64 -S . -D64BIT=ON -DCMAKE_EXE_LINKER_FLAGS="-Wl,--no-undefined" -DCMAKE_INSTALL_PREFIX="$PWD/dist64"
+          cmake -B build64 -S . \
+            -D64BIT=ON \
+            -DCMAKE_EXE_LINKER_FLAGS="-Wl,--no-undefined" \
+            -DCMAKE_INSTALL_PREFIX="$PWD/dist64"
+          
           cmake --build build64 --target all
           cmake --build build64 --target install
 

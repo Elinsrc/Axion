@@ -200,10 +200,19 @@ if (USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
     )
 endif()
 
+if(NOT ANDROID)
+	list(APPEND CLDLL_SOURCES
+		utils/update_checker.cpp)
+endif()
+
 include_directories (. hl/ events/ input/ render/ ui ui/hud ui/hud/OpenAG/ utils/ ${CMAKE_SOURCE_DIR}/dlls ${CMAKE_SOURCE_DIR}/dlls/wpn_shared ${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/engine ${CMAKE_SOURCE_DIR}/pm_shared ${CMAKE_SOURCE_DIR}/game_shared ${CMAKE_SOURCE_DIR}/public)
 
 if (WIN32)
 	include_directories (../external/)
+endif()
+
+if(NOT ANDROID)
+	include_directories(${CMAKE_SOURCE_DIR}/external/curl/include)
 endif()
 
 if(USE_VOICEMGR)
@@ -253,6 +262,10 @@ if(USE_IMGUI)
 			target_link_libraries(${CLDLL_LIBRARY} :vgui.so)
 		endif()
 	endif()
+endif()
+
+if(NOT ANDROID)
+	target_link_libraries(${CLDLL_LIBRARY} libcurl)
 endif()
 
 set_target_properties (${CLDLL_LIBRARY} PROPERTIES

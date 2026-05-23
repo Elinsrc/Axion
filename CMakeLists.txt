@@ -127,18 +127,27 @@ else()
 	message(STATUS "Building for 32 Bit")
 endif()
 
-# get current git commit short hash
-execute_process(COMMAND "git" "describe" "--always" "--dirty" "--abbrev=7"
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	OUTPUT_VARIABLE SHORT_HASH
-	OUTPUT_STRIP_TRAILING_WHITESPACE
+execute_process(COMMAND "git" "rev-parse" "HEAD"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE FULL_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-if(SHORT_HASH)
-	message(STATUS "Current Git commit hash: ${SHORT_HASH}")
-	add_definitions(-DXASH_BUILD_COMMIT="${SHORT_HASH}")
+execute_process(COMMAND "git" "status" "--porcelain"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_DIRTY_STATUS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if(FULL_HASH)
+    if(GIT_DIRTY_STATUS)
+        set(FULL_HASH "${FULL_HASH}-dirty")
+    endif()
+
+    message(STATUS "Current Git full commit hash: ${FULL_HASH}")
+    add_definitions(-DXASH_BUILD_COMMIT="${FULL_HASH}")
 else()
-	message(STATUS "Failed to set current Git commit hash")
+    message(STATUS "Failed to set current Git commit hash")
 endif()
 
 if (MINGW)
@@ -184,5 +193,14 @@ if(USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
     add_subdirectory(external/openvgui)
 	add_subdirectory(external)
 endif()
+
+if(NOT ANDROID)
+    set(BUILD_CURL_EXE OFF CACHE INTERNAL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "" FORCE) 
+    set(BUILD_STATIC_LIBS ON CACHE INTERNAL "" FORCE)
+	set(CURL_USE_LIBPSL OFF CACHE INTERNAL "" FORCE) 
+    add_subdirectory(external/curl)
+endif()
+
 
 add_subdirectory(cl_dll)

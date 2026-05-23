@@ -54,6 +54,10 @@ bool g_fRenderInitialized = false;
 #endif
 #endif
 
+#if !XASH_ANDROID
+#include "update_checker.h"
+#endif
+
 extern "C"
 {
 #include "pm_shared.h"
@@ -200,6 +204,15 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 		fclose(file);
 		ClientCmd("exec customconfig.cfg");
 	}
+
+#if !XASH_ANDROID
+    if (!g_pUpdateChecker)
+    {
+        g_pUpdateChecker = new UpdateChecker();
+        g_pUpdateChecker->CheckAsync();
+    }
+#endif
+
 
 	if( gEngfuncs.pfnGetCvarPointer( "cl_filterstuffcmd" ) == 0 )
 	{
@@ -355,6 +368,18 @@ int DLLEXPORT HUD_Redraw( float time, int intermission )
 
 #if USE_IMGUI
 	g_ImGuiManager.NewFrame();
+#endif
+
+#if !XASH_ANDROID
+    static bool bPrinted = false;
+
+    if (!bPrinted && g_pUpdateChecker && g_pUpdateChecker->IsFinished() && g_pUpdateChecker->HasUpdate())
+    {
+        gEngfuncs.Con_Printf("\nAxion: New update available!\n");
+		gEngfuncs.Con_Printf("Commit: %s\n", g_pUpdateChecker->GetRemoteHash().c_str());
+		gEngfuncs.Con_Printf("%s\n\n", g_pUpdateChecker->GetCommitMessage().c_str());
+		bPrinted = true;
+    }
 #endif
 
 	return 1;

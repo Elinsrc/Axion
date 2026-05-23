@@ -4,6 +4,10 @@
 #include "parsemsg.h"
 #include "build_info.h"
 
+#if !XASH_ANDROID
+#include "update_checker.h"
+#endif
+
 int CHudWatermark::Init()
 {
 	m_iFlags = 0;
@@ -53,6 +57,17 @@ int CHudWatermark::Draw(float time)
 	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 4, BuildInfo::GetGitHubLink(), r, g, b);
 	sprintf(str, "To disable this message, type in the console ^2hud_watermark 0");
 	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 6, str, r, g, b);
+
+#if !XASH_ANDROID
+    if (g_pUpdateChecker && g_pUpdateChecker->IsFinished() && g_pUpdateChecker->HasUpdate())
+    {
+        gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 8, "^2Axion^7: ^1New update available!", r, g, b);
+		sprintf(str, "Commit: %s\n", g_pUpdateChecker->GetRemoteHash().c_str());
+		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 9, str, r, g, b);
+		sprintf(str, "%s\n", g_pUpdateChecker->GetCommitMessage().c_str());
+		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 10, str, r, g, b);
+    }
+#endif
 
 	return 0;
 }

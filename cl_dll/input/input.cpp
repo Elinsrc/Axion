@@ -45,6 +45,10 @@ extern bool g_fRenderInitialized;
 
 #endif
 
+#if !XASH_ANDROID
+#include "update_checker.h"
+#endif
+
 extern "C" 
 {
 	struct kbutton_s DLLEXPORT *KB_Find( const char *name );
@@ -1295,6 +1299,14 @@ void DLLEXPORT HUD_Shutdown( void )
 	EngineHooks::UnpatchEngine();
 	g_SteamAPI.shutdown();	
 #endif
+#endif
+
+#if !XASH_ANDROID
+	if (g_pUpdateChecker)
+    {
+        delete g_pUpdateChecker;
+        g_pUpdateChecker = nullptr;
+    }
 #endif
 
 }
