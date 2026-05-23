@@ -1,6 +1,7 @@
 import java.time.LocalDateTime
 import java.time.Month
 import java.time.temporal.ChronoUnit
+import java.time.format.DateTimeFormatter
 
 apply plugin: 'com.android.application'
 
@@ -20,13 +21,14 @@ android {
 
     defaultConfig {
         applicationId 'su.xash.axion'
-        versionName '1.5'
+        versionName "1.5-r${getGitCommitCount()}"
         versionCode getBuildNum()
         minSdkVersion 21
         targetSdk 36
 
         buildConfigField "String", "COMMIT_HASH", "\"${getGitHash()}\""
         buildConfigField "String", "COMMIT_MESSAGE", "\"${getGitMessage()}\""
+        buildConfigField "String", "BUILD_DATE", "\"${getBuildDate()}\""
     }
 
     compileOptions {
@@ -85,6 +87,10 @@ static def getBuildNum() {
     return qBuildNum * 10000 + minuteOfDay
 }
 
+static def getBuildDate() {
+    return LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMM dd yyyy", Locale.US))
+}
+
 static def getGitHash() {
     try {
         return 'git rev-parse HEAD'.execute().text.trim()
@@ -100,3 +106,12 @@ static def getGitMessage() {
         return "unknown"
     }
 }
+
+static def getGitCommitCount() {
+    try {
+        return 'git rev-list --count HEAD'.execute().text.trim()
+    } catch (ignored) {
+        return "0"
+    }
+}
+

@@ -23,9 +23,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 public class GitHubActivity extends AppCompatActivity {
 
@@ -51,7 +48,7 @@ public class GitHubActivity extends AppCompatActivity {
         final String fullCommitHash = BuildConfig.COMMIT_HASH;
         final String commitMessage = BuildConfig.COMMIT_MESSAGE;
         final String commitUrl = REPO_URL + "/commit/" + fullCommitHash;
-        final String buildDate = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(new Date());
+        final String buildDate = BuildConfig.BUILD_DATE;
 
         ((TextView) findViewById(R.id.buildDateText)).setText(getString(R.string.build_date, buildDate));
         ((TextView) findViewById(R.id.commitHashText)).setText(getString(R.string.commit_hash, fullCommitHash));
