@@ -213,6 +213,10 @@ endif()
 
 if(NOT ANDROID)
 	include_directories(${CMAKE_SOURCE_DIR}/external/curl/include)
+
+	if (CMAKE_SIZEOF_VOID_P EQUAL 4)
+		include_directories(${CMAKE_SOURCE_DIR}/external/pcre2/src)
+	endif()
 endif()
 
 if(USE_VOICEMGR)
@@ -266,6 +270,10 @@ endif()
 
 if(NOT ANDROID)
 	target_link_libraries(${CLDLL_LIBRARY} libcurl)
+
+	if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+		target_link_libraries(${CLDLL_LIBRARY} pcre2-posix-static pcre2-8-static)
+	endif()
 endif()
 
 set_target_properties (${CLDLL_LIBRARY} PROPERTIES

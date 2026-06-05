@@ -25,12 +25,18 @@
 #include "ui_ScorePanel.h"
 #include "avatar_cache.h"
 
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
 #if XASH_LINUX
 #define _stricmp strcasecmp
 #define _strnicmp strncasecmp
 #endif
 
 #define MAX_CMD_LINE 1024
+
+const char *blockList = "^(exit|quit|bind|unbind|unbindall|kill|exec|alias|clear|motdfile|motd_write|writecfg|cd|developer|fps.+|rcon.*)$";
+const char *blockListCvar = "^(rcon.*)$";
 
 cl_enginemessages_t pEngineMessages;
 cvar_t *m_pCvarClLogMessages = 0;
@@ -40,113 +46,34 @@ cvar_t *m_pCvarClProtectAllow = 0;
 cvar_t *m_pCvarClProtectBlockCvar = 0;
 char com_token[1024];
 
-enum MatchType
+bool RegexMatch(const char *str, const char *regex)
 {
-	MATCH_EXACT,       
-	MATCH_PREFIX, 
-	MATCH_PREFIX_MIN1
-};
+    if (!regex || regex[0] == '\0' || !str)
+        return false;
 
-struct BlockEntry
-{
-	const char *name;
-	MatchType type;
-};
+    int errornumber;
+    PCRE2_SIZE erroffset;
 
-static const BlockEntry s_blockedCommands[] =
-{
-	{ "exit",       MATCH_EXACT },
-	{ "quit",       MATCH_EXACT },
-	{ "bind",       MATCH_EXACT },
-	{ "unbind",     MATCH_EXACT },
-	{ "unbindall",  MATCH_EXACT },
-	{ "kill",       MATCH_EXACT },
-	{ "exec",       MATCH_EXACT },
-	{ "alias",      MATCH_EXACT },
-	{ "clear",      MATCH_EXACT },
-	{ "motdfile",   MATCH_EXACT },
-	{ "motd_write", MATCH_EXACT },
-	{ "writecfg",   MATCH_EXACT },
-	{ "cd",         MATCH_EXACT },
-	{ "developer",  MATCH_EXACT },
-	{ "fps",        MATCH_PREFIX_MIN1 },
-	{ "rcon",       MATCH_PREFIX },     
-};
-static const int s_blockedCommandsCount = sizeof(s_blockedCommands) / sizeof(s_blockedCommands[0]);
+    pcre2_code *re = pcre2_compile((PCRE2_SPTR)regex, PCRE2_ZERO_TERMINATED, PCRE2_CASELESS, &errornumber, &erroffset, NULL);
+    if (!re)
+    {
+        if (gEngfuncs.Con_Printf)
+        {
+            PCRE2_UCHAR error_buffer[256];
+            pcre2_get_error_message(errornumber, error_buffer, sizeof(error_buffer));
+            gEngfuncs.Con_Printf("PCRE2 compilation failed at offset %d: %s\n", (int)erroffset, error_buffer);
+            gEngfuncs.Con_Printf("in regex: %s\n", regex);
+        }
+        return false;
+    }
 
-static const BlockEntry s_blockedCvars[] =
-{
-	{ "rcon", MATCH_PREFIX },
-};
-static const int s_blockedCvarsCount = sizeof(s_blockedCvars) / sizeof(s_blockedCvars[0]);
+    pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(re, NULL);
+    int rc = pcre2_match(re, (PCRE2_SPTR)str, PCRE2_ZERO_TERMINATED, 0, 0, match_data, NULL);
 
-static const char *s_blockListDesc = "exit, quit, bind, unbind, unbindall, kill, exec, alias, clear, motdfile, motd_write, writecfg, cd, developer, fps*, rcon*";
-static const char *s_blockListCvarDesc = "rcon*";
+    pcre2_match_data_free(match_data);
+    pcre2_code_free(re);
 
-static bool MatchesEntry(const char *str, const BlockEntry &entry)
-{
-	int nameLen = strlen(entry.name);
-	switch (entry.type)
-	{
-	case MATCH_EXACT:
-		return (_stricmp(str, entry.name) == 0);
-	case MATCH_PREFIX:
-		return (_strnicmp(str, entry.name, nameLen) == 0);
-	case MATCH_PREFIX_MIN1:
-		return (_strnicmp(str, entry.name, nameLen) == 0 && (int)strlen(str) > nameLen);
-	}
-	return false;
-}
-
-static bool IsInBlockList(const char *str, const BlockEntry *list, int count)
-{
-	for (int i = 0; i < count; i++)
-	{
-		if (MatchesEntry(str, list[i]))
-			return true;
-	}
-	return false;
-}
-
-static bool IsInCvarList(const char *str, const char *cvarValue)
-{
-	if (!cvarValue || cvarValue[0] == 0)
-		return false;
-
-	char buf[1024];
-	strncpy(buf, cvarValue, sizeof(buf));
-	buf[sizeof(buf) - 1] = 0;
-
-	char *token = strtok(buf, ",; \t");
-	while (token)
-	{
-		int len = strlen(token);
-		if (len > 0)
-		{
-			MatchType type = MATCH_EXACT;
-			if (token[len - 1] == '*')
-			{
-				type = MATCH_PREFIX;
-				token[len - 1] = 0;
-				len--;
-			}
-			else if (token[len - 1] == '+')
-			{
-				type = MATCH_PREFIX_MIN1;
-				token[len - 1] = 0;
-				len--;
-			}
-
-			if (len > 0)
-			{
-				BlockEntry entry = { token, type };
-				if (MatchesEntry(str, entry))
-					return true;
-			}
-		}
-		token = strtok(NULL, ",; \t");
-	}
-	return false;
+    return rc >= 0;
 }
 
 bool IsCommandGood(const char *str)
@@ -154,7 +81,7 @@ bool IsCommandGood(const char *str)
 	// Parse command into token
 	char *ret = gEngfuncs.COM_ParseFile((char *)str, com_token);
 	if (ret == NULL || com_token[0] == 0)
-		return true; // no tokens
+		return true;	// no tokens
 
 	// Block our filter from hacking
 	if (!_stricmp(com_token, m_pCvarClProtectLog->name)) return false;
@@ -163,10 +90,9 @@ bool IsCommandGood(const char *str)
 	if (!_stricmp(com_token, m_pCvarClProtectBlockCvar->name)) return false;
 
 	// Check command name against block lists and whole command line against allow list
-	bool blocked = IsInBlockList(com_token, s_blockedCommands, s_blockedCommandsCount) || IsInCvarList(com_token, m_pCvarClProtectBlock->string);
-	bool allowed = IsInCvarList(str, m_pCvarClProtectAllow->string);
-
-	if (blocked && !allowed)
+	if ((RegexMatch(com_token, blockList) ||
+		 RegexMatch(com_token, m_pCvarClProtectBlock->string)) &&
+		!RegexMatch(str, m_pCvarClProtectAllow->string))
 		return false;
 
 	return true;
@@ -175,7 +101,7 @@ bool IsCommandGood(const char *str)
 bool IsCvarGood(const char *str)
 {
 	if (str[0] == 0)
-		return true; // no cvar
+		return true;	// no cvar
 
 	// Block our filter from getting
 	if (!_stricmp(str, m_pCvarClProtectLog->name)) return false;
@@ -184,7 +110,8 @@ bool IsCvarGood(const char *str)
 	if (!_stricmp(str, m_pCvarClProtectBlockCvar->name)) return false;
 
 	// Check cvar name against block lists
-	if (IsInBlockList(str, s_blockedCvars, s_blockedCvarsCount) || IsInCvarList(str, m_pCvarClProtectBlockCvar->string))
+	if (RegexMatch(str, blockListCvar) ||
+		RegexMatch(str, m_pCvarClProtectBlockCvar->string))
 		return false;
 
 	return true;
@@ -496,14 +423,9 @@ void DumpUserMessages(void)
 void ProtectHelp(void)
 {
 	gEngfuncs.Con_Printf("cl_protect_* cvars are used to protect from slowhacking.\n");
-	gEngfuncs.Con_Printf("By default following commands are blocked:\n");
-	gEngfuncs.Con_Printf("  %s\n", s_blockListDesc);
-	gEngfuncs.Con_Printf("By default following cvar requests are blocked:\n");
-	gEngfuncs.Con_Printf("  %s\n", s_blockListCvarDesc);
-	gEngfuncs.Con_Printf("\nUser cvar format: \"word1,word2,prefix*,prefix+\"\n");
-	gEngfuncs.Con_Printf("  word  - exact match\n");
-	gEngfuncs.Con_Printf("  word* - prefix match (0+ chars after)\n");
-	gEngfuncs.Con_Printf("  word+ - prefix match (1+ chars after)\n");
+	gEngfuncs.Con_Printf("By default following is blocked:\n");
+	gEngfuncs.Con_Printf("Commands: %s\n", blockList);
+	gEngfuncs.Con_Printf("Cvar requests: %s\n", blockListCvar);
 }
 
 void SvcMessagesInit(void)
