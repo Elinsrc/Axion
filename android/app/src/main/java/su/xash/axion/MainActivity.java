@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
         runButton = findViewById(R.id.runButton);
         statusText = findViewById(R.id.updateStatusText);
 
-        argvInput.setText(prefs.getString(KEY_ARGV, ""));
+        argvInput.setText(prefs.getString(KEY_ARGV, argvInput.getText().toString()));
 
         argvInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
