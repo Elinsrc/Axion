@@ -30,8 +30,7 @@
 		</activity>
 
 		<activity
-			android:name=".GitHubActivity"
-			android:label="@string/commit_info" />
+			android:name=".UpdateActivity" />
 	</application>
 
 	<queries>

@@ -13,19 +13,25 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.android.material.button.MaterialButton;
+
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import org.json.JSONArray;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
-    private SharedPreferences prefs;
+
     private static final String PREF_NAME = "AxionPrefs";
     private static final String KEY_ARGV = "last_argv";
+    private static final String ENGINE_ACTIVITY = "su.xash.engine.XashActivity";
+    private static final String ENGINE_DOWNLOAD_URL = "https://github.com/FWGS/xash3d-fwgs/releases/tag/continuous";
+    private static final String[] ENGINE_PACKAGES = {"su.xash.engine.test", "su.xash.engine"};
+    private static final String TEST_HASH = "aec0789150e64b5b7ac1b88625353bab473695c3";
+    private static final String TEST_MSG = "Test message";
+
+    private SharedPreferences prefs;
+    private EditText argvInput;
+    private Button runButton;
+    private TextView statusText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,185 +39,125 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        setSupportActionBar(findViewById(R.id.toolbar));
 
-        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        argvInput = findViewById(R.id.argvInput);
+        runButton = findViewById(R.id.runButton);
+        statusText = findViewById(R.id.updateStatusText);
 
-        EditText argvInput = findViewById(R.id.argvInput);
-        Button runButton = findViewById(R.id.runButton);
-        Button infoButton = findViewById(R.id.infoButton);
-        MaterialButton updateButton = findViewById(R.id.updateButton);
+        argvInput.setText(prefs.getString(KEY_ARGV, ""));
 
-        String defaultArgs = argvInput.getText().toString(); 
-        argvInput.setText(prefs.getString(KEY_ARGV, defaultArgs));
-
-        argvInput.setSingleLine(true);
-        argvInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
         argvInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 saveArgs(argvInput.getText().toString());
                 argvInput.clearFocus();
-                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
-                }
+                hideKeyboard(v);
                 return true;
             }
             return false;
         });
 
         runButton.setOnClickListener(v -> {
-            String userArgs = argvInput.getText().toString();
-            saveArgs(userArgs);
-            startGame(userArgs.trim());
+            String args = argvInput.getText().toString().trim();
+            saveArgs(args);
+            startGame(args);
         });
 
-        infoButton.setOnClickListener(v -> {
-            startActivity(new Intent(MainActivity.this, GitHubActivity.class));
-        });
+        findViewById(R.id.infoButton).setOnClickListener(v ->
+                startActivity(new Intent(this, UpdateActivity.class)));
 
-        updateButton.setOnClickListener(v -> {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(GitHubActivity.DOWNLOAD_URL)));
-        });
+        findViewById(R.id.updateButton).setOnClickListener(v ->
+                openUrl(UpdateActivity.DOWNLOAD_URL));
 
-        checkUpdates(BuildConfig.COMMIT_HASH);
+        performUpdateCheck();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (GitHubActivity.sTestMode) {
-            showUpdateInfo("aec0789150e64b5b7ac1b88625353bab473695c3", "Test latest commit message");
-        }
+        if (UpdateActivity.sTestMode) UpdateActivity.showUpdateInfo(this, TEST_HASH, TEST_MSG);
     }
 
-    private void showUpdateInfo(String hash, String message) {
-        TextView statusText = findViewById(R.id.updateStatusText);
-        statusText.setText(R.string.update_available);
-        statusText.setTextColor(getResources().getColor(android.R.color.holo_red_light));
-        statusText.setVisibility(View.VISIBLE);
-        
-        View latestCommitArea = findViewById(R.id.latestCommitArea);
-        TextView latestCommitHash = findViewById(R.id.latestCommitHash);
-        TextView latestCommitMessage = findViewById(R.id.latestCommitMessage);
-        MaterialButton updateButton = findViewById(R.id.updateButton);
-        
-        latestCommitHash.setText(getString(R.string.commit_hash, hash));
-        latestCommitMessage.setText(message);
-        
-        latestCommitArea.setVisibility(View.VISIBLE);
-        updateButton.setVisibility(View.VISIBLE);
-        
-        latestCommitArea.setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(GitHubActivity.REPO_URL + "/commit/" + hash))));
-    }
-
-    private void checkUpdates(String currentHash) {
-        TextView statusText = findViewById(R.id.updateStatusText);
-        Button runButton = findViewById(R.id.runButton);
-
-        if (GitHubActivity.sTestMode) {
-            showUpdateInfo("aec0789150e64b5b7ac1b88625353bab473695c3", "Test latest commit message");
+    private void performUpdateCheck() {
+        if (UpdateActivity.sTestMode) {
+            UpdateActivity.showUpdateInfo(this, TEST_HASH, TEST_MSG);
             return;
         }
 
-        runButton.setEnabled(false);
-        runButton.setAlpha(0.5f);
+        setRunButtonEnabled(false);
         statusText.setText(R.string.update_check);
-        statusText.setTextColor(getResources().getColor(android.R.color.white));
-        statusText.setAlpha(0.7f);
         statusText.setVisibility(View.VISIBLE);
 
-        new Thread(() -> {
-            try {
-                URL url = new URL(GitHubActivity.COMMITS_API);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setRequestProperty("User-Agent", "Axion-App");
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
+        UpdateActivity.checkUpdates(this, BuildConfig.COMMIT_HASH, (success, outdated, hash, msg) -> {
+            setRunButtonEnabled(true);
 
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder responseBuilder = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    responseBuilder.append(line);
-                }
-                reader.close();
-
-                JSONArray commits = new JSONArray(responseBuilder.toString());
-                boolean outdated = false;
-                String latestHash = "";
-                String latestMsg = "";
-                
-                if (commits.length() > 0) {
-                    latestHash = commits.getJSONObject(0).getString("sha");
-                    latestMsg = commits.getJSONObject(0).getJSONObject("commit").getString("message");
-                    if (!latestHash.equals(currentHash)) {
-                        outdated = true;
-                    }
-                }
-
-                final boolean finalOutdated = outdated;
-                final String finalLatestHash = latestHash;
-                final String finalLatestMsg = latestMsg;
-                runOnUiThread(() -> {
-                    runButton.setEnabled(true);
-                    runButton.setAlpha(1.0f);
-                    if (finalOutdated || GitHubActivity.sTestMode) {
-                        showUpdateInfo(finalLatestHash, finalLatestMsg);
-                    } else {
-                        statusText.setText(R.string.up_to_date);
-                        statusText.setTextColor(getResources().getColor(android.R.color.holo_green_light));
-                        statusText.setAlpha(1.0f);
-                        statusText.setVisibility(View.VISIBLE);
-                        findViewById(R.id.latestCommitArea).setVisibility(View.GONE);
-                        findViewById(R.id.updateButton).setVisibility(View.GONE);
-                    }
-                });
-
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    runButton.setEnabled(true);
-                    runButton.setAlpha(1.0f);
-                    statusText.setText(R.string.update_error);
-                    statusText.setTextColor(getResources().getColor(android.R.color.holo_red_light));
-                    statusText.setAlpha(1.0f);
-                });
+            if (!success) {
+                setStatus(R.string.update_error, android.R.color.holo_red_light);
+                return;
             }
-        }).start();
+
+            if (outdated) {
+                UpdateActivity.showUpdateInfo(this, hash, msg);
+            } else {
+                setStatus(R.string.up_to_date, android.R.color.holo_green_light);
+                findViewById(R.id.latestCommitArea).setVisibility(View.GONE);
+                findViewById(R.id.updateButton).setVisibility(View.GONE);
+            }
+        });
+    }
+
+    private void startGame(String argv) {
+        String pkg = findEnginePackage();
+
+        if (pkg == null) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.engine_not_found_title)
+                    .setMessage(R.string.engine_not_found_msg)
+                    .setPositiveButton(android.R.string.yes, (d, w) -> openUrl(ENGINE_DOWNLOAD_URL))
+                    .setNegativeButton(android.R.string.no, null)
+                    .show();
+            return;
+        }
+
+        startActivity(new Intent()
+                .setComponent(new ComponentName(pkg, ENGINE_ACTIVITY))
+                .putExtra("gamedir", "valve")
+                .putExtra("gamelibdir", getApplicationInfo().nativeLibraryDir)
+                .putExtra("argv", argv)
+                .putExtra("package", getPackageName()));
+    }
+
+    private String findEnginePackage() {
+        for (String pkg : ENGINE_PACKAGES) {
+            try {
+                getPackageManager().getPackageInfo(pkg, 0);
+                return pkg;
+            } catch (PackageManager.NameNotFoundException ignored) {}
+        }
+        return null;
+    }
+
+    private void setRunButtonEnabled(boolean enabled) {
+        runButton.setEnabled(enabled);
+        runButton.setAlpha(enabled ? 1f : 0.5f);
+    }
+
+    private void setStatus(int resId, int colorResId) {
+        statusText.setText(resId);
+        statusText.setTextColor(getColor(colorResId));
+        statusText.setVisibility(View.VISIBLE);
     }
 
     private void saveArgs(String args) {
         prefs.edit().putString(KEY_ARGV, args).apply();
     }
 
-    private void startGame(String argv) {
-        String pkg = "su.xash.engine.test";
+    private void openUrl(String url) {
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+    }
 
-        try {
-            getPackageManager().getPackageInfo(pkg, 0);
-        } catch (PackageManager.NameNotFoundException e) {
-            try {
-                pkg = "su.xash.engine";
-                getPackageManager().getPackageInfo(pkg, 0);
-            } catch (PackageManager.NameNotFoundException ex) {
-                new MaterialAlertDialogBuilder(this)
-                        .setTitle(R.string.engine_not_found_title)
-                        .setMessage(R.string.engine_not_found_msg)
-                        .setPositiveButton(android.R.string.yes, (dialog, which) -> {
-                            startActivity(new Intent(Intent.ACTION_VIEW,
-                                    Uri.parse("https://github.com/FWGS/xash3d-fwgs/releases/tag/continuous")));
-                        })
-                        .setNegativeButton(android.R.string.no, null)
-                        .show();
-                return;
-            }
-        }
-
-        startActivity(new Intent().setComponent(new ComponentName(pkg, "su.xash.engine.XashActivity"))
-                .putExtra("gamedir", "valve")
-                .putExtra("gamelibdir", getApplicationInfo().nativeLibraryDir)
-                .putExtra("argv", argv)
-                .putExtra("package", getPackageName()));
+    private void hideKeyboard(View view) {
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 }
