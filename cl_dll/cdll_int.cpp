@@ -526,11 +526,11 @@ int DLLEXPORT HUD_GetRenderInterface( int version, render_api_t *renderfuncs, re
 		return false;
 	}
 #else
-	if (refName && strcmp(refName, "gl") != 0)
+	if (refName && strcmp(refName, "gl") != 0 && strcmp(refName, "gl4es") != 0)
 	{
-		gRenderfuncs.Host_Error("Axion requires \"OpenGL\" renderer! "
-			"Please, select \"OpenGL\" renderer in game settings, "
-			"otherwise you can use \"-ref gl\" startup parameter, "
+		gRenderfuncs.Host_Error("Axion requires \"OpenGL\" or \"GL4ES\" renderer! "
+			"Please, select \"OpenGL\" or \"GL4ES\" renderer in game settings, "
+			"otherwise you can use \"-ref gl\" or \"-ref gl4es\" startup parameter, "
 			"or remove your \"video.cfg\" configuration file."
 		);
 		return false;
