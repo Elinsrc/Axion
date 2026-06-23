@@ -84,6 +84,9 @@ If you don't like it, you can restore the classic HUD by setting `hud_new` to `0
 | ui_imgui_demo | - | - | - | Opens ImGui demo window |
 | ui_commands | - | - | - | Opens Axion settings menu |
 | ui_imgui_scale | 0 | 1 | * | UI scaling factor |
+| ui_scores | 0 | 1 | 32 |  Displays a mini-scoreboard panel on the screen. The amount value sets how many players or teams are shown |
+| ui_scores_pos | "30 50" | - | - | Controls the position of the mini-scoreboard element (X Y) |
+| ui_scores_alpha | 20 | 0 | 255| Mini-scoreboard alpha |
 
 ## Building
 Clone the source code:
