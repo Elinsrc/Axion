@@ -3,6 +3,7 @@
 #include "parsemsg.h"
 #include "imgui_viewport.h"
 #include <string.h>
+#include "demo_api.h"
 
 CImGuiViewport &g_ImGuiViewport = CImGuiViewport::GetInstance();
 
@@ -24,6 +25,7 @@ void CImGuiViewport::Initialize()
 {
     m_iGotAllMOTD = true;
     m_szServerName[0] = '\0';
+    m_iCurrentMenu = 0;
 }
 
 void CImGuiViewport::ShowScoreBoard()
@@ -43,6 +45,99 @@ void CImGuiViewport::HideScoreBoard()
         return;
 
     g_iScoreboard.m_ShowScore = false;
+}
+
+bool CImGuiViewport::AllowedToPrintText()
+{
+	if( g_iPlayerClass == 0 )
+	{
+		if( m_iCurrentMenu == MENU_TEAM ||
+			m_iCurrentMenu == MENU_CLASS ||
+			m_iCurrentMenu == MENU_INTRO ||
+			m_iCurrentMenu == MENU_CLASSHELP )
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void CImGuiViewport::CreateTextWindow( int iTextToShow )
+{
+    char sz[256];
+    char *cText  = nullptr;
+    char *pfile  = nullptr;
+    static const int MAX_TITLE_LENGTH = 64;
+    char cTitle[MAX_TITLE_LENGTH];
+
+    if( iTextToShow == SHOW_MOTD )
+    {
+        if (!m_szServerName || !m_szServerName[0])
+			strcpy( cTitle, "Half-Life" );
+		else
+			strncpy( cTitle, m_szServerName, sizeof(cTitle) );
+		cTitle[sizeof(cTitle)-1] = 0;
+		cText = m_szMOTD;
+    }
+    else if( iTextToShow == SHOW_SPECHELP )
+    {
+        CHudTextMessage::LocaliseTextString( "#Spec_Help_Title", cTitle, MAX_TITLE_LENGTH );
+        cTitle[MAX_TITLE_LENGTH - 1] = 0;
+
+        char *pfile = CHudTextMessage::BufferedLocaliseTextString( "#Spec_Help_Text" );
+		if ( pfile )
+		{
+			cText = pfile;
+		}
+    }
+
+    if( cText && cText[0] )
+        g_iMOTD.Show( cText, cTitle );
+
+    if( pfile )
+        gEngfuncs.COM_FreeFile( pfile );
+
+    return;
+}
+
+void CImGuiViewport::ShowIMGUIMenu( int iMenu )
+{
+    // Don't open menus during demo playback
+    if( gEngfuncs.pDemoAPI->IsPlayingback() )
+        return;
+
+    // During intermission only MOTD/intro is allowed
+    if( gHUD.m_iIntermission && iMenu != MENU_INTRO )
+        return;
+
+    m_iCurrentMenu = iMenu;
+
+    switch ( iMenu )
+	{
+	case MENU_TEAM:		
+		break;
+	case MENU_MAPBRIEFING:
+		break;
+	case MENU_INTRO:
+        CreateTextWindow( SHOW_MOTD );
+		break;
+	case MENU_CLASSHELP:
+		break;
+	case MENU_SPECHELP:
+        CreateTextWindow( SHOW_SPECHELP );
+		break;
+	case MENU_CLASS:
+		break;
+	default:
+		break;
+	}
+}
+
+void CImGuiViewport::HideIMGUIMenu()
+{
+    m_iCurrentMenu = 0;
+    g_iMOTD.m_ShowMOTD = false;
 }
 
 void CImGuiViewport::GetAllPlayersInfo()
@@ -78,6 +173,18 @@ int CImGuiViewport::MsgFunc_Detpack( const char *pszName, int iSize, void *pbuf 
 
 int CImGuiViewport::MsgFunc_IMGUIMenu( const char *pszName, int iSize, void *pbuf )
 {
+    BEGIN_READ( pbuf, iSize );
+
+	int iMenu = READ_BYTE();
+
+	// Map briefing includes the name of the map (because it's sent down before the client knows what map it is)
+	if (iMenu == MENU_MAPBRIEFING)
+	{
+		strncpy( m_sMapName, READ_STRING(), sizeof(m_sMapName) );
+		m_sMapName[ sizeof(m_sMapName) - 1 ] = '\0';
+	}
+	ShowIMGUIMenu( iMenu );
+
     return 1;
 }
 
@@ -98,7 +205,7 @@ int CImGuiViewport::MsgFunc_MOTD( const char *pszName, int iSize, void *pbuf )
     // don't show MOTD for HLTV spectators
     if( m_iGotAllMOTD && !gEngfuncs.IsSpectateOnly() )
     {
-        g_iMOTD.m_ShowMOTD = true;
+        ShowIMGUIMenu( MENU_INTRO );
     }
 
     return 1;

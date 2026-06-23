@@ -112,23 +112,18 @@ void SpectatorSpray( void )
 void SpectatorHelp( void )
 {
 #if USE_IMGUI
-	/*if( g_ImGuiViewport )
-	{
-		g_ImGuiViewport.ShowIMGUIMenu( MENU_SPECHELP );
-	}
-	else*/
+	g_ImGuiViewport.ShowIMGUIMenu( MENU_SPECHELP );
 #endif
-	{
-  		char *text = CHudTextMessage::BufferedLocaliseTextString( "#Spec_Help_Text" );
 
-		if( text )
+  	char *text = CHudTextMessage::BufferedLocaliseTextString( "#Spec_Help_Text" );
+
+	if( text )
+	{
+		while( *text )
 		{
-			while( *text )
-			{
-				if( *text != 13 )
-					gEngfuncs.Con_Printf( "%c", *text );
-				text++;
-			}
+			if( *text != 13 )
+				gEngfuncs.Con_Printf( "%c", *text );
+			text++;
 		}
 	}
 }

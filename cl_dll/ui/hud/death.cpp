@@ -284,7 +284,7 @@ int CHudDeathNotice::Draw( float flTime )
 		// Only draw if the viewport will let me
 		// vgui dropped out
 #if USE_IMGUI
-		//if( g_ImGuiViewport.AllowedToPrintText() )
+		if( g_ImGuiViewport.AllowedToPrintText() == true )
 #endif
 		{
 			// Draw the death notice

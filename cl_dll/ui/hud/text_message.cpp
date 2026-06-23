@@ -183,8 +183,8 @@ int CHudTextMessage::MsgFunc_TextMsg( const char *pszName, int iSize, void *pbuf
 	char *psz = szBuf[5];
 
 #if USE_IMGUI
-	/*if( g_ImGuiViewport.AllowedToPrintText() == FALSE )
-		return 1;*/
+	if( g_ImGuiViewport.AllowedToPrintText() == false )
+		return 1;
 #endif
 
 	switch( msg_dest )

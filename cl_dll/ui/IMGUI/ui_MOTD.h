@@ -15,7 +15,12 @@ public:
     bool CursorRequired();
     bool HandleKey(bool keyDown, int keyNumber, const char *bindName);
 
+    void Show( const char *text, const char *title );
+
     static bool m_ShowMOTD;
+private:
+    char m_szText[4096];
+    char m_szTitle[64];
 };
 
 extern CImGuiMOTD g_iMOTD;

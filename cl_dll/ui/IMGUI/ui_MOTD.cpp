@@ -5,6 +5,8 @@
 #include "cl_util.h"
 #include "imgui_viewport.h"
 
+CImGuiMOTD g_iMOTD;
+
 bool CImGuiMOTD::m_ShowMOTD = false;
 
 void CImGuiMOTD::Initialize()
@@ -23,13 +25,25 @@ void CImGuiMOTD::Think()
 {
 }
 
+void CImGuiMOTD::Show( const char *text, const char *title )
+{
+    strncpy(m_szText, text ? text : "", sizeof(m_szText)  - 1 );
+    strncpy(m_szTitle, title ? title : "Half-Life", sizeof(m_szTitle) - 1);
+
+    m_szText[sizeof(m_szText) - 1] = '\0';
+    m_szTitle[sizeof(m_szTitle) - 1] = '\0';
+
+    m_ShowMOTD = true;
+}
+
 void CImGuiMOTD::Draw()
 {
     if (!m_ShowMOTD)
         return;
 
-    const char* motdText = g_ImGuiViewport.m_szMOTD;
-    const char* buttonText = CHudTextMessage::BufferedLocaliseTextString("#Menu_OK");
+    const char *motdText  = m_szText;
+    const char *titleText = m_szTitle;
+    const char *buttonText = CHudTextMessage::BufferedLocaliseTextString("#Menu_OK");
 
     float scrWidth = g_ImGuiViewport.scrWidth();
     float scrHeight = g_ImGuiViewport.scrHeight();
@@ -39,6 +53,8 @@ void CImGuiMOTD::Draw()
     float btnHeight = 35.0f;
     float btnWidth = 120.0f;
     float spacing = 10.0f;
+    float titleLineH = ImGui::GetTextLineHeight();
+    float titleAreaH = titleLineH + 8.0f + spacing;
 
     float maxW = scrWidth * 0.8f;
     float maxH = scrHeight * 0.8f;
@@ -47,7 +63,7 @@ void CImGuiMOTD::Draw()
     float winW = fminf(fmaxf(textSize.x + (windowPadding.x * 2.0f) + scrollbarWidth, 300.0f), maxW);
     
     ImVec2 wrappedSize = ImGui::CalcTextSize(motdText, nullptr, false, winW - (windowPadding.x * 2.0f) - scrollbarWidth);
-    float totalNeededH = wrappedSize.y + btnHeight + (windowPadding.y * 2.0f) + spacing + 20.0f;
+    float totalNeededH = wrappedSize.y + btnHeight + (windowPadding.y * 2.0f) + spacing + titleAreaH + 20.0f;
     float winH = fminf(totalNeededH, maxH);
 
     ImGui::SetNextWindowSize(ImVec2(winW, winH), ImGuiCond_Always);
@@ -60,6 +76,17 @@ void CImGuiMOTD::Draw()
 
     if (ImGui::Begin("##motdwin", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar))
     {
+        float innerW = ImGui::GetContentRegionAvail().x;
+
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 0, 255));
+        m_ImguiUtils.TextWithColorCodesCentered(titleText);
+        ImGui::PopStyleColor();
+
+        ImGui::PushStyleColor(ImGuiCol_Separator, IM_COL32(255, 160, 0, 80));
+        ImGui::Separator();
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+
         float currentAvailH = ImGui::GetContentRegionAvail().y;
         float scrollZoneH = currentAvailH - (btnHeight + spacing);
 

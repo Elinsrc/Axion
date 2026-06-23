@@ -23,6 +23,22 @@
 #endif
 #endif
 
+#define MENU_DEFAULT				1
+#define MENU_TEAM 					2
+#define MENU_CLASS 					3
+#define MENU_MAPBRIEFING			4
+#define MENU_INTRO 					5
+#define MENU_CLASSHELP				6
+#define MENU_CLASSHELP2 			7
+#define MENU_REPEATHELP 			8
+#define MENU_SPECHELP				9
+
+#define HIDE_TEXTWINDOW		0
+#define SHOW_MAPBRIEFING	1
+#define SHOW_CLASSDESC		2
+#define SHOW_MOTD			3
+#define SHOW_SPECHELP		4
+
 class CImGuiViewport
 {
 public:
@@ -49,6 +65,15 @@ public:
     void ShowScoreBoard();
     bool IsScoreBoardVisible();
     void HideScoreBoard();
+
+    bool AllowedToPrintText( void );
+
+    void CreateTextWindow( int iTextToShow );
+
+	void ShowIMGUIMenu( int iMenu );
+	void HideIMGUIMenu( void );
+	void HideTopMenu( void );
+
     void GetAllPlayersInfo();
 
     int MsgFunc_ValClass(const char *pszName, int iSize, void *pbuf );
@@ -73,10 +98,15 @@ public:
 public:
     char m_szMOTD[ MAX_MOTD_LENGTH ];
     char m_szServerName[ MAX_SERVERNAME_LENGTH ];
+    
 
 private:
     int m_iAllowSpectators;
     int m_iGotAllMOTD;
+    
+    char m_sMapName[64];
+
+    int m_iCurrentMenu;
 };
 
 extern CImGuiViewport &g_ImGuiViewport;

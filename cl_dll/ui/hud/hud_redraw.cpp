@@ -127,8 +127,8 @@ int CHud::Redraw( float flTime, int intermission )
 	else if( !m_iIntermission && intermission )
 	{
 		m_iIntermission = intermission;
-		/*g_ImGuiViewport.HideCommandMenu();
-		g_ImGuiViewport.HideIMGUIMenu();*/
+		//g_ImGuiViewport.HideCommandMenu();
+		g_ImGuiViewport.HideIMGUIMenu();
 #if !USE_NOIMGUI_SCOREBOARD
 		g_ImGuiViewport.ShowScoreBoard();
 #endif

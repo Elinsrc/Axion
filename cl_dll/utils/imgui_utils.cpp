@@ -103,6 +103,69 @@ void CImguiUtils::TextWithColorCodes(const char* text)
     ImGui::Dummy(ImVec2(0, cursor.y - pos.y + lineHeight));
 }
 
+void CImguiUtils::TextWithColorCodesCentered(const char *text)
+{
+    float availWidth = ImGui::GetContentRegionAvail().x;
+
+    std::string plain;
+    for(const char *c = text; *c; c++)
+    {
+        if( *c == '^' && *(c+1) )
+        {
+            c++;
+            continue;
+        }
+        plain += *c;
+    }
+
+    float textW = ImGui::CalcTextSize( plain.c_str() ).x;
+    float offsetX = ( availWidth - textW ) * 0.5f;
+    if( offsetX < 0.0f ) 
+        offsetX = 0.0f;
+
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+
+    ImDrawList *draw = ImGui::GetWindowDrawList();
+    ImVec2 pos = ImGui::GetCursorScreenPos();
+    ImVec2 cursor = pos;
+    float lineH = ImGui::GetTextLineHeight();
+    ImVec4 defColor = ImVec4(1.0f, 0.65f, 0.0f, 1.0f);
+    ImVec4 color = defColor;
+
+    const char *ptr = text;
+    while(*ptr)
+    {
+        if(*ptr == '\n')
+        {
+            cursor.x = pos.x;
+            cursor.y += lineH;
+            color = defColor;
+            ptr++;
+            continue;
+        }
+
+        if(*ptr == '^' && *(ptr+1))
+        {
+            color = ColorFromCode(*(ptr+1));
+            ptr += 2;
+            continue;
+        }
+
+        const char *start = ptr;
+        while(*ptr && *ptr != '\n' && !(*ptr == '^' && *(ptr+1)))
+            ptr++;
+
+        std::string seg( start, ptr - start );
+        if(!seg.empty())
+        {
+            draw->AddText(cursor, ImGui::ColorConvertFloat4ToU32(color), seg.c_str());
+            cursor.x += ImGui::CalcTextSize( seg.c_str() ).x;
+        }
+    }
+
+    ImGui::Dummy(ImVec2( 0, cursor.y - pos.y + lineH ));
+}
+
 float CImguiUtils::CalcTextWidthWithColorCodes(const char* text, float fontSize)
 {
     ImFont* font = ImGui::GetFont();

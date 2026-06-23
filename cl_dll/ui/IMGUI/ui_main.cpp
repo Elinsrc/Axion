@@ -15,8 +15,7 @@ void CImGuiWindowSystem::LinkWindows()
 
     AddWindow(&g_iScoreboard);
 
-    static CImGuiMOTD motdWindow;
-    AddWindow(&motdWindow);
+    AddWindow(&g_iMOTD);
 
     AddWindow(&g_iCustomMenu);
 }

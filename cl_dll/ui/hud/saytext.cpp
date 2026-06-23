@@ -109,8 +109,8 @@ int CHudSayText::Draw( float flTime )
 	int y = Y_START;
 
 #if USE_IMGUI
-	/*if( ( g_ImGuiViewport.AllowedToPrintText() == FALSE ) || !m_HUD_saytext->value )
-		return 1;*/
+	if( ( g_ImGuiViewport.AllowedToPrintText() == false ) || !m_HUD_saytext->value )
+		return 1;
 #endif
 	// make sure the scrolltime is within reasonable bounds,  to guard against the clock being reset
 	flScrollTime = Q_min( flScrollTime, flTime + m_HUD_saytext_time->value );

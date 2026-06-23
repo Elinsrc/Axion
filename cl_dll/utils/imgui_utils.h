@@ -16,6 +16,7 @@ class CImguiUtils
 public:
     ImVec4 ColorFromCode(char code);
     void TextWithColorCodes(const char* text);
+    void TextWithColorCodesCentered( const char *text );
     float CalcTextWidthWithColorCodes(const char* text, float fontSize = 0.0f);
     float DrawTextWithColorCodesAt(const ImVec2& pos, const char* text, ImVec4 defaultColor, float alphaMul = 1.0f);
     static void DrawCallback_SetAdditive(const ImDrawList* parent_list, const ImDrawCmd* cmd);
