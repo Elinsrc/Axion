@@ -1,4 +1,3 @@
-#include "imgui_utils.h"
 #include <string>
 #include <cmath>
     
@@ -19,6 +18,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+#include "imgui_utils.h"
 
 CImguiUtils m_ImguiUtils;
 
@@ -427,7 +428,7 @@ void CImguiUtils::RenderColorCodeText(float fontSize, const ImVec2& pos, const c
     }
 }
 
-void CImguiUtils::DrawText(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow)
+void CImguiUtils::RenderText(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow)
 {
     ImVec4 defaultColor = ImGui::ColorConvertU32ToFloat4(color);
 
@@ -438,7 +439,7 @@ void CImguiUtils::DrawText(float fontSize, const ImVec2& pos, const char* text, 
     RenderColorCodeText(fontSize, pos, text, defaultColor, false);
 }
 
-void CImguiUtils::DrawTextCenter(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow)
+void CImguiUtils::RenderTextCenter(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow)
 {
     ImFont* font = ImGui::GetFont();
     ImVec4 defaultColor = ImGui::ColorConvertU32ToFloat4(color);

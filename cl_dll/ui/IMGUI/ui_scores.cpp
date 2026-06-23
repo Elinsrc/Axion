@@ -103,7 +103,7 @@ void CImGuiScores::Draw()
         
         dl->AddRectFilled(bgMin, bgMax, rowBgColor);
 
-        m_ImguiUtils.DrawText(fontSize, ImVec2(static_cast<float>(xpos), currentY), data->szScore, IM_COL32(data->r, data->g, data->b, 255), true);
+        m_ImguiUtils.RenderText(fontSize, ImVec2(static_cast<float>(xpos), currentY), data->szScore, IM_COL32(data->r, data->g, data->b, 255), true);
         
         currentY += rowHeight + 2.0f;
     }

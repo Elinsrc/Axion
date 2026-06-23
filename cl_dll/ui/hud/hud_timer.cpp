@@ -571,7 +571,7 @@ void CHudTimer::ImGui_Timer()
 			timeinfo = localtime(&rawtime);
 			sprintf(text, "Clock %ld:%02ld:%02ld", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
 
-			m_ImguiUtils.DrawTextCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight), text, IM_COL32(r, g, b, (int)a), true);
+			m_ImguiUtils.RenderTextCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight), text, IM_COL32(r, g, b, (int)a), true);
 			break;
 	}
 
@@ -584,7 +584,7 @@ void CHudTimer::ImGui_Timer()
 		float nextmap_a = (timeleft >= 40 || hud_nextmap > 1 ? 255.0 : 255.0 / 3 * ((m_flEndTime - currentTime) + 1 - 37)) * gHUD.GetHudTransparency();
 		UnpackRGB(r, g, b, gHUD.m_iDefaultHUDColor);
 
-		m_ImguiUtils.DrawTextCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight * 2), text, IM_COL32(r, g, b, (int)nextmap_a), true);
+		m_ImguiUtils.RenderTextCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight * 2), text, IM_COL32(r, g, b, (int)nextmap_a), true);
 	}
 }
 #endif
@@ -639,7 +639,7 @@ void CHudTimer::DrawTimerInternal(int time, int r, int g, int b, bool redOnLow)
 	{
 		float fontSize = CVAR_GET_FLOAT("ui_imgui_font_scale");
 		float centerX = ImGui::GetIO().DisplaySize.x * 0.5f;
-		m_ImguiUtils.DrawTextCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight), text, IM_COL32(r, g, b, (int)(255 * gHUD.GetHudTransparency())), true);
+		m_ImguiUtils.RenderTextCenter(fontSize, ImVec2(centerX, (float)gHUD.m_scrinfo.iCharHeight), text, IM_COL32(r, g, b, (int)(255 * gHUD.GetHudTransparency())), true);
 	}
 	else
 	{

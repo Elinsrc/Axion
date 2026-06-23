@@ -55,11 +55,11 @@ void CImGuiDebug::Draw()
     if (DebugMode > 0 || cl_debug_showfps->value > 0.0f)
     {
         sprintf(str, "FPS: %.0f", fps);
-        m_ImguiUtils.DrawText(font_scale, ImVec2(xpos, currentY), str, col_fps, true);
+        m_ImguiUtils.RenderText(font_scale, ImVec2(xpos, currentY), str, col_fps, true);
         currentY += lineHeight;
 
         sprintf(str, "Frame Time: %.0f ms", 1000.f / fps);
-        m_ImguiUtils.DrawText(font_scale, ImVec2(xpos, currentY), str, col_fps, true);
+        m_ImguiUtils.RenderText(font_scale, ImVec2(xpos, currentY), str, col_fps, true);
         currentY += lineHeight * 2.0f;
     }
 
@@ -72,18 +72,18 @@ void CImGuiDebug::Draw()
         const char* version = (const char *)(glGetString(GL_VERSION));
 
         sprintf(str, "GL_VENDOR: %s", vendor);
-        m_ImguiUtils.DrawText(font_scale, ImVec2(xpos, currentY), str, col_sys, true);
+        m_ImguiUtils.RenderText(font_scale, ImVec2(xpos, currentY), str, col_sys, true);
         currentY += lineHeight;
 
         sprintf(str, "GL_RENDERER: %s", renderer);
-        m_ImguiUtils.DrawText(font_scale, ImVec2(xpos, currentY), str, col_sys, true);
+        m_ImguiUtils.RenderText(font_scale, ImVec2(xpos, currentY), str, col_sys, true);
         currentY += lineHeight;
 
         sprintf(str, "GL_VERSION: %s", version);
-        m_ImguiUtils.DrawText(font_scale, ImVec2(xpos, currentY), str, col_sys, true);
+        m_ImguiUtils.RenderText(font_scale, ImVec2(xpos, currentY), str, col_sys, true);
         currentY += lineHeight;
 
         sprintf(str, "MODE: %dx%d", g_ImGuiViewport.scrWidth(), g_ImGuiViewport.scrHeight());
-        m_ImguiUtils.DrawText(font_scale, ImVec2(xpos, currentY), str, col_sys, true);
+        m_ImguiUtils.RenderText(font_scale, ImVec2(xpos, currentY), str, col_sys, true);
     }
 }

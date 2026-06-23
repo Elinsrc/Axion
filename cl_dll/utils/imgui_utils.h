@@ -31,8 +31,8 @@ public:
     float DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r = 255, int g = 255, int b = 255, int alpha = 255);
     void FreeImage(ImGuiImage& image);
     void RenderColorCodeText(float fontSize, const ImVec2& pos, const char* text, ImVec4 color, bool shadow);
-    void DrawText(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow = false);
-    void DrawTextCenter(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow = false);
+    void RenderText(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow = false);
+    void RenderTextCenter(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow = false);
 };
 
 extern CImguiUtils m_ImguiUtils;

@@ -433,7 +433,7 @@ void CHudHealth::ImGui_HealthBar()
 	float textY = center.y + (2.0f * scale);
 
 	m_ImguiUtils.ImGuiSpriteIcon(gHUD.GetSprite(m_HUD_cross), rc, blockCenterX - (iconW * 0.5f), iconY, iconW, iconH, iconH, (int)r, (int)g, (int)b, 230);
-	m_ImguiUtils.DrawText(fontSize, ImVec2(blockCenterX - (textSize.x * 0.5f), textY), buf, hpColor, true);
+	m_ImguiUtils.RenderText(fontSize, ImVec2(blockCenterX - (textSize.x * 0.5f), textY), buf, hpColor, true);
 }
 #endif
 
