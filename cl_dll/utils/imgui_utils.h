@@ -16,7 +16,7 @@ class CImguiUtils
 public:
     ImVec4 ColorFromCode(char code);
     void TextWithColorCodes(const char* text);
-    float CalcTextWidthWithColorCodes(const char* text);
+    float CalcTextWidthWithColorCodes(const char* text, float fontSize = 0.0f);
     float DrawTextWithColorCodesAt(const ImVec2& pos, const char* text, ImVec4 defaultColor, float alphaMul = 1.0f);
     static void DrawCallback_SetAdditive(const ImDrawList* parent_list, const ImDrawCmd* cmd);
     static void DrawCallback_SetNormal(const ImDrawList* parent_list, const ImDrawCmd* cmd);
@@ -30,8 +30,9 @@ public:
     ImGuiImage LoadImageFromMemory(const unsigned char* buffer, int bufferSize);
     float DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r = 255, int g = 255, int b = 255, int alpha = 255);
     void FreeImage(ImGuiImage& image);
-    void DrawTextShadow(float fontSize, const ImVec2& pos, const char* text, ImU32 color = IM_COL32(255, 180, 0, 230));
-    void DrawTextShadowCenter(float fontSize, const ImVec2& pos, const char* text, ImU32 color = IM_COL32(255, 180, 0, 230));
+    void RenderColorCodeText(float fontSize, const ImVec2& pos, const char* text, ImVec4 color, bool shadow);
+    void DrawText(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow = false);
+    void DrawTextCenter(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow = false);
 };
 
 extern CImguiUtils m_ImguiUtils;

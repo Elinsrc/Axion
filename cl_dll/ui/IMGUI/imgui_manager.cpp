@@ -36,6 +36,7 @@ void CImGuiManager::Initialize()
     m_WindowSystem.Initialize();
     g_ImGuiCrosshairs.Init();
     g_ImGuiDebug.Init();
+    g_ImGuiScores.Init();
 }
 
 void CImGuiManager::VidInitialize()
@@ -57,6 +58,7 @@ void CImGuiManager::NewFrame()
     m_WindowSystem.NewFrame();
     g_ImGuiCrosshairs.Draw();
     g_ImGuiDebug.Draw();
+    g_ImGuiScores.Draw();
     gHUD.m_DeathNotice.ImGui_DeathNotice();
     gHUD.m_Health.ImGui_HealthBar();
     gHUD.m_Battery.ImGui_BatteryBar();

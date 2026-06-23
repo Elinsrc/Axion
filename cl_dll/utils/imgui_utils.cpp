@@ -102,8 +102,9 @@ void CImguiUtils::TextWithColorCodes(const char* text)
     ImGui::Dummy(ImVec2(0, cursor.y - pos.y + lineHeight));
 }
 
-float CImguiUtils::CalcTextWidthWithColorCodes(const char* text)
+float CImguiUtils::CalcTextWidthWithColorCodes(const char* text, float fontSize)
 {
+    ImFont* font = ImGui::GetFont();
     float width = 0.0f;
     const char* ptr = text;
 
@@ -121,8 +122,14 @@ float CImguiUtils::CalcTextWidthWithColorCodes(const char* text)
 
         if (ptr > start)
         {
-            ImVec2 sz = ImGui::CalcTextSize(start, ptr);
-            width += sz.x;
+            if (fontSize > 0.0f)
+            {
+                width += font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, start, ptr).x;
+            }
+            else
+            {
+                width += ImGui::CalcTextSize(start, ptr).x;
+            }
         }
     }
 
@@ -387,26 +394,65 @@ void CImguiUtils::FreeImage(ImGuiImage& image)
     }
 }
 
-void CImguiUtils::DrawTextShadow(float fontSize, const ImVec2& pos, const char* text, ImU32 color)
+void CImguiUtils::RenderColorCodeText(float fontSize, const ImVec2& pos, const char* text, ImVec4 color, bool shadow)
 {
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     ImFont* font = ImGui::GetFont();
 
-    dl->AddText(font, fontSize, ImVec2(pos.x + 1.0f, pos.y + 1.0f), IM_COL32(0, 0, 0, 200), text);
-    dl->AddText(font, fontSize, pos, color, text);
+    ImVec2 cursor = pos; 
+    const char* ptr = text;
+
+    while (*ptr)
+    {
+        if (*ptr == '^' && *(ptr + 1))
+        {
+            if (!shadow) 
+                color = ColorFromCode(*(ptr + 1));
+            ptr += 2;
+            continue;
+        }
+
+        const char* start = ptr;
+        while (*ptr && !(*ptr == '^' && *(ptr + 1)))
+            ++ptr;
+
+        if (ptr > start)
+        {
+            ImU32 colU32 = shadow ? IM_COL32(0, 0, 0, 200) : ImGui::ColorConvertFloat4ToU32(color);
+            
+            dl->AddText(font, fontSize, cursor, colU32, start, ptr);
+            
+            cursor.x += font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, start, ptr).x;
+        }
+    }
 }
 
-void CImguiUtils::DrawTextShadowCenter(float fontSize, const ImVec2& pos,  const char* text, ImU32 color)
+void CImguiUtils::DrawText(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow)
 {
-    ImDrawList* dl = ImGui::GetBackgroundDrawList();
-    ImFont* font = ImGui::GetFont();
+    ImVec4 defaultColor = ImGui::ColorConvertU32ToFloat4(color);
 
-    ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, text);
+    if (shadow)
+    {
+        RenderColorCodeText(fontSize, ImVec2(pos.x + 1.0f, pos.y + 1.0f), text, defaultColor, true);
+    }
+    RenderColorCodeText(fontSize, pos, text, defaultColor, false);
+}
+
+void CImguiUtils::DrawTextCenter(float fontSize, const ImVec2& pos, const char* text, ImU32 color, bool shadow)
+{
+    ImFont* font = ImGui::GetFont();
+    ImVec4 defaultColor = ImGui::ColorConvertU32ToFloat4(color);
+
+    float textWidth = CalcTextWidthWithColorCodes(text, fontSize);
+    float textHeight = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, text).y;
 
     ImVec2 finalPos;
-    finalPos.x = pos.x - (textSize.x * 0.5f);
-    finalPos.y = pos.y - (textSize.y * 0.5f);
+    finalPos.x = pos.x - (textWidth * 0.5f);
+    finalPos.y = pos.y - (textHeight * 0.5f);
 
-    dl->AddText(font, fontSize, ImVec2(finalPos.x + 1.0f, finalPos.y + 1.0f), IM_COL32(0, 0, 0, 200), text);
-    dl->AddText(font, fontSize, finalPos, color, text);
+    if (shadow)
+    {
+        RenderColorCodeText(fontSize, ImVec2(finalPos.x + 1.0f, finalPos.y + 1.0f), text, defaultColor, true);
+    }
+    RenderColorCodeText(fontSize, finalPos, text, defaultColor, false);
 }

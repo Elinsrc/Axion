@@ -907,7 +907,7 @@ void CImGuiScoreboard::DeathMsg( int killer, int victim )
 	}
 }
 
-void CImGuiScoreboard::Draw()
+void CImGuiScoreboard::Update()
 {
 	int i;
 
@@ -931,7 +931,11 @@ void CImGuiScoreboard::Draw()
 		SortPlayers( 0, NULL );
 	else
 		SortTeams();
+}
 
+void CImGuiScoreboard::Draw()
+{
+	Update();
 	DrawScoreboard();
 }
 

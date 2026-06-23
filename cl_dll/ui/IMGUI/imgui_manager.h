@@ -6,6 +6,7 @@
 #include "gl_imgui_backend.h"
 #include "ui_crosshairs.h"
 #include "ui_debug.h"
+#include "ui_scores.h"
 
 #include "VGUI_App.h"
 #include "VGUI_Scheme.h"

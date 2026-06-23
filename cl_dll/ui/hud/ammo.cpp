@@ -1063,7 +1063,7 @@ void CHudAmmo::ImGui_DrawWList(float flTime)
         
         char bBuf[4]; 
         sprintf(bBuf, "%d", i + 1);
-        m_ImguiUtils.DrawTextShadowCenter(fontSize * 0.8f, ImVec2(bucketX + (15.0f * scale), bucketY), bBuf, col);
+        m_ImguiUtils.DrawTextCenter(fontSize * 0.8f, ImVec2(bucketX + (15.0f * scale), bucketY), bBuf, col, true);
         
         if (iActiveSlot == i)
             dl->AddRectFilled(ImVec2(bucketX, bucketY + (18.0f * scale)), ImVec2(bucketX + (30.0f * scale), bucketY + (21.0f * scale)), col, 1.0f);
@@ -1272,7 +1272,7 @@ void CHudAmmo::ImGui_AmmoBar()
             float textX2 = center.x - (tSizeAlt.x * 0.5f);
             float y2 = baseY - fontSize - (8.0f * scale);
 
-            m_ImguiUtils.DrawTextShadow(fontSize, ImVec2(textX2, y2), buf, IM_COL32(255, 160, 0, 255));
+            m_ImguiUtils.DrawText(fontSize, ImVec2(textX2, y2), buf, IM_COL32(255, 160, 0, 255), true);
             m_ImguiUtils.ImGuiSpriteIcon(pw->hAmmo2, rc2, textX2 + tSizeAlt.x + (10.0f * scale), y2, iw2, ih2, fontSize, 255, 160, 0, 255);
         }
     }
@@ -1290,7 +1290,7 @@ void CHudAmmo::ImGui_AmmoBar()
 
         float textX = center.x - (tSize.x * 0.5f);
 
-        m_ImguiUtils.DrawTextShadow(fontSize, ImVec2(textX, baseY), buf, IM_COL32(255, 160, 0, 255));
+        m_ImguiUtils.DrawText(fontSize, ImVec2(textX, baseY), buf, IM_COL32(255, 160, 0, 255), true);
         m_ImguiUtils.ImGuiSpriteIcon(pw->hAmmo, rc, textX + tSize.x + (10.0f * scale), baseY, iw, ih, fontSize, 255, 160, 0, 255);
     }
 }

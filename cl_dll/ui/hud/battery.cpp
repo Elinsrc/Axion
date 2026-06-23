@@ -312,6 +312,6 @@ void CHudBattery::ImGui_BatteryBar()
 	float textY = center.y + (2.0f * scale);
 
 	m_ImguiUtils.ImGuiSpriteIcon(gHUD.GetSprite(iSuitFull), rc, blockCenterX - (iconW * 0.5f), iconY, iconW, iconH, iconH, 255, 180, 0, 220);
-	m_ImguiUtils.DrawTextShadow(fontSize, ImVec2(blockCenterX - (textSize.x * 0.5f), textY), buf, IM_COL32(255, 180, 0, 220));
+	m_ImguiUtils.DrawText(fontSize, ImVec2(blockCenterX - (textSize.x * 0.5f), textY), buf, IM_COL32(255, 180, 0, 220), true);
 }
 #endif
