@@ -175,9 +175,7 @@ void CEgon::Attack( void )
 	Vector vecAiming = gpGlobals->v_forward;
 	Vector vecSrc = m_pPlayer->GetGunPosition();
 
-	int flags;
-
-	flags = FEV_NOTHOST;
+	int flags = FEV_NOTHOST;
 
 	switch( m_fireState )
 	{
@@ -284,7 +282,7 @@ void CEgon::WeaponIdle( void )
 {
 	ResetEmptySound();
 
-	if( m_flTimeWeaponIdle > UTIL_WeaponTimeBase() )
+	if ( m_flTimeWeaponIdle > gpGlobals->time )
 		return;
 
 	if( m_fireState != FIRE_OFF )
