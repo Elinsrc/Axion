@@ -53,24 +53,23 @@ int CHudWatermark::Draw(float time)
 	);
 	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight, str, r, g, b);
 	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 2, "t.me/Elinsrc", r, g, b);
-	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 3, "t.me/HalfLifeCollectiveChat", r, g, b);
-	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 4, BuildInfo::GetGitHubLink(), r, g, b);
+	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 3, BuildInfo::GetGitHubLink(), r, g, b);
 	snprintf(str, sizeof(str), "To disable this message, type in the console ^2hud_watermark 0");
-	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 6, str, r, g, b);
+	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 5, str, r, g, b);
 
 #if !XASH_ANDROID
     if (g_pUpdateChecker && g_pUpdateChecker->IsFinished() && g_pUpdateChecker->HasUpdate())
     {
         snprintf(str, sizeof(str), "^2Axion^7: ^1New update available!");
-        gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 8, str, r, g, b);
+        gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 7, str, r, g, b);
 		
 		std::string remoteHash = g_pUpdateChecker->GetRemoteHash();
 		snprintf(str, sizeof(str), "^7Commit: ^2%s", remoteHash.c_str());
-		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 9, str, r, g, b);
+		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 8, str, r, g, b);
 		
 		std::string commitMsg = g_pUpdateChecker->GetCommitMessage();
 		snprintf(str, sizeof(str), "^3%s", commitMsg.c_str());
-		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 10, str, r, g, b);
+		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 9, str, r, g, b);
     }
 #endif
 
