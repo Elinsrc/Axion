@@ -21,14 +21,8 @@ CImGuiScoreboard g_iScoreboard;
 bool CImGuiScoreboard::m_ShowScore = false;
 
 #if !XASH_MOBILE_PLATFORM && !XASH_64BIT
-
-#include "noavatar.h"
 #include "avatar_cache.h"
-
-ImGuiImage m_pNoAvatar;
-
 cvar_t* hud_scoreboard_showavatars;
-
 #endif
 
 
@@ -36,7 +30,6 @@ void CImGuiScoreboard::Initialize()
 {
 #if !XASH_MOBILE_PLATFORM && !XASH_64BIT
 	hud_scoreboard_showavatars = CVAR_CREATE("hud_scoreboard_showavatars", "1", FCVAR_ARCHIVE);
-	g_AvatarCache.Initialize();
 #endif
 	
 	m_bMouseMode = false;
@@ -73,10 +66,6 @@ void CImGuiScoreboard::VidInitialize()
     m_pscoreboardVoiceSpeaking2 = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker2.tga");
     m_pscoreboardVoiceSpeaking3 = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker3.tga");
     m_pscoreboardVoiceSpeaking4 = m_ImguiUtils.LoadImageFromFile("gfx/vgui/640_speaker4.tga");
-
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
-	m_pNoAvatar = m_ImguiUtils.LoadImageFromMemory(noavatar, noavatar_len);
-#endif
 }
 
 void CImGuiScoreboard::Terminate()
@@ -86,11 +75,6 @@ void CImGuiScoreboard::Terminate()
 	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking2);
 	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking3);
 	m_ImguiUtils.FreeImage(m_pscoreboardVoiceSpeaking4);
-
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
-	m_ImguiUtils.FreeImage(m_pNoAvatar);
-	g_AvatarCache.Shutdown();
-#endif
 }
 
 void CImGuiScoreboard::Think()
@@ -675,18 +659,7 @@ void CImGuiScoreboard::DrawScoreboard()
 
 #if !XASH_MOBILE_PLATFORM && !XASH_64BIT
 							// AVATAR IMAGE
-							if (g_PlayerIsBot[iPlayerIndex])
-							{
-								ImGui::Image(m_pNoAvatar.texture, ImVec2(avatarSize, avatarSize));
-							}
-							else
-							{
-								ImTextureID avatarTex = g_AvatarCache.GetAvatar(iPlayerIndex);
-								if (avatarTex) 
-									ImGui::Image(avatarTex, ImVec2(avatarSize, avatarSize));
-								else 
-									ImGui::Image(m_pNoAvatar.texture, ImVec2(avatarSize, avatarSize));
-							}
+							ImGui::Image(g_AvatarCache.GetAvatar(iPlayerIndex), ImVec2(avatarSize, avatarSize));
 #endif
 							ImGui::SameLine();
 							

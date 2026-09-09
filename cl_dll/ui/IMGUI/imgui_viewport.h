@@ -4,6 +4,7 @@
 #include "hud.h"
 #include "ui_ScorePanel.h"
 #include "ui_MOTD.h"
+#include "ui_SpectatorPanel.h"
 
 #include "build.h"
 
@@ -74,6 +75,8 @@ public:
 
     void GetAllPlayersInfo();
 
+    void UpdateSpectatorPanel();
+
     int MsgFunc_ValClass(const char *pszName, int iSize, void *pbuf );
     int MsgFunc_TeamNames(const char *pszName, int iSize, void *pbuf );
     int MsgFunc_Feign(const char *pszName, int iSize, void *pbuf );
@@ -103,6 +106,11 @@ private:
     int m_iGotAllMOTD;
     
     char m_sMapName[64];
+
+    float m_flSpectatorPanelLastUpdated;
+    int	m_iUser1;
+	int	m_iUser2;
+	int	m_iUser3;
 };
 
 extern CImGuiViewport &g_ImGuiViewport;

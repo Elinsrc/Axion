@@ -7,6 +7,7 @@
 #include "ui_crosshairs.h"
 #include "ui_debug.h"
 #include "ui_scores.h"
+#include "ui_ScorePanel.h"
 
 #include "VGUI_App.h"
 #include "VGUI_Scheme.h"
@@ -23,6 +24,8 @@ public:
     void VidInitialize();
     void Terminate();
     void NewFrame();
+    void InitHUD();
+    void RenderHUD();
     bool KeyInput(bool keyDown, int keyNumber, const char *bindName);
     bool IsCursorRequired();
 

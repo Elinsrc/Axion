@@ -18,11 +18,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "noavatar.h"
+
+ImGuiImage m_pNoAvatar;
+
 CAvatarCache g_AvatarCache;
 
 void CAvatarCache::Initialize()
 {
     memset(m_avatars, 0, sizeof(m_avatars));
+}
+
+void CAvatarCache::VidInitialize()
+{
+    m_pNoAvatar = m_ImguiUtils.LoadImageFromMemory(noavatar, noavatar_len);
 }
 
 void CAvatarCache::Shutdown()
@@ -36,6 +45,36 @@ void CAvatarCache::Shutdown()
     }
     
     memset(m_avatars, 0, sizeof(m_avatars));
+
+    m_ImguiUtils.FreeImage(m_pNoAvatar);
+}
+
+void CAvatarCache::UpdatePlayer(int playerIndex)
+{
+    if (!IsValidPlayerIndex(playerIndex))
+        return;
+
+    hud_player_info_t* pl = &g_PlayerInfoList[playerIndex];
+    if (!pl->name || !pl->name[0])
+    {
+        ClearAvatar(playerIndex);
+        g_PlayerSteamID64[playerIndex] = 0;
+        memset(g_PlayerSteamId[playerIndex], 0, sizeof(g_PlayerSteamId[playerIndex]));
+        return;
+    }
+
+    if (g_PlayerIsBot[playerIndex])
+    {
+        g_PlayerSteamID64[playerIndex] = 0;
+        return;
+    }
+
+    if (g_PlayerSteamID64[playerIndex] == 0 && g_PlayerSteamId[playerIndex][0] != '\0')
+    {
+        g_PlayerSteamID64[playerIndex] = SteamIdToSteam64(g_PlayerSteamId[playerIndex]);
+    }
+
+    GetAvatar(playerIndex);
 }
 
 void CAvatarCache::ClearAll()
@@ -164,18 +203,21 @@ bool CAvatarCache::LoadAvatar(int playerIndex, SteamID64 steam64)
 
 ImTextureID CAvatarCache::GetAvatar(int playerIndex)
 {
-    if(!IsValidPlayerIndex(playerIndex))
-        return 0;
+    if (!IsValidPlayerIndex(playerIndex))
+        return m_pNoAvatar.texture;
+
+    if (g_PlayerIsBot[playerIndex])
+        return m_pNoAvatar.texture;
 
     const SteamID64 steam64 = g_PlayerSteamID64[playerIndex];
-    
-    if (steam64 == 0)
-        return 0;
 
-    AvatarEntry &entry = m_avatars[playerIndex];
+    if (steam64 == 0)
+        return m_pNoAvatar.texture;
+
+    AvatarEntry& entry = m_avatars[playerIndex];
 
     if (entry.loaded && entry.steamId == steam64)
-        return entry.texture;
+        return entry.texture ? entry.texture : m_pNoAvatar.texture;
 
     if (entry.steamId != steam64)
     {
@@ -184,16 +226,14 @@ ImTextureID CAvatarCache::GetAvatar(int playerIndex)
     }
 
     const float now = gHUD.m_flTime;
-    if(entry.requested && (now - entry.lastRequestTime) < AVATAR_REQUEST_COOLDOWN)
-    {
-        return 0;
-    }
+    if (entry.requested && (now - entry.lastRequestTime) < AVATAR_REQUEST_COOLDOWN)
+        return m_pNoAvatar.texture;
 
-    entry.requested = true;
+    entry.requested       = true;
     entry.lastRequestTime = now;
 
     if (LoadAvatar(playerIndex, steam64))
         return entry.texture;
 
-    return 0;
+    return m_pNoAvatar.texture;
 }

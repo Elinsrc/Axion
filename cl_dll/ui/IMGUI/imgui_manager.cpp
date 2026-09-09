@@ -11,6 +11,10 @@
 #include "build.h"
 #include "input_mouse.h"
 
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+#include "avatar_cache.h"
+#endif
+
 extern int g_ImGuiMouse;
 
 CImGuiManager &g_ImGuiManager = CImGuiManager::GetInstance();
@@ -30,20 +34,26 @@ void CImGuiManager::Initialize()
     SetupKeyboardMapping();
     m_pBackend->Init();
     m_WindowSystem.Initialize();
-    g_ImGuiCrosshairs.Init();
-    g_ImGuiDebug.Init();
-    g_ImGuiScores.Init();
+    InitHUD();
 }
 
 void CImGuiManager::VidInitialize()
 {
     m_WindowSystem.VidInitialize();
+
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+    g_AvatarCache.VidInitialize();
+#endif
 }
 
 void CImGuiManager::Terminate()
 {
     m_WindowSystem.Terminate();
     m_pBackend->Shutdown();
+
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+    g_AvatarCache.Shutdown();
+#endif
 }
 
 void CImGuiManager::NewFrame()
@@ -52,6 +62,29 @@ void CImGuiManager::NewFrame()
     UpdateMouseState();
     ImGui::NewFrame();
     m_WindowSystem.NewFrame();
+    RenderHUD();
+    ImGui::Render();
+    m_pBackend->RenderDrawData(ImGui::GetDrawData());
+
+    g_ImGuiMouse = IsCursorRequired();
+}
+
+void CImGuiManager::InitHUD()
+{
+    g_ImGuiScores.Init();
+    g_ImGuiCrosshairs.Init();
+    g_ImGuiDebug.Init();
+    m_iSpectatorPanel.Init();
+
+#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+    g_AvatarCache.Initialize();
+#endif
+}
+
+void CImGuiManager::RenderHUD()
+{
+    g_ImGuiViewport.UpdateSpectatorPanel();
+    
     g_ImGuiCrosshairs.Draw();
     g_ImGuiDebug.Draw();
     g_ImGuiScores.Draw();
@@ -62,11 +95,7 @@ void CImGuiManager::NewFrame()
     gHUD.m_Ammo.ImGui_DrawWList( gHUD.m_flTime );
     gHUD.m_Ammo.ImGui_AmmoBar();
     GetClientVoiceMgr()->ImGui_DrawVoiceHUD();
-    ImGui::Render();
-    m_pBackend->RenderDrawData(ImGui::GetDrawData());
-
-    g_ImGuiMouse = IsCursorRequired();
-
+    m_iSpectatorPanel.Draw();
 }
 
 /*

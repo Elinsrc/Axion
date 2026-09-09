@@ -1,9 +1,15 @@
 #include "hud.h"
 #include "cl_util.h"
 #include "parsemsg.h"
-#include "imgui_viewport.h"
-#include <string.h>
 #include "demo_api.h"
+#include "pm_shared.h"
+#include "imgui_viewport.h"
+
+#include <string.h>
+
+extern float *GetClientColor( int clientIndex );
+
+void COM_FileBase( const char *in, char *out );
 
 CImGuiViewport &g_ImGuiViewport = CImGuiViewport::GetInstance();
 
@@ -25,6 +31,8 @@ void CImGuiViewport::Initialize()
 {
     m_iGotAllMOTD = true;
     m_szServerName[0] = '\0';
+
+    m_flSpectatorPanelLastUpdated = 0;
 }
 
 void CImGuiViewport::ShowScoreBoard()
@@ -75,7 +83,7 @@ void CImGuiViewport::CreateTextWindow( int iTextToShow )
 		}
     }
 
-    if( cText && cText[0] )
+    if( cText )
         g_iMOTD.Show( cText, cTitle );
 
     if( pfile )
@@ -129,6 +137,45 @@ void CImGuiViewport::GetAllPlayersInfo()
         if( g_PlayerInfoList[i].thisplayer )
             g_iScoreboard.m_iPlayerNum = i;  // !!!HACK: this should be initialized elsewhere... maybe gotten from the engine
     }
+}
+
+void CImGuiViewport::UpdateSpectatorPanel()
+{
+    m_iUser1 = g_iUser1;
+    m_iUser2 = g_iUser2;
+
+    if( g_iUser1 && gHUD.m_pCvarDraw->value && !gHUD.m_iIntermission )
+    {
+        gHUD.m_Spectator.CheckSettings();
+        m_iSpectatorPanel.setVisible( true );
+
+        int player = 0;
+        if( g_iUser1 != OBS_ROAMING && g_iUser2 > 0 && g_iUser2 <= gEngfuncs.GetMaxClients() )
+        {
+            player = g_iUser2;
+        }
+
+        if( player && g_PlayerInfoList[player].name[0] != '\0' )
+        {
+            m_iSpectatorPanel.setBottomText( g_PlayerInfoList[player].name );
+
+            float *color = GetClientColor( player );
+            m_iSpectatorPanel.setTargetColor( color[0] / 255.0f, color[1] / 255.0f,color[2] / 255.0f );
+        }
+        else
+        {
+            m_iSpectatorPanel.setBottomText( "" );
+            m_iSpectatorPanel.setTargetColor( 0.88f, 0.75f, 0.22f );
+        }
+
+        m_iSpectatorPanel.setCamMode( CHudTextMessage::BufferedLocaliseTextString( GetSpectatorLabel( g_iUser1 ) ) );
+    }
+    else
+    {
+        m_iSpectatorPanel.setVisible( false );
+    }
+
+    m_flSpectatorPanelLastUpdated = gHUD.m_flTime + 1.0;
 }
 
 int CImGuiViewport::MsgFunc_ValClass( const char *pszName, int iSize, void *pbuf )

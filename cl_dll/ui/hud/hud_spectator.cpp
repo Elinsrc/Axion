@@ -11,6 +11,7 @@
 #include "triangleapi.h"
 #if USE_IMGUI
 #include "imgui_viewport.h"
+#include "ui_ScorePanel.h"
 #endif
 #include "hltv.h"
 
@@ -128,39 +129,6 @@ void SpectatorHelp( void )
 	}
 }
 
-void SpectatorMenu( void )
-{
-	if( gEngfuncs.Cmd_Argc() <= 1 )
-	{
-		gEngfuncs.Con_Printf( "usage:  spec_menu <0|1>\n" );
-		return;
-	}
-
-#if USE_IMGUI
-	//g_ImGuiViewport.m_pSpectatorPanel->ShowMenu( atoi( gEngfuncs.Cmd_Argv( 1 ) ) != 0 );
-#endif
-}
-
-void ToggleScores( void )
-{
-#if USE_IMGUI && !USE_NOIMGUI_SCOREBOARD
-	if( g_ImGuiViewport.IsScoreBoardVisible())
-	{
-		g_ImGuiViewport.HideScoreBoard();
-	}
-	else
-	{
-		g_ImGuiViewport.ShowScoreBoard();
-	}
-#else
-	if (gHUD.m_Scoreboard.m_iShowscoresHeld) {
-		gHUD.m_Scoreboard.UserCmd_HideScores();
-	} else {
-		gHUD.m_Scoreboard.UserCmd_ShowScores();
-	}
-#endif
-}
-
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -183,8 +151,6 @@ int CHudSpectator::Init()
 	gEngfuncs.pfnAddCommand( "spec_mode", SpectatorMode );
 	gEngfuncs.pfnAddCommand( "spec_decal", SpectatorSpray );
 	gEngfuncs.pfnAddCommand( "spec_help", SpectatorHelp );
-	gEngfuncs.pfnAddCommand( "spec_menu", SpectatorMenu );
-	gEngfuncs.pfnAddCommand( "togglescores", ToggleScores );
 
 	m_drawnames = gEngfuncs.pfnRegisterVariable( "spec_drawnames", "1", 0 );
 	m_drawcone = gEngfuncs.pfnRegisterVariable( "spec_drawcone", "1", 0 );
@@ -569,7 +535,6 @@ int CHudSpectator::VidInit()
 	m_hsprUnkownMap		= SPR_Load( "sprites/tile.spr" );
 	m_hsprBeam		= SPR_Load( "sprites/laserbeam.spr" );
 	m_hsprCamera		= SPR_Load( "sprites/camera.spr" );
-	m_hCrosshair		= SPR_Load( "sprites/crosshairs.spr" );
 
 	m_lastPrimaryObject = m_lastSecondaryObject = 0;
 	m_flNextObserverInput = 0.0f;
@@ -786,15 +751,11 @@ void CHudSpectator::DirectorMessage( int iSize, void *pbuf )
 			m_iSpectatorNumber = READ_LONG(); // total number of spectator
 			READ_WORD(); // total number of relay proxies
 #if USE_IMGUI
-			//g_ImGuiViewport.UpdateSpectatorPanel();
+			g_ImGuiViewport.UpdateSpectatorPanel();
 #endif
 			break;
 		case DRC_CMD_BANNER:
 			// gEngfuncs.Con_DPrintf( "GUI: Banner %s\n",READ_STRING() ); // name of banner tga eg gfx/temp/7454562234563475.tga
-#if USE_IMGUI
-			/*g_ImGuiViewport.m_pSpectatorPanel->m_TopBanner->LoadImage( READ_STRING() );
-			g_ImGuiViewport.UpdateSpectatorPanel();*/
-#endif
 			break;
 		case DRC_CMD_STUFFTEXT:
 			gEngfuncs.pfnFilteredClientCmd( READ_STRING() );
@@ -1028,12 +989,6 @@ void CHudSpectator::HandleButtonsDown( int ButtonPressed )
 	if( m_flNextObserverInput > time )
 		return;
 
-	// enable spectator screen
-#if USE_IMGUI
-	/*if( ButtonPressed & IN_DUCK )
-		g_ImGuiViewport.m_pSpectatorPanel->ShowMenu( !g_ImGuiViewport.m_pSpectatorPanel->m_menuVisible );*/
-#endif
-
 	//  'Use' changes inset window mode
 	if( ButtonPressed & IN_USE )
 	{
@@ -1100,8 +1055,8 @@ void CHudSpectator::HandleButtonsDown( int ButtonPressed )
 void CHudSpectator::HandleButtonsUp( int ButtonPressed )
 {
 #if USE_IMGUI
-	/*if( !g_ImGuiViewport.m_pSpectatorPanel->isVisible() )
-		return; // dont do anything if not in spectator mode*/
+	if( !m_iSpectatorPanel.isVisible() )
+		return; // dont do anything if not in spectator mode
 #endif
 
 	if( ButtonPressed & ( IN_FORWARD | IN_BACK ) )
@@ -1192,21 +1147,6 @@ void CHudSpectator::SetModes( int iNewMainMode, int iNewInsetMode )
 				break;
 		}
 
-		if( ( g_iUser1 == OBS_IN_EYE ) || ( g_iUser1 == OBS_ROAMING ) ) 
-		{
-			m_crosshairRect.left = 24;
-			m_crosshairRect.top = 0;
-			m_crosshairRect.right = 48;
-			m_crosshairRect.bottom = 24;
-
-			SetCrosshair( m_hCrosshair, m_crosshairRect, 255, 255, 255 );
-		}
-		else
-		{
-			memset( &m_crosshairRect, 0, sizeof(m_crosshairRect) );
-			SetCrosshair( 0, m_crosshairRect, 0, 0, 0 );
-		}
-
 #if USE_IMGUI
 		g_ImGuiViewport.MsgFunc_ResetFade( NULL, 0, NULL );
 #endif
@@ -1218,7 +1158,7 @@ void CHudSpectator::SetModes( int iNewMainMode, int iNewInsetMode )
 	}
 
 #if USE_IMGUI
-	//g_ImGuiViewport.UpdateSpectatorPanel();
+	g_ImGuiViewport.UpdateSpectatorPanel();
 #endif
 }
 
@@ -1848,33 +1788,12 @@ void CHudSpectator::CheckSettings()
 		}
 	}
 
-	// HL/TFC has no oberserver corsshair, so set it client side
-	if( ( g_iUser1 == OBS_IN_EYE ) || ( g_iUser1 == OBS_ROAMING ) ) 
-	{
-		m_crosshairRect.left = 24;
-		m_crosshairRect.top = 0;
-		m_crosshairRect.right = 48;
-		m_crosshairRect.bottom = 24;
-					
-		SetCrosshair( m_hCrosshair, m_crosshairRect, 255, 255, 255 );
-	}
-	else
-	{
-		memset( &m_crosshairRect, 0, sizeof(m_crosshairRect) );
-		SetCrosshair( 0, m_crosshairRect, 0, 0, 0 );
-	}
-
 	// if we are a real player on server don't allow inset window
 	// in First Person mode since this is our resticted forcecamera mode 2
 	// team number 3 = SPECTATOR see player.h
 
 	if( ( ( g_iTeamNumber == 1 ) || ( g_iTeamNumber == 2 ) ) && ( g_iUser1 == OBS_IN_EYE ) )
 		m_pip->value = INSET_OFF;
-
-	// draw small border around inset view, adjust upper black bar
-#if USE_IMGUI
-	//g_ImGuiViewport.m_pSpectatorPanel->EnableInsetView( m_pip->value != INSET_OFF );
-#endif
 }
 
 int CHudSpectator::ToggleInset( bool allowOff )
