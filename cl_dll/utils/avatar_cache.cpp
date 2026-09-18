@@ -1,9 +1,9 @@
 #include "avatar_cache.h"
-#include "steam_api.h"
 #include "hud.h"
 #include "cl_util.h"
 #include "ui_ScorePanel.h"
 #include "custom_utils.h"
+#include "avatar_downloader.h"
 
 #include "build.h"
 
@@ -12,7 +12,6 @@
 #include <windows.h>
 #include <winsani_out.h>
 #endif
-#include <GL/gl.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -31,50 +30,14 @@ void CAvatarCache::Initialize()
 
 void CAvatarCache::VidInitialize()
 {
+    ClearAll();
     m_pNoAvatar = m_ImguiUtils.LoadImageFromMemory(noavatar, noavatar_len);
 }
 
 void CAvatarCache::Shutdown()
 {
-    for (int i = 0; i < MAX_AVATAR_PLAYERS; i++)
-    {
-        if (m_avatars[i].texture)
-        {
-            DeleteTexture(m_avatars[i].texture);
-        }
-    }
-    
-    memset(m_avatars, 0, sizeof(m_avatars));
-
+    ClearAll();
     m_ImguiUtils.FreeImage(m_pNoAvatar);
-}
-
-void CAvatarCache::UpdatePlayer(int playerIndex)
-{
-    if (!IsValidPlayerIndex(playerIndex))
-        return;
-
-    hud_player_info_t* pl = &g_PlayerInfoList[playerIndex];
-    if (!pl->name || !pl->name[0])
-    {
-        ClearAvatar(playerIndex);
-        g_PlayerSteamID64[playerIndex] = 0;
-        memset(g_PlayerSteamId[playerIndex], 0, sizeof(g_PlayerSteamId[playerIndex]));
-        return;
-    }
-
-    if (g_PlayerIsBot[playerIndex])
-    {
-        g_PlayerSteamID64[playerIndex] = 0;
-        return;
-    }
-
-    if (g_PlayerSteamID64[playerIndex] == 0 && g_PlayerSteamId[playerIndex][0] != '\0')
-    {
-        g_PlayerSteamID64[playerIndex] = SteamIdToSteam64(g_PlayerSteamId[playerIndex]);
-    }
-
-    GetAvatar(playerIndex);
 }
 
 void CAvatarCache::ClearAll()
@@ -95,114 +58,71 @@ void CAvatarCache::ClearAvatar(int playerIndex)
     if( entry.texture )
     {
         DeleteTexture(entry.texture);
-        entry.texture = 0;
     }
 
     memset(&entry, 0, sizeof(AvatarEntry));
 }
 
-SteamID64 CAvatarCache::SteamIdToSteam64(const char *steamId)
+ImTextureID CAvatarCache::CreateTextureFromMemory(const uint8_t *buffer, size_t bufSize)
 {
-    if(!steamId || !*steamId)
+    if(!buffer || bufSize == 0)
         return 0;
 
-    unsigned int authServer = 0;
-    unsigned int authBit = 0;
-    unsigned int accountId  = 0;
-
-
-    if( sscanf(steamId, "STEAM_%u:%u:%u",&authServer, &authBit, &accountId) == 3 )
-    {
-        return 76561197960265728ULL + (static_cast<uint64_t>(accountId) << 1) + authBit;
-    }
-
-    if( sscanf(steamId, "%u:%u:%u", &authServer, &authBit, &accountId) == 3)
-    {
-        return 76561197960265728ULL + (static_cast<uint64_t>(accountId) << 1) + authBit;
-    }
-
-    char *endPtr = nullptr;
-    uint64_t numericId = strtoull(steamId, &endPtr, 10);
-
-    if(endPtr != steamId && numericId > 76561197960265728ULL)
-    {
-        return static_cast<SteamID64>(numericId);
-    }
-
-    return 0;
-}
-
-ImTextureID CAvatarCache::CreateTextureFromRGBA(uint8_t *data, int width, int height)
-{
-    if(!data || width <= 0 || height <= 0)
-        return 0;
-
-    GLuint texId = 0;
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return (ImTextureID)(intptr_t)texId;
+    ImGuiImage img = m_ImguiUtils.LoadImageFromMemory(buffer, static_cast<int>(bufSize));
+    return img.texture;
 }
 
 void CAvatarCache::DeleteTexture(ImTextureID tex)
 {
     if (!tex) 
         return;
+
+    ImGuiImage tempImg;
+    memset(&tempImg, 0, sizeof(tempImg));
+    tempImg.texture = tex;
     
-    GLuint texId = (GLuint)(intptr_t)tex;
-    glDeleteTextures(1, &texId);
+    m_ImguiUtils.FreeImage(tempImg);
+}
+
+void CAvatarCache::ProcessDownloadedAvatars()
+{
+    DownloadedAvatar downloaded;
+    while (g_AvatarDownloader.PopCompleted(downloaded))
+    {
+        if (!IsValidPlayerIndex(downloaded.playerIndex))
+            continue;
+
+        AvatarEntry& entry = m_avatars[downloaded.playerIndex];
+
+        if (entry.steamId == downloaded.steam64 && downloaded.success && !downloaded.imageData.empty())
+        {
+            if (entry.texture)
+            {
+                DeleteTexture(entry.texture);
+                entry.texture = 0;
+            }
+
+            entry.texture = CreateTextureFromMemory(downloaded.imageData.data(), downloaded.imageData.size());
+            entry.loaded = (entry.texture != 0);
+        }
+        
+        entry.requested = false;
+    }
 }
 
 bool CAvatarCache::LoadAvatar(int playerIndex, SteamID64 steam64)
 {
-    if (!g_SteamAPI.IsInitialized() || steam64 == 0)
+    if (steam64 == 0)
         return false;
 
-    int imageHandle = g_SteamAPI.GetMediumFriendAvatar(steam64);
-
-    if (imageHandle == 0 || imageHandle == -1)
-    {
-        return false;
-    }
-
-    uint32_t width = 0, height = 0;
-    if (!g_SteamAPI.GetImageSize(imageHandle, &width, &height))
-        return false;
-
-    if (width == 0 || height == 0)
-        return false;
-
-    int bufSize = width * height * 4;
-    uint8_t *rgbaData = (uint8_t *)malloc(bufSize);
-    if (!rgbaData)
-        return false;
-
-    if (!g_SteamAPI.GetImageRGBA(imageHandle, rgbaData, bufSize))
-    {
-        free(rgbaData);
-        return false;
-    }
-
-    if (m_avatars[playerIndex].texture)
-    {
-        DeleteTexture(m_avatars[playerIndex].texture);
-        m_avatars[playerIndex].texture = 0;
-    }
-
-    m_avatars[playerIndex].texture = CreateTextureFromRGBA(rgbaData, width, height);
-    m_avatars[playerIndex].steamId = steam64;
-    m_avatars[playerIndex].loaded = true;
-
+    g_AvatarDownloader.FetchAvatarAsync(playerIndex, steam64);
     return true;
 }
 
 ImTextureID CAvatarCache::GetAvatar(int playerIndex)
 {
+    ProcessDownloadedAvatars();
+
     if (!IsValidPlayerIndex(playerIndex))
         return m_pNoAvatar.texture;
 
@@ -216,14 +136,14 @@ ImTextureID CAvatarCache::GetAvatar(int playerIndex)
 
     AvatarEntry& entry = m_avatars[playerIndex];
 
-    if (entry.loaded && entry.steamId == steam64)
-        return entry.texture ? entry.texture : m_pNoAvatar.texture;
-
     if (entry.steamId != steam64)
     {
         ClearAvatar(playerIndex);
         entry.steamId = steam64;
     }
+
+    if (entry.loaded && entry.texture)
+        return entry.texture;
 
     const float now = gHUD.m_flTime;
     if (entry.requested && (now - entry.lastRequestTime) < AVATAR_REQUEST_COOLDOWN)
@@ -232,8 +152,7 @@ ImTextureID CAvatarCache::GetAvatar(int playerIndex)
     entry.requested       = true;
     entry.lastRequestTime = now;
 
-    if (LoadAvatar(playerIndex, steam64))
-        return entry.texture;
+    LoadAvatar(playerIndex, steam64);
 
     return m_pNoAvatar.texture;
 }

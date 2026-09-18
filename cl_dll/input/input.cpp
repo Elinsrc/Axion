@@ -39,7 +39,6 @@ extern cvar_t *ui_imgui_scoreboard;
 extern bool g_fRenderInitialized;
 #else
 #include "engine_hooks.h"
-#include "steam_api.h"
 #include "svc_messages.h"
 #endif
 
@@ -1297,7 +1296,6 @@ void DLLEXPORT HUD_Shutdown( void )
 	g_ImGuiManager.Terminate();
 	UnHookSvcMessages();
 	EngineHooks::UnpatchEngine();
-	g_SteamAPI.shutdown();	
 #endif
 #endif
 

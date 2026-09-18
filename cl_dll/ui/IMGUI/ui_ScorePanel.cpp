@@ -6,6 +6,7 @@
 #include "voice_status.h"
 #include "cl_util.h"
 #include "imgui_utils.h"
+#include "avatar_cache.h"
 
 extern int blue_flag_player_index;
 extern int red_flag_player_index;
@@ -20,17 +21,12 @@ CImGuiScoreboard g_iScoreboard;
 
 bool CImGuiScoreboard::m_ShowScore = false;
 
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
-#include "avatar_cache.h"
 cvar_t* hud_scoreboard_showavatars;
-#endif
-
 
 void CImGuiScoreboard::Initialize()
 {
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+
 	hud_scoreboard_showavatars = CVAR_CREATE("hud_scoreboard_showavatars", "1", FCVAR_ARCHIVE);
-#endif
 	
 	m_bMouseMode = false;
 
@@ -47,11 +43,8 @@ void CImGuiScoreboard::InitHUDData()
 	m_bShowPlayerMenu = false;
 	
 	memset(g_PlayerIsBot, 0, sizeof(g_PlayerIsBot));
-	
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
-	memset(g_PlayerSteamId, 0, sizeof(g_PlayerSteamId));
 	memset(g_PlayerSteamID64, 0, sizeof(g_PlayerSteamID64));
-#endif
+
 }
 
 void CImGuiScoreboard::VidInitialize()
@@ -309,10 +302,9 @@ void CImGuiScoreboard::DrawScoreboard()
 	g_ImGuiViewport.GetAllPlayersInfo();
 
 	bool bShowAvatars = false;
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+
 	if (hud_scoreboard_showavatars->value > 0)
 		bShowAvatars = true;
-#endif
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.f);
 	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.f);
@@ -657,10 +649,9 @@ void CImGuiScoreboard::DrawScoreboard()
 							draw_list->AddRect(ImVec2(p.x - 1, p.y - 1), ImVec2(p.x + avatarSize + 1, p.y + avatarSize + 1), playerColor, 2.0f, 0, 1.5f);
 							draw_list->PopClipRect();
 
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
 							// AVATAR IMAGE
 							ImGui::Image(g_AvatarCache.GetAvatar(iPlayerIndex), ImVec2(avatarSize, avatarSize));
-#endif
+							
 							ImGui::SameLine();
 							
 							startContentX += (avatarSize + 20.0f);
@@ -837,18 +828,18 @@ void CImGuiScoreboard::DrawScoreboard()
 				}
 
 				// STEAM PROFILE OPTION
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
 				if (!g_PlayerIsBot[m_iSelectedPlayer] && g_PlayerSteamID64[m_iSelectedPlayer])
 				{
-					if (ImGui::Selectable("Steam Profile"))
+					char profileUrl[128];
+    				snprintf(profileUrl, sizeof(profileUrl), "https://steamcommunity.com/profiles/%llu", (unsigned long long)g_PlayerSteamID64[m_iSelectedPlayer]);
+					
+					if (ImGui::TextLinkOpenURL("Steam Profile", profileUrl))
 					{
-						// OPEN STEAM OVERLAY TO PLAYER PROFILE
-						g_SteamAPI.ActivateGameOverlayToUser("steamid", g_PlayerSteamID64[m_iSelectedPlayer]);
 						m_bShowPlayerMenu = false;
 						m_iSelectedPlayer = 0;
 					}
 				}
-#endif
+
 				ImGui::EndPopup();
 			}
 			else

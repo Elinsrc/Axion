@@ -171,6 +171,8 @@ if (USE_IMGUI)
 		ui/IMGUI/ui_scores.cpp
 		ui/IMGUI/ui_SpectatorPanel.cpp
 		utils/imgui_utils.cpp
+		utils/avatar_cache.cpp
+		utils/avatar_downloader.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_demo.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_draw.cpp
@@ -180,8 +182,6 @@ if (USE_IMGUI)
 	if(NOT ANDROID AND CMAKE_SIZEOF_VOID_P EQUAL 4)
 		list(APPEND CLDLL_SOURCES
 			utils/engine_hooks.cpp
-			utils/steam_api.cpp
-			utils/avatar_cache.cpp
 			utils/svc_messages.cpp)
 	endif()
 	

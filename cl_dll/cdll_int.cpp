@@ -39,18 +39,13 @@ using namespace vgui;
 int g_ImGuiMouse = 0;
 
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
-
 #include "gl_local.h"
 #include "render_api.h"
 render_api_t gRenderfuncs;
 bool g_fRenderInitialized = false;
-
 #else 
-
 #include "engine_hooks.h"
-#include "steam_api.h"
 #include "svc_messages.h"
-
 #endif
 #endif
 
@@ -196,7 +191,6 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 	EngineHooks::PatchEngine();
 	HookSvcMessages();
 
-	g_SteamAPI.initialize();
 #endif
 
 	ConsolePrint( "\nAxion\n" );
@@ -390,7 +384,7 @@ int DLLEXPORT HUD_Redraw( float time, int intermission )
 
 	return 1;
 }
-
+ 
 /*
 ==========================
 	HUD_UpdateClientData
@@ -441,7 +435,6 @@ void DLLEXPORT HUD_Frame( double time )
 
 #if USE_IMGUI && (!XASH_MOBILE_PLATFORM && !XASH_64BIT)
 	EngineHooks::OnHudFrame();
-	g_SteamAPI.RunCallbacks();
 #endif
 }
 

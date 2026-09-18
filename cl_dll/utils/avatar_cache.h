@@ -1,13 +1,13 @@
-#ifndef AVATAR_CACHE_H
-#define AVATAR_CACHE_H
+#pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 #include "imgui.h"
-#include "steam_api.h"
 
 #define MAX_AVATAR_PLAYERS 32
-
 #define AVATAR_REQUEST_COOLDOWN 2.0f
+
+typedef uint64_t SteamID64;
 
 struct AvatarEntry
 {
@@ -25,8 +25,6 @@ public:
     void VidInitialize();
     void Shutdown();
 
-    void UpdatePlayer(int playerIndex);
-
     ImTextureID GetAvatar(int playerIndex);
 
     void ClearAvatar(int playerIndex);
@@ -37,10 +35,10 @@ public:
 private:
     AvatarEntry m_avatars[MAX_AVATAR_PLAYERS];
 
-    ImTextureID CreateTextureFromRGBA(uint8_t *data, int width, int height);
-
+    ImTextureID CreateTextureFromMemory(const uint8_t *buffer, size_t bufSize);
     void DeleteTexture(ImTextureID tex);
 
+    void ProcessDownloadedAvatars();
     bool LoadAvatar(int playerIndex, SteamID64 steam64);
 
     inline bool IsValidPlayerIndex(int playerIndex) const
@@ -50,5 +48,3 @@ private:
 };
 
 extern CAvatarCache g_AvatarCache;
-
-#endif
