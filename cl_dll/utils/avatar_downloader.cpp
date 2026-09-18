@@ -82,6 +82,9 @@ void AvatarDownloader::WorkerThreadFunc(int playerIndex, uint64_t steam64)
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteStringCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &xmlBuffer);
 
@@ -95,6 +98,10 @@ void AvatarDownloader::WorkerThreadFunc(int playerIndex, uint64_t steam64)
         {
             avatarUrl = ExtractXmlTag(xmlBuffer, "avatarFull");
         }
+        if (avatarUrl.empty())
+        {
+            avatarUrl = ExtractXmlTag(xmlBuffer, "avatarIcon");
+        }
     }
 
     if (!avatarUrl.empty())
@@ -104,6 +111,9 @@ void AvatarDownloader::WorkerThreadFunc(int playerIndex, uint64_t steam64)
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteVectorCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result.imageData);
 

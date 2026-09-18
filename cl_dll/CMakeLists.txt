@@ -218,14 +218,12 @@ if (WIN32)
 endif()
 
 if(NOT ANDROID)
-	include_directories(${CMAKE_SOURCE_DIR}/external/curl/include)
-
 	if (CMAKE_SIZEOF_VOID_P EQUAL 4)
 		include_directories(${CMAKE_SOURCE_DIR}/external/pcre2/src)
 	endif()
 endif()
 
-include_directories(${CMAKE_SOURCE_DIR}/utils/vgui/include ${CMAKE_SOURCE_DIR}/external/imgui ui/IMGUI ${CMAKE_SOURCE_DIR}/external/stb utils/images)
+include_directories(${CMAKE_SOURCE_DIR}/utils/vgui/include ${CMAKE_SOURCE_DIR}/external/imgui ui/IMGUI ${CMAKE_SOURCE_DIR}/external/stb utils/images ${CMAKE_SOURCE_DIR}/external/curl/include)
 
 add_library (${CLDLL_LIBRARY} SHARED ${CLDLL_SOURCES})
 
@@ -240,11 +238,9 @@ if(WIN32)
     endif()
 endif()
 
-target_link_libraries(${CLDLL_LIBRARY} vgui)
+target_link_libraries(${CLDLL_LIBRARY} vgui libcurl mbedtls mbedx509 tfpsacrypto)
 
 if(NOT ANDROID)
-	target_link_libraries(${CLDLL_LIBRARY} libcurl)
-
 	if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 		target_link_libraries(${CLDLL_LIBRARY} pcre2-posix-static pcre2-8-static)
 	endif()

@@ -13,3 +13,6 @@
 [submodule "freevgui"]
 	path = freevgui
 	url = https://github.com/FWGS/freevgui
+[submodule "external/mbedtls"]
+	path = external/mbedtls
+	url = https://github.com/Mbed-TLS/mbedtls
