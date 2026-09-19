@@ -94,7 +94,7 @@ void CRainbow::UnhookFuncs()
     m_bIsEnabled = false;
 }
 
-void CRainbow::SPR_SetRainbow(HSPRITE hPic, int r, int g, int b)
+void CRainbow::SPR_SetRainbow(HLSPRITE hPic, int r, int g, int b)
 {
     // Remember params for the future since coords are not known until rendering
     gHUD.m_Rainbow.m_hSprite = hPic;

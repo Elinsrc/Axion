@@ -45,7 +45,7 @@ private:
 	cvar_t *m_pCvarRainbowXPhase = nullptr;
 	cvar_t *m_pCvarRainbowYPhase = nullptr;
 
-	HSPRITE m_hSprite = 0;
+	HLSPRITE m_hSprite = 0;
 	int m_iSpriteColor[3] = { 0, 0, 0 };
 
 	pfnEngSrc_pfnSPR_Set_t m_pfnSPR_Set = nullptr;
@@ -66,7 +66,7 @@ private:
 	 */
 	void UnhookFuncs();
 
-	static void SPR_SetRainbow(HSPRITE hPic, int r, int g, int b);
+	static void SPR_SetRainbow(HLSPRITE hPic, int r, int g, int b);
 	static void SPR_DrawAdditiveRainbow(int frame, int x, int y, const struct rect_s *prc);
 	static int DrawString(int x, int y, const char *str, int r, int g, int b);
 	static int DrawStringReverse(int x, int y, const char *str, int r, int g, int b);

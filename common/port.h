@@ -101,10 +101,7 @@ typedef struct tagPOINT
 #define NOMCX
 #define NOIME
 #define NOMINMAX
-#define HSPRITE DeletedWinapi_HSPRITE
 #include <windows.h>
-#undef HSPRITE
-typedef int HSPRITE;
 #include <io.h>
 
 #define OS_LIB_PREFIX ""

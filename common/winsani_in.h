@@ -3,5 +3,4 @@
 #ifdef ARRAYSIZE
 #undef ARRAYSIZE
 #endif
-#define HSPRITE WINDOWS_HSPRITE
 #endif
