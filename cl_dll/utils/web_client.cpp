@@ -1,13 +1,19 @@
 #include "web_client.h"
+#include "build.h"
 #include "build_info.h"
 #include <algorithm>
+
+#if XASH_MOBILE_PLATFORM
 #include <psa/crypto.h>
+#endif
 
 WebClient g_WebClient;
 
 WebClient::WebClient()
 {
+#if XASH_MOBILE_PLATFORM
     psa_crypto_init();
+#endif
     curl_global_init(CURL_GLOBAL_DEFAULT);
     m_avatarThread = std::thread(&WebClient::AvatarWorkerLoop, this);
 }

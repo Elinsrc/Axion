@@ -242,7 +242,11 @@ if(WIN32)
     endif()
 endif()
 
-target_link_libraries(${CLDLL_LIBRARY} vgui libcurl mbedtls mbedx509 tfpsacrypto)
+target_link_libraries(${CLDLL_LIBRARY} vgui libcurl)
+
+if(ANDROID)
+	target_link_libraries(${CLDLL_LIBRARY} mbedtls mbedx509 tfpsacrypto)
+endif()
 
 if(NOT ANDROID)
 	if(CMAKE_SIZEOF_VOID_P EQUAL 4)

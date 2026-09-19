@@ -3,6 +3,10 @@
 
 #include "build.h"
 
+#include "hud.h"
+#include "cl_util.h"
+#include "imgui_utils.h"
+
 #ifdef XASH_WIN32
 #include <winsani_in.h>
 #include <windows.h>

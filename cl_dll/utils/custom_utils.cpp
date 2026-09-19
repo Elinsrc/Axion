@@ -2,13 +2,6 @@
 #include <cstdio>
 #include <cstring>
 
-#include "hud.h"
-#include "cl_util.h"
-#include "cl_entity.h"
-#include "pm_defs.h"
-#include "event_api.h"
-#include "triangleapi.h"
-
 #include "custom_utils.h"
 
 #include "build.h"

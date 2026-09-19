@@ -4,9 +4,6 @@
 #include <stddef.h>
 #include "imgui.h"
 
-#include "hud.h"
-#include "cl_util.h"
-#include "imgui_utils.h"
 #include "custom_utils.h"
 
 #define MAX_AVATAR_PLAYERS 32
