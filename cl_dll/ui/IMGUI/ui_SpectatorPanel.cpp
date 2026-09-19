@@ -81,12 +81,16 @@ void CImGuiSpectatorPanel::Draw()
 
 void CImGuiSpectatorPanel::DrawPlayerCard()
 {
+    float ui_scale = CVAR_GET_FLOAT("ui_imgui_scale");
+    if (!isfinite(ui_scale) || ui_scale < 1.0f)
+        gEngfuncs.Cvar_SetValue("ui_imgui_scale", 1.0f);
+
     ImGui::PushFont(g_ImGuiManager.GetHudFont());
 
     ImDrawList* drawList = ImGui::GetBackgroundDrawList();
     float lineHeight = ImGui::GetTextLineHeight();
-    const float padding = 8.0f;
-    const float gap = 4.0f;
+    const float padding = 8.0f * ui_scale;
+    const float gap = 4.0f * ui_scale;
 
     const char* modeText = m_szCamMode[0] ? m_szCamMode : CHudTextMessage::BufferedLocaliseTextString(GetSpectatorLabel(g_iUser1));
     const char* nameText = m_szTargetName[0] ? m_szTargetName : nullptr;
@@ -94,15 +98,14 @@ void CImGuiSpectatorPanel::DrawPlayerCard()
     float modeWidth = m_ImguiUtils.CalcTextWidthWithColorCodes(modeText);
     float nameWidth = nameText ? m_ImguiUtils.CalcTextWidthWithColorCodes(nameText) : 0.0f;
 
-
     int targetIndex = g_iUser2;
     bool bHasValidTarget = (targetIndex >= 1 && targetIndex < MAX_PLAYERS && g_PlayerInfoList[targetIndex].name && g_PlayerInfoList[targetIndex].name[0]);
 
     bool bShowAvatar = bHasValidTarget && (g_iUser1 == OBS_CHASE_LOCKED || g_iUser1 == OBS_CHASE_FREE || g_iUser1 == OBS_IN_EYE || g_iUser1 == OBS_MAP_CHASE);
 
-    float avatarSize   = 48.0f;
+    float avatarSize = 48.0f * ui_scale;
     float avatarOverlap = bShowAvatar ? (avatarSize * 0.5f) : 0.0f;
-    float topMargin    = bShowAvatar ? (avatarOverlap + 6.0f) : padding;
+    float topMargin = bShowAvatar ? (avatarOverlap + 6.0f * ui_scale) : padding;
 
     ImU32 playerColor = IM_COL32((int)(m_TargetColor.x * 255), (int)(m_TargetColor.y * 255), (int)(m_TargetColor.z * 255), 255);
 
@@ -115,14 +118,14 @@ void CImGuiSpectatorPanel::DrawPlayerCard()
 
     float bgWidth = fmaxf(nameWidth, modeWidth) + padding * 4.0f;
 
-    if (bShowAvatar && bgWidth < avatarSize + 60.0f)
-        bgWidth = avatarSize + 60.0f;
+    if (bShowAvatar && bgWidth < avatarSize + 60.0f * ui_scale)
+        bgWidth = avatarSize + 60.0f * ui_scale;
 
     float contentHeight = nameText ? (lineHeight * 2.0f + gap) : lineHeight;
     float bgHeight = topMargin + contentHeight + padding;
 
     float bgPosX = (g_ImGuiViewport.scrWidth() - bgWidth) * 0.5f;
-    float bgPosY = g_ImGuiViewport.scrHeight() - bgHeight - 20.0f;
+    float bgPosY = g_ImGuiViewport.scrHeight() - bgHeight - 20.0f * ui_scale;
 
     ImU32 bgColor = gHUD.m_Teamplay ? IM_COL32((int)(m_TargetColor.x * 255), (int)(m_TargetColor.y * 255), (int)(m_TargetColor.z * 255), 140) : IM_COL32(0, 0, 0, 140);
 
@@ -130,8 +133,8 @@ void CImGuiSpectatorPanel::DrawPlayerCard()
 
     ImVec4 modeColor = ImVec4(0.65f, 0.65f, 0.65f, 1.0f);
 
-    drawList->AddRectFilled(ImVec2(bgPosX, bgPosY), ImVec2(bgPosX + bgWidth, bgPosY + bgHeight), bgColor, 6.0f);
-    drawList->AddRect(ImVec2(bgPosX, bgPosY), ImVec2(bgPosX + bgWidth, bgPosY + bgHeight), IM_COL32(255, 255, 255, 40), 6.0f, 0, 1.0f);
+    drawList->AddRectFilled(ImVec2(bgPosX, bgPosY), ImVec2(bgPosX + bgWidth, bgPosY + bgHeight), bgColor, 6.0f * ui_scale);
+    drawList->AddRect(ImVec2(bgPosX, bgPosY), ImVec2(bgPosX + bgWidth, bgPosY + bgHeight), IM_COL32(255, 255, 255, 40), 6.0f * ui_scale, 0, 1.0f * ui_scale);
 
     if (nameText)
     {
@@ -139,7 +142,7 @@ void CImGuiSpectatorPanel::DrawPlayerCard()
         m_ImguiUtils.DrawTextWithColorCodesAt(ImVec2(bgPosX + (bgWidth - nameWidth) * 0.5f, nameY), nameText, nameColor);
 
         float separatorY = nameY + lineHeight + gap * 0.5f;
-        drawList->AddLine(ImVec2(bgPosX + padding, separatorY), ImVec2(bgPosX + bgWidth - padding, separatorY), IM_COL32(255, 255, 255, 30));
+        drawList->AddLine(ImVec2(bgPosX + padding, separatorY), ImVec2(bgPosX + bgWidth - padding, separatorY), IM_COL32(255, 255, 255, 30), 1.0f * ui_scale);
     }
 
     float modePosY = nameText ? (bgPosY + topMargin + lineHeight + gap) : (bgPosY + topMargin);
@@ -153,13 +156,28 @@ void CImGuiSpectatorPanel::DrawPlayerCard()
 
         ImVec2 avMin(avatarX, avatarY);
         ImVec2 avMax(avatarX + avatarSize, avatarY + avatarSize);
+        float avatarRounding = 2.0f * ui_scale;
 
-        drawList->AddRectFilled(avMin, avMax, IM_COL32(0, 0, 0, 255));
+        // DRAW AVATAR IMAGE
+        drawList->AddImageRounded(
+            g_AvatarCache.GetAvatar(targetIndex),
+            avMin,
+            avMax,
+            ImVec2(0, 0),
+            ImVec2(1, 1),
+            IM_COL32(255, 255, 255, 255),
+            avatarRounding
+        );
 
-        ImTextureID avatarTex = g_AvatarCache.GetAvatar(targetIndex);
-        drawList->AddImage(avatarTex, avMin, avMax);
-
-        drawList->AddRect(ImVec2(avMin.x - 1.0f, avMin.y - 1.0f), ImVec2(avMax.x + 1.0f, avMax.y + 1.0f), playerColor, 2.0f, 0, 1.5f);
+        // DRAW AVATAR BORDER
+        drawList->AddRect(
+            avMin,
+            avMax,
+            playerColor,
+            avatarRounding,
+            0,
+            1.0f * ui_scale
+        );
     }
 
     ImGui::PopFont();

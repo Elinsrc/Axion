@@ -1,9 +1,5 @@
 #include "avatar_cache.h"
-#include "hud.h"
-#include "cl_util.h"
-#include "ui_ScorePanel.h"
-#include "custom_utils.h"
-#include "avatar_downloader.h"
+#include "web_client.h"
 
 #include "build.h"
 
@@ -38,6 +34,37 @@ void CAvatarCache::Shutdown()
 {
     ClearAll();
     m_ImguiUtils.FreeImage(m_pNoAvatar);
+}
+
+void CAvatarCache::Update()
+{
+    ProcessDownloadedAvatars();
+
+    for (int i = 1; i <= gEngfuncs.GetMaxClients(); i++)
+    {
+        m_CustomUtils.UpdatePlayerInfo(i);
+        
+        if (g_PlayerIsBot[i])
+            continue;
+
+        const SteamID64 steam64 = g_PlayerSteamID64[i];
+        if (steam64 == 0)
+            continue;
+
+        AvatarEntry& entry = m_avatars[i];
+
+        if (entry.steamId != steam64)
+        {
+            ClearAvatar(i);
+            entry.steamId = steam64;
+        }
+
+        if (!entry.loaded && !entry.requested)
+        {
+            entry.requested = true;
+            LoadAvatar(i, steam64);
+        }
+    }
 }
 
 void CAvatarCache::ClearAll()
@@ -87,26 +114,27 @@ void CAvatarCache::DeleteTexture(ImTextureID tex)
 void CAvatarCache::ProcessDownloadedAvatars()
 {
     DownloadedAvatar downloaded;
-    while (g_AvatarDownloader.PopCompleted(downloaded))
+    while (g_WebClient.PopCompletedAvatar(downloaded))
     {
         if (!IsValidPlayerIndex(downloaded.playerIndex))
             continue;
 
         AvatarEntry& entry = m_avatars[downloaded.playerIndex];
 
-        if (entry.steamId == downloaded.steam64 && downloaded.success && !downloaded.imageData.empty())
+        if (entry.steamId == downloaded.steam64)
         {
-            if (entry.texture)
+            if (downloaded.success && !downloaded.imageData.empty())
             {
-                DeleteTexture(entry.texture);
-                entry.texture = 0;
-            }
+                if (entry.texture)
+                {
+                    DeleteTexture(entry.texture);
+                    entry.texture = 0;
+                }
 
-            entry.texture = CreateTextureFromMemory(downloaded.imageData.data(), downloaded.imageData.size());
-            entry.loaded = (entry.texture != 0);
+                entry.texture = CreateTextureFromMemory(downloaded.imageData.data(), downloaded.imageData.size());
+                entry.loaded = (entry.texture != 0);
+            }
         }
-        
-        entry.requested = false;
     }
 }
 
@@ -115,44 +143,19 @@ bool CAvatarCache::LoadAvatar(int playerIndex, SteamID64 steam64)
     if (steam64 == 0)
         return false;
 
-    g_AvatarDownloader.FetchAvatarAsync(playerIndex, steam64);
+    g_WebClient.QueueAvatarDownload(playerIndex, steam64);
     return true;
 }
 
 ImTextureID CAvatarCache::GetAvatar(int playerIndex)
 {
-    ProcessDownloadedAvatars();
-
-    if (!IsValidPlayerIndex(playerIndex))
-        return m_pNoAvatar.texture;
-
-    if (g_PlayerIsBot[playerIndex])
-        return m_pNoAvatar.texture;
-
-    const SteamID64 steam64 = g_PlayerSteamID64[playerIndex];
-
-    if (steam64 == 0)
+    if (!IsValidPlayerIndex(playerIndex) || g_PlayerIsBot[playerIndex])
         return m_pNoAvatar.texture;
 
     AvatarEntry& entry = m_avatars[playerIndex];
 
-    if (entry.steamId != steam64)
-    {
-        ClearAvatar(playerIndex);
-        entry.steamId = steam64;
-    }
-
     if (entry.loaded && entry.texture)
         return entry.texture;
-
-    const float now = gHUD.m_flTime;
-    if (entry.requested && (now - entry.lastRequestTime) < AVATAR_REQUEST_COOLDOWN)
-        return m_pNoAvatar.texture;
-
-    entry.requested       = true;
-    entry.lastRequestTime = now;
-
-    LoadAvatar(playerIndex, steam64);
 
     return m_pNoAvatar.texture;
 }

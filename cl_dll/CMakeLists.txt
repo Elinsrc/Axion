@@ -172,7 +172,7 @@ if (USE_IMGUI)
 		ui/IMGUI/ui_SpectatorPanel.cpp
 		utils/imgui_utils.cpp
 		utils/avatar_cache.cpp
-		utils/avatar_downloader.cpp
+		utils/web_client.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_demo.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_draw.cpp
@@ -206,11 +206,6 @@ if (USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
     )
 endif()
 
-if(NOT ANDROID)
-	list(APPEND CLDLL_SOURCES
-		utils/update_checker.cpp)
-endif()
-
 include_directories (. hl/ events/ input/ render/ ui ui/hud ui/hud/OpenAG/ utils/ ${CMAKE_SOURCE_DIR}/dlls ${CMAKE_SOURCE_DIR}/dlls/wpn_shared ${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/engine ${CMAKE_SOURCE_DIR}/pm_shared ${CMAKE_SOURCE_DIR}/game_shared ${CMAKE_SOURCE_DIR}/public)
 
 if (WIN32)
@@ -223,7 +218,16 @@ if(NOT ANDROID)
 	endif()
 endif()
 
-include_directories(${CMAKE_SOURCE_DIR}/utils/vgui/include ${CMAKE_SOURCE_DIR}/external/imgui ui/IMGUI ${CMAKE_SOURCE_DIR}/external/stb utils/images ${CMAKE_SOURCE_DIR}/external/curl/include)
+include_directories(
+    ${CMAKE_SOURCE_DIR}/utils/vgui/include
+    ${CMAKE_SOURCE_DIR}/external/imgui
+    ${CMAKE_SOURCE_DIR}/external/stb
+    ${CMAKE_SOURCE_DIR}/external/curl/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/mbedtls/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/mbedtls/crypto/include
+    utils/images
+    ui/IMGUI
+)
 
 add_library (${CLDLL_LIBRARY} SHARED ${CLDLL_SOURCES})
 

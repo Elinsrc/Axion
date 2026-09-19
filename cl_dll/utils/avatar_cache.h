@@ -4,8 +4,12 @@
 #include <stddef.h>
 #include "imgui.h"
 
+#include "hud.h"
+#include "cl_util.h"
+#include "imgui_utils.h"
+#include "custom_utils.h"
+
 #define MAX_AVATAR_PLAYERS 32
-#define AVATAR_REQUEST_COOLDOWN 2.0f
 
 typedef uint64_t SteamID64;
 
@@ -20,10 +24,13 @@ struct AvatarEntry
 
 class CAvatarCache
 {
+    CustomUtils m_CustomUtils;
 public:
     void Initialize();
     void VidInitialize();
     void Shutdown();
+
+    void Update();
 
     ImTextureID GetAvatar(int playerIndex);
 

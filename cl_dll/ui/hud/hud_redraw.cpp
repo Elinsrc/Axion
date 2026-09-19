@@ -26,6 +26,7 @@
 
 #if USE_IMGUI
 #include "imgui_viewport.h"
+#include "avatar_cache.h"
 #endif
 
 #define MAX_LOGO_FRAMES 56
@@ -170,6 +171,10 @@ int CHud::Redraw( float flTime, int intermission )
 	// return 0;
 
 	UpdateDefaultHUDColor();
+
+#if USE_IMGUI
+	g_AvatarCache.Update();
+#endif
 
 	m_iHudNumbersYOffset = IsHL25() ? m_iFontHeight * 0.2 : 0;
 
