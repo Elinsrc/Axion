@@ -32,31 +32,21 @@
 using namespace vgui;
 
 #if USE_IMGUI
-
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
-
+#include "web_client.h"
 int g_ImGuiMouse = 0;
-
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
-
 #include "gl_local.h"
 #include "render_api.h"
 render_api_t gRenderfuncs;
 bool g_fRenderInitialized = false;
-
 #else 
-
 #include "engine_hooks.h"
-#include "steam_api.h"
 #include "svc_messages.h"
-
 #endif
 #endif
 
-#if !XASH_ANDROID
-#include "update_checker.h"
-#endif
 
 #if INTERNAL_VGUI_SUPPORT
 // declare InitVGUISupportAPI so that linker doesn't remove it because nothing references it
@@ -196,7 +186,6 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 	EngineHooks::PatchEngine();
 	HookSvcMessages();
 
-	g_SteamAPI.initialize();
 #endif
 
 	ConsolePrint( "\nAxion\n" );
@@ -211,14 +200,9 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 		ClientCmd("exec customconfig.cfg");
 	}
 
-#if !XASH_ANDROID
-    if (!g_pUpdateChecker)
-    {
-        g_pUpdateChecker = new UpdateChecker();
-        g_pUpdateChecker->CheckAsync();
-    }
+#if USE_IMGUI
+    g_WebClient.CheckUpdateAsync();
 #endif
-
 
 	if( gEngfuncs.pfnGetCvarPointer( "cl_filterstuffcmd" ) == 0 )
 	{
@@ -374,23 +358,20 @@ int DLLEXPORT HUD_Redraw( float time, int intermission )
 
 #if USE_IMGUI
 	g_ImGuiManager.NewFrame();
-#endif
 
-#if !XASH_ANDROID
     static bool bPrinted = false;
 
-    if (!bPrinted && g_pUpdateChecker && g_pUpdateChecker->IsFinished() && g_pUpdateChecker->HasUpdate())
-    {
-        gEngfuncs.Con_Printf("\nAxion: New update available!\n");
-		gEngfuncs.Con_Printf("Commit: %s\n", g_pUpdateChecker->GetRemoteHash().c_str());
-		gEngfuncs.Con_Printf("%s\n\n", g_pUpdateChecker->GetCommitMessage().c_str());
+	if (!bPrinted && g_WebClient.IsUpdateChecked() && g_WebClient.HasUpdate())
+	{
+		gEngfuncs.Con_Printf("\nAxion: New update available!\n");
+		gEngfuncs.Con_Printf("Commit: %s\n", g_WebClient.GetRemoteHash().c_str());
+		gEngfuncs.Con_Printf("%s\n\n", g_WebClient.GetCommitMessage().c_str());
 		bPrinted = true;
-    }
+	}
 #endif
-
 	return 1;
 }
-
+ 
 /*
 ==========================
 	HUD_UpdateClientData
@@ -441,7 +422,6 @@ void DLLEXPORT HUD_Frame( double time )
 
 #if USE_IMGUI && (!XASH_MOBILE_PLATFORM && !XASH_64BIT)
 	EngineHooks::OnHudFrame();
-	g_SteamAPI.RunCallbacks();
 #endif
 }
 

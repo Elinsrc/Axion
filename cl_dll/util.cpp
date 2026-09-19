@@ -121,7 +121,7 @@ void VectorMA( const float *veca, float scale, const float *vecb, float *vecc )
 	vecc[2] = veca[2] + scale * vecb[2];
 }
 
-HSPRITE LoadSprite( const char *pszName )
+HLSPRITE LoadSprite( const char *pszName )
 {
 	int i = GetSpriteRes( ScreenWidth, ScreenHeight );
 	char sz[256];

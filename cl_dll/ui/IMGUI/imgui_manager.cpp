@@ -11,9 +11,8 @@
 #include "build.h"
 #include "input_mouse.h"
 
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
 #include "avatar_cache.h"
-#endif
+
 
 extern int g_ImGuiMouse;
 
@@ -41,9 +40,9 @@ void CImGuiManager::VidInitialize()
 {
     m_WindowSystem.VidInitialize();
 
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+
     g_AvatarCache.VidInitialize();
-#endif
+
 }
 
 void CImGuiManager::Terminate()
@@ -51,9 +50,9 @@ void CImGuiManager::Terminate()
     m_WindowSystem.Terminate();
     m_pBackend->Shutdown();
 
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+
     g_AvatarCache.Shutdown();
-#endif
+
 }
 
 void CImGuiManager::NewFrame()
@@ -76,9 +75,9 @@ void CImGuiManager::InitHUD()
     g_ImGuiDebug.Init();
     m_iSpectatorPanel.Init();
 
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+
     g_AvatarCache.Initialize();
-#endif
+
 }
 
 void CImGuiManager::RenderHUD()

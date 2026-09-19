@@ -6,6 +6,7 @@
 #include "voice_status.h"
 #include "cl_util.h"
 #include "imgui_utils.h"
+#include "avatar_cache.h"
 
 extern int blue_flag_player_index;
 extern int red_flag_player_index;
@@ -20,17 +21,12 @@ CImGuiScoreboard g_iScoreboard;
 
 bool CImGuiScoreboard::m_ShowScore = false;
 
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
-#include "avatar_cache.h"
 cvar_t* hud_scoreboard_showavatars;
-#endif
-
 
 void CImGuiScoreboard::Initialize()
 {
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+
 	hud_scoreboard_showavatars = CVAR_CREATE("hud_scoreboard_showavatars", "1", FCVAR_ARCHIVE);
-#endif
 	
 	m_bMouseMode = false;
 
@@ -47,11 +43,8 @@ void CImGuiScoreboard::InitHUDData()
 	m_bShowPlayerMenu = false;
 	
 	memset(g_PlayerIsBot, 0, sizeof(g_PlayerIsBot));
-	
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
-	memset(g_PlayerSteamId, 0, sizeof(g_PlayerSteamId));
 	memset(g_PlayerSteamID64, 0, sizeof(g_PlayerSteamID64));
-#endif
+
 }
 
 void CImGuiScoreboard::VidInitialize()
@@ -309,10 +302,9 @@ void CImGuiScoreboard::DrawScoreboard()
 	g_ImGuiViewport.GetAllPlayersInfo();
 
 	bool bShowAvatars = false;
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
+
 	if (hud_scoreboard_showavatars->value > 0)
 		bShowAvatars = true;
-#endif
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.f);
 	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.f);
@@ -334,11 +326,16 @@ void CImGuiScoreboard::DrawScoreboard()
 	strncpy(modelText, "MODEL", sizeof(modelText) - 1);
 	strncpy(voiceText, CHudTextMessage::BufferedLocaliseTextString("#VOICE"), sizeof(voiceText) - 1);
 
-	float avatarSize = 32.0f;
-	float textHeight = ImGui::GetTextLineHeight();
-	
-	float rowHeight = bShowAvatars ? (avatarSize + 8.0f) : (textHeight + 6.0f);
-	float textVertOffset = (rowHeight - textHeight) * 0.5f;
+	float ui_scale = CVAR_GET_FLOAT("ui_imgui_scale");
+    if (!isfinite(ui_scale) || ui_scale < 1.0f)
+        gEngfuncs.Cvar_SetValue("ui_imgui_scale", 1.0f);
+
+    float baseAvatarSize = 32.0f;
+    float scaledAvatarSize = baseAvatarSize * ui_scale;
+    float textHeight = ImGui::GetTextLineHeight();
+    
+    float rowHeight = bShowAvatars ? (scaledAvatarSize + 8.0f * ui_scale) : (textHeight + 6.0f);
+    float textVertOffset = (rowHeight - textHeight) * 0.5f;
 
 	float colModel = ImGui::CalcTextSize(modelText).x + 24.f;
 	float colScore = ImGui::CalcTextSize(scoreText).x + 24.f;
@@ -593,8 +590,6 @@ void CImGuiScoreboard::DrawScoreboard()
 						ImU32 playerColor = IM_COL32(iTeamColors[teamColorIdx][0], iTeamColors[teamColorIdx][1], iTeamColors[teamColorIdx][2], 255);
 
 						float rowYScreen = ImGui::GetCursorScreenPos().y;
-
-						m_CustomUtils.UpdatePlayerInfo(iPlayerIndex);
 						
 						// PLAYER BACKGROUND
 						ImVec2 row_min = ImVec2(lineStartX, rowYScreen);
@@ -645,26 +640,43 @@ void CImGuiScoreboard::DrawScoreboard()
 						float startContentX = win_pos.x + padding;
 
 						// AVATAR
-						if (bShowAvatars)
-						{
-							float avatarY = rowYScreen + (rowHeight - avatarSize) * 0.5f;
-							
-							ImGui::SetCursorScreenPos(ImVec2(startContentX + 4.0f, avatarY));
-							ImVec2 p = ImGui::GetCursorScreenPos();
+                        if (bShowAvatars)
+                        {
+                            float avatarY = rowYScreen + (rowHeight - scaledAvatarSize) * 0.5f;
+                            float avatarX = startContentX + 4.0f * ui_scale;
 
-							// AVATAR BORDER
-							draw_list->PushClipRect(childMin, childMax, true);
-							draw_list->AddRect(ImVec2(p.x - 1, p.y - 1), ImVec2(p.x + avatarSize + 1, p.y + avatarSize + 1), playerColor, 2.0f, 0, 1.5f);
-							draw_list->PopClipRect();
+                            ImVec2 avMin(avatarX, avatarY);
+                            ImVec2 avMax(avatarX + scaledAvatarSize, avatarY + scaledAvatarSize);
+                            float avatarRounding = 2.0f * ui_scale;
 
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
-							// AVATAR IMAGE
-							ImGui::Image(g_AvatarCache.GetAvatar(iPlayerIndex), ImVec2(avatarSize, avatarSize));
-#endif
-							ImGui::SameLine();
-							
-							startContentX += (avatarSize + 20.0f);
-						}
+                            draw_list->PushClipRect(childMin, childMax, true);
+
+                            // DRAW AVATAR IMAGE
+                            draw_list->AddImageRounded(
+                                g_AvatarCache.GetAvatar(iPlayerIndex), 
+                                avMin, 
+                                avMax, 
+                                ImVec2(0, 0), 
+                                ImVec2(1, 1), 
+                                IM_COL32(255, 255, 255, 255), 
+                                avatarRounding
+                            );
+
+                            // DRAW AVATAR BORDER
+                            draw_list->AddRect(
+                                avMin, 
+                                avMax, 
+                                playerColor, 
+                                avatarRounding, 
+                                0, 
+                                1.0f * ui_scale
+                            );
+
+                            draw_list->PopClipRect();
+
+                            //ADVANCE CONTENT X POSITION
+                            startContentX = avatarX + scaledAvatarSize + (8.0f * ui_scale);
+                        }
 
 						float nameY = rowYScreen + textVertOffset;
 						ImGui::SetCursorScreenPos(ImVec2(startContentX, nameY));
@@ -837,18 +849,18 @@ void CImGuiScoreboard::DrawScoreboard()
 				}
 
 				// STEAM PROFILE OPTION
-#if !XASH_MOBILE_PLATFORM && !XASH_64BIT
 				if (!g_PlayerIsBot[m_iSelectedPlayer] && g_PlayerSteamID64[m_iSelectedPlayer])
 				{
-					if (ImGui::Selectable("Steam Profile"))
+					char profileUrl[128];
+    				snprintf(profileUrl, sizeof(profileUrl), "https://steamcommunity.com/profiles/%llu", (unsigned long long)g_PlayerSteamID64[m_iSelectedPlayer]);
+					
+					if (ImGui::TextLinkOpenURL("Steam Profile", profileUrl))
 					{
-						// OPEN STEAM OVERLAY TO PLAYER PROFILE
-						g_SteamAPI.ActivateGameOverlayToUser("steamid", g_PlayerSteamID64[m_iSelectedPlayer]);
 						m_bShowPlayerMenu = false;
 						m_iSelectedPlayer = 0;
 					}
 				}
-#endif
+
 				ImGui::EndPopup();
 			}
 			else

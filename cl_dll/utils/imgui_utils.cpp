@@ -247,7 +247,7 @@ void CImguiUtils::DrawCallback_SetNormal(const ImDrawList* parent_list, const Im
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-float CImguiUtils::ImGuiSpriteIcon(HSPRITE hSprite, const wrect_t& rc, float x, float y, float iconWidth, float iconHeight, float textHeight, int r, int g, int b, int alpha)
+float CImguiUtils::ImGuiSpriteIcon(HLSPRITE hSprite, const wrect_t& rc, float x, float y, float iconWidth, float iconHeight, float textHeight, int r, int g, int b, int alpha)
 {
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
 

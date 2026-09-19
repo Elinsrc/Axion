@@ -57,9 +57,7 @@ protected:
 #define SUPPORT_GOLDSOURCE_INPUT	1
 
 #if XASH_WIN32
-#define HSPRITE WINDOWS_HSPRITE
 #include <windows.h>
-#undef HSPRITE
 #else
 typedef struct point_s
 {

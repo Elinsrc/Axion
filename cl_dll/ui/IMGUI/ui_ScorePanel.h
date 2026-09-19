@@ -53,7 +53,7 @@ public:
 private:
     typedef struct
     {
-        HSPRITE spr;
+        HLSPRITE spr;
         wrect_t rc;
     }icon_flagstatus_t;
 

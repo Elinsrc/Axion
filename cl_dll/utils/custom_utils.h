@@ -1,5 +1,13 @@
 #pragma once
+
+#include "hud.h"
+#include "cl_util.h"
+#include "cl_entity.h"
+#include "pm_defs.h"
+#include "event_api.h"
+#include "triangleapi.h"
 #include "pmtrace.h"
+
 #include <stdint.h>
 
 class CustomUtils

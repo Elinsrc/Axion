@@ -235,7 +235,7 @@ void CHudDeathNotice::ImGui_DeathNotice()
 			b = 10;
 		}
 
-		HSPRITE hSpr = gHUD.GetSprite(id);
+		HLSPRITE hSpr = gHUD.GetSprite(id);
 
 		x = m_ImguiUtils.ImGuiSpriteIcon(hSpr, rc, x, y, iconWidth, iconHeight, textHeight, r, g, b, alphaUI);
 

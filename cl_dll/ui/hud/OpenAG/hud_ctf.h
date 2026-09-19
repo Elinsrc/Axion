@@ -6,7 +6,7 @@ extern int red_flag_player_index;
 class CHudCTF : public CHudBase
 {
 	int flag_sprite_indices[4];
-	HSPRITE flag_sprites[4];
+	HLSPRITE flag_sprites[4];
 
 	enum class FlagState {
 		HOME = 0,

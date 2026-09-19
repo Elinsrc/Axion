@@ -4,8 +4,8 @@
 #include "parsemsg.h"
 #include "build_info.h"
 
-#if !XASH_ANDROID
-#include "update_checker.h"
+#if USE_IMGUI
+#include "web_client.h"
 #endif
 
 int CHudWatermark::Init()
@@ -57,20 +57,20 @@ int CHudWatermark::Draw(float time)
 	snprintf(str, sizeof(str), "To disable this message, type in the console ^2hud_watermark 0");
 	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 5, str, r, g, b);
 
-#if !XASH_ANDROID
-    if (g_pUpdateChecker && g_pUpdateChecker->IsFinished() && g_pUpdateChecker->HasUpdate())
-    {
-        snprintf(str, sizeof(str), "^2Axion^7: ^1New update available!");
-        gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 7, str, r, g, b);
+#if USE_IMGUI
+    if (g_WebClient.IsUpdateChecked() && g_WebClient.HasUpdate())
+	{
+		snprintf(str, sizeof(str), "^2Axion^7: ^1New update available!");
+		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 7, str, r, g, b);
 		
-		std::string remoteHash = g_pUpdateChecker->GetRemoteHash();
+		std::string remoteHash = g_WebClient.GetRemoteHash();
 		snprintf(str, sizeof(str), "^7Commit: ^2%s", remoteHash.c_str());
 		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 8, str, r, g, b);
 		
-		std::string commitMsg = g_pUpdateChecker->GetCommitMessage();
+		std::string commitMsg = g_WebClient.GetCommitMessage();
 		snprintf(str, sizeof(str), "^3%s", commitMsg.c_str());
 		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 9, str, r, g, b);
-    }
+	}
 #endif
 
 	return 0;

@@ -12,7 +12,7 @@ public:
 
 private:
     float m_flTurnoff;
-    HSPRITE m_hSprite;
+    HLSPRITE m_hSprite;
 };
 
 //-- Martin Webrant

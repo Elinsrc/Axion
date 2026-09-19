@@ -103,7 +103,7 @@ public:
     // Squelch mode stuff.
     bool				m_bInSquelchMode;
 
-    HSPRITE				m_VoiceHeadModel;		// Voice head model (goes above players who are speaking).
+    HLSPRITE			m_VoiceHeadModel;		// Voice head model (goes above players who are speaking).
     float				m_VoiceHeadModelHeight;	// Height above their head to place the model.
 
 

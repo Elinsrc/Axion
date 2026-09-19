@@ -39,14 +39,9 @@ extern cvar_t *ui_imgui_scoreboard;
 extern bool g_fRenderInitialized;
 #else
 #include "engine_hooks.h"
-#include "steam_api.h"
 #include "svc_messages.h"
 #endif
 
-#endif
-
-#if !XASH_ANDROID
-#include "update_checker.h"
 #endif
 
 extern "C" 
@@ -1297,16 +1292,6 @@ void DLLEXPORT HUD_Shutdown( void )
 	g_ImGuiManager.Terminate();
 	UnHookSvcMessages();
 	EngineHooks::UnpatchEngine();
-	g_SteamAPI.shutdown();	
 #endif
 #endif
-
-#if !XASH_ANDROID
-	if (g_pUpdateChecker)
-    {
-        delete g_pUpdateChecker;
-        g_pUpdateChecker = nullptr;
-    }
-#endif
-
 }
