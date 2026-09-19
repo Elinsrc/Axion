@@ -29,6 +29,7 @@ public:
     void SetCvarColor(const char* name, const float color[3]);
     ImGuiImage LoadImageFromFile(const char* filename);
     ImGuiImage LoadImageFromMemory(const unsigned char* buffer, int bufferSize);
+    ImGuiImage LoadImageFromRGBA(const unsigned char* rgba, int width, int height);
     float DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r = 255, int g = 255, int b = 255, int alpha = 255);
     void FreeImage(ImGuiImage& image);
     void RenderColorCodeText(float fontSize, const ImVec2& pos, const char* text, ImVec4 color, bool shadow);

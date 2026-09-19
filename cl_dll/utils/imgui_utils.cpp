@@ -431,6 +431,24 @@ ImGuiImage CImguiUtils::LoadImageFromMemory(const unsigned char* buffer, int buf
     return result;
 }
 
+ImGuiImage CImguiUtils::LoadImageFromRGBA(const unsigned char* rgba, int width, int height)
+{
+    ImGuiImage result;
+    result.width  = width;
+    result.height = height;
+    result.texture = (ImTextureID)0;
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+
+    result.texture = (ImTextureID)(intptr_t)texture;
+    return result;
+}
+
 float CImguiUtils::DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r, int g, int b, int alpha)
 {
     ImDrawList* dl = ImGui::GetBackgroundDrawList();

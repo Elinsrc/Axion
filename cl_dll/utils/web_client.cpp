@@ -2,10 +2,13 @@
 #include "build.h"
 #include "build_info.h"
 #include <algorithm>
+#include <cstring>
 
 #if XASH_MOBILE_PLATFORM
 #include <psa/crypto.h>
 #endif
+
+#include "stb_image.h"
 
 WebClient g_WebClient;
 
@@ -15,16 +18,21 @@ WebClient::WebClient()
     psa_crypto_init();
 #endif
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    m_avatarThread = std::thread(&WebClient::AvatarWorkerLoop, this);
+    m_staticThread   = std::thread(&WebClient::StaticAvatarWorkerLoop, this);
+    m_animatedThread = std::thread(&WebClient::AnimatedAvatarWorkerLoop, this);
 }
 
 WebClient::~WebClient()
 {
     m_running.store(false);
-    m_avatarCv.notify_all();
+    m_staticCv.notify_all();
+    m_animatedCv.notify_all();
 
-    if (m_avatarThread.joinable())
-        m_avatarThread.join();
+    if (m_staticThread.joinable())
+        m_staticThread.join();
+
+    if (m_animatedThread.joinable())
+        m_animatedThread.join();
 
     if (m_updateThread.joinable())
         m_updateThread.join();
@@ -128,12 +136,33 @@ std::string WebClient::ExtractXmlTag(const std::string& xml, const std::string& 
         cdataStart += 9;
         size_t cdataEnd = val.find("]]>", cdataStart);
         if (cdataEnd != std::string::npos)
-        {
             return val.substr(cdataStart, cdataEnd - cdataStart);
-        }
     }
 
     return val;
+}
+
+std::string WebClient::ExtractAnimatedAvatarUrl(const std::string& html)
+{
+    size_t avatarBlock = html.find("playerAvatar");
+    if (avatarBlock == std::string::npos)
+        return "";
+
+    size_t endBlock = html.find("profile_header_centered_col", avatarBlock);
+    if (endBlock == std::string::npos)
+        endBlock = avatarBlock + 4096;
+    if (endBlock > html.size())
+        endBlock = html.size();
+
+    size_t gifPos = html.find(".gif", avatarBlock);
+    if (gifPos == std::string::npos || gifPos >= endBlock)
+        return "";
+
+    size_t urlStart = html.rfind("http", gifPos);
+    if (urlStart == std::string::npos || urlStart < avatarBlock)
+        return "";
+
+    return html.substr(urlStart, (gifPos + 4) - urlStart);
 }
 
 std::string WebClient::CleanHash(const std::string& rawHash) const
@@ -185,9 +214,7 @@ void WebClient::PerformUpdateCheck()
             std::transform(m_remoteHash.begin(), m_remoteHash.end(), m_remoteHash.begin(), ::tolower);
 
             if (localSha != m_remoteHash)
-            {
                 m_hasUpdate.store(true);
-            }
 
             std::string messageKey = "\"message\":\"";
             size_t msgPos = readBuffer.find(messageKey, startPos);
@@ -208,9 +235,7 @@ void WebClient::PerformUpdateCheck()
 
                     size_t nPos;
                     while ((nPos = m_commitMessage.find("\\n")) != std::string::npos)
-                    {
                         m_commitMessage.replace(nPos, 2, " ");
-                    }
                 }
             }
         }
@@ -221,34 +246,60 @@ void WebClient::PerformUpdateCheck()
 
 void WebClient::QueueAvatarDownload(int playerIndex, uint64_t steam64)
 {
-    std::lock_guard<std::mutex> lock(m_avatarMutex);
-    m_avatarQueue.push({playerIndex, steam64});
-    m_avatarCv.notify_one();
+    {
+        std::lock_guard<std::mutex> lock(m_downloadedMutex);
+        if (m_downloadedStatic.count(steam64))
+            return;
+    }
+
+    std::lock_guard<std::mutex> lock(m_staticMutex);
+    m_staticQueue.push({playerIndex, steam64});
+    m_staticCv.notify_one();
 }
 
-void WebClient::AvatarWorkerLoop()
+void WebClient::InvalidateAvatar(uint64_t steam64)
+{
+    std::lock_guard<std::mutex> lock(m_downloadedMutex);
+    m_downloadedStatic.erase(steam64);
+    m_downloadedAnimated.erase(steam64);
+}
+
+void WebClient::PushCompleted(const DownloadedAvatar& data)
+{
+    std::lock_guard<std::mutex> lock(m_completedMutex);
+    m_completedAvatars.push_back(data);
+}
+
+void WebClient::StaticAvatarWorkerLoop()
 {
     while (m_running.load())
     {
         AvatarTask task;
 
         {
-            std::unique_lock<std::mutex> lock(m_avatarMutex);
-            m_avatarCv.wait(lock, [this]() {
-                return !m_avatarQueue.empty() || !m_running.load();
+            std::unique_lock<std::mutex> lock(m_staticMutex);
+            m_staticCv.wait(lock, [this]() {
+                return !m_staticQueue.empty() || !m_running.load();
             });
 
             if (!m_running.load())
                 break;
 
-            task = m_avatarQueue.front();
-            m_avatarQueue.pop();
+            task = m_staticQueue.front();
+            m_staticQueue.pop();
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(m_downloadedMutex);
+            if (m_downloadedStatic.count(task.steam64))
+                continue;
         }
 
         DownloadedAvatar result;
         result.playerIndex = task.playerIndex;
         result.steam64 = task.steam64;
         result.success = false;
+        result.isAnimated = false;
 
         std::string xmlUrl = "https://steamcommunity.com/profiles/" + std::to_string(task.steam64) + "?xml=1";
         std::string xmlBuffer = PerformHttpGetString(xmlUrl, 5);
@@ -261,20 +312,176 @@ void WebClient::AvatarWorkerLoop()
             {
                 result.imageData = PerformHttpGetBytes(avatarUrl, 5);
                 if (!result.imageData.empty())
-                {
                     result.success = true;
-                }
             }
         }
 
-        std::lock_guard<std::mutex> lock(m_avatarMutex);
-        m_completedAvatars.push_back(result);
+        if (result.success)
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_downloadedMutex);
+                m_downloadedStatic.insert(task.steam64);
+            }
+
+            PushCompleted(result);
+
+            {
+                std::lock_guard<std::mutex> lock(m_downloadedMutex);
+                if (!m_downloadedAnimated.count(task.steam64))
+                {
+                    std::lock_guard<std::mutex> alock(m_animatedMutex);
+                    m_animatedQueue.push(task);
+                    m_animatedCv.notify_one();
+                }
+            }
+        }
+        else
+        {
+            PushCompleted(result);
+        }
+    }
+}
+
+void WebClient::AnimatedAvatarWorkerLoop()
+{
+    while (m_running.load())
+    {
+        AvatarTask task;
+
+        {
+            std::unique_lock<std::mutex> lock(m_animatedMutex);
+            m_animatedCv.wait(lock, [this]() { return !m_animatedQueue.empty() || !m_running.load(); });
+
+            if (!m_running.load())
+                break;
+
+            task = m_animatedQueue.front();
+            m_animatedQueue.pop();
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(m_downloadedMutex);
+            if (m_downloadedAnimated.count(task.steam64))
+                continue;
+        }
+
+        std::string profileUrl = "https://steamcommunity.com/profiles/" + std::to_string(task.steam64);
+        std::string htmlBuffer = PerformHttpGetString(profileUrl, 7);
+        if (htmlBuffer.empty())
+            continue;
+
+        std::string gifUrl = ExtractAnimatedAvatarUrl(htmlBuffer);
+        if (gifUrl.empty())
+        {
+            std::lock_guard<std::mutex> lock(m_downloadedMutex);
+            m_downloadedAnimated.insert(task.steam64);
+            continue;
+        }
+
+        std::vector<uint8_t> gifBytes = PerformHttpGetBytes(gifUrl, 7);
+        if (gifBytes.empty())
+            continue;
+
+        int width = 0;
+        int height = 0;
+        int frameCount = 0;
+        int* delays = nullptr;
+        int channels = 0;
+
+        uint8_t* rawData = stbi_load_gif_from_memory(
+            gifBytes.data(),
+            static_cast<int>(gifBytes.size()),
+            &delays,
+            &width,
+            &height,
+            &frameCount,
+            &channels,
+            4
+        );
+
+        if (!rawData || frameCount <= 1 || width <= 0 || height <= 0)
+        {
+            if (rawData) 
+                stbi_image_free(rawData);
+            if (delays)  
+                stbi_image_free(delays);
+            continue;
+        }
+
+        const int TARGET = 64;
+        size_t srcBytes = static_cast<size_t>(width * height * 4);
+        size_t dstBytes = static_cast<size_t>(TARGET * TARGET * 4);
+
+        DownloadedAvatar result;
+        result.playerIndex  = task.playerIndex;
+        result.steam64 = task.steam64;
+        result.success = true;
+        result.isAnimated = true;
+        result.gifWidth = TARGET;
+        result.gifHeight = TARGET;
+        result.gifFrameCount = frameCount;
+        result.gifFrames.resize(frameCount);
+        result.gifDelays.resize(frameCount);
+
+        float scaleX = (float)width / (float)TARGET;
+        float scaleY = (float)height / (float)TARGET;
+
+        for (int f = 0; f < frameCount; f++)
+        {
+            result.gifFrames[f].resize(dstBytes);
+            const uint8_t* src = rawData + f * srcBytes;
+            uint8_t* dst = result.gifFrames[f].data();
+
+            for (int y = 0; y < TARGET; y++)
+            {
+                for (int x = 0; x < TARGET; x++)
+                {
+                    float sx = (x + 0.5f) * scaleX - 0.5f;
+                    float sy = (y + 0.5f) * scaleY - 0.5f;
+
+                    int x0 = (int)sx; if (x0 < 0) x0 = 0;
+                    int y0 = (int)sy; if (y0 < 0) y0 = 0;
+                    int x1 = x0 + 1; if (x1 >= width)  x1 = width  - 1;
+                    int y1 = y0 + 1; if (y1 >= height) y1 = height - 1;
+
+                    float fx = sx - (float)x0;
+                    float fy = sy - (float)y0;
+
+                    for (int c = 0; c < 4; c++)
+                    {
+                        float p00 = src[(y0 * width + x0) * 4 + c];
+                        float p10 = src[(y0 * width + x1) * 4 + c];
+                        float p01 = src[(y1 * width + x0) * 4 + c];
+                        float p11 = src[(y1 * width + x1) * 4 + c];
+
+                        float val = p00 * (1-fx) * (1-fy) + p10 * fx * (1-fy) + p01 * (1-fx) * fy + p11 * fx * fy;
+
+                        dst[(y * TARGET + x) * 4 + c] = (uint8_t)(val + 0.5f);
+                    }
+                }
+            }
+
+            float d = delays ? static_cast<float>(delays[f]) : 40.0f;
+            if (d <= 0.0f) 
+                d = 40.0f;
+            result.gifDelays[f] = d;
+        }
+
+        stbi_image_free(rawData);
+        stbi_image_free(delays);
+
+        {
+            std::lock_guard<std::mutex> lock(m_downloadedMutex);
+            m_downloadedAnimated.insert(task.steam64);
+        }
+
+        PushCompleted(result);
     }
 }
 
 bool WebClient::PopCompletedAvatar(DownloadedAvatar& outData)
 {
-    std::lock_guard<std::mutex> lock(m_avatarMutex);
+    std::lock_guard<std::mutex> lock(m_completedMutex);
     if (m_completedAvatars.empty())
         return false;
 
