@@ -27,6 +27,8 @@ if(NOT ${CMAKE_VERSION} VERSION_LESS "3.15.0")
 	cmake_policy(SET CMP0091 NEW)
 endif()
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+
 # Install custom module path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
