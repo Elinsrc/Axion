@@ -510,6 +510,8 @@ void CHud::Init( void )
 	m_Menu.Init();
 
 	MsgFunc_ResetHUD( 0, 0, NULL );
+	ClientCmd( "richpresence_gamemode\n" );
+	ClientCmd( "richpresence_update\n" );
 }
 
 // CHud destructor
