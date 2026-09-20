@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include "hud.h"
+
 #if XASH_MOBILE_PLATFORM
 #include <psa/crypto.h>
 #endif
@@ -11,6 +13,17 @@
 #include "stb_image.h"
 
 WebClient g_WebClient;
+
+static std::string FormatCurlError(CURLcode code, const char* errBuf)
+{
+    std::string s = "curl error " + std::to_string((int)code) + " (" + curl_easy_strerror(code) + ")";
+    if (errBuf && errBuf[0])
+    {
+        s += ": ";
+        s += errBuf;
+    }
+    return s;
+}
 
 WebClient::WebClient()
 {
@@ -73,45 +86,88 @@ void WebClient::SetupCurlEasy(CURL* curl, const std::string& url, long timeoutSe
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 }
 
-std::string WebClient::PerformHttpGetString(const std::string& url, long timeoutSec)
+std::string WebClient::PerformHttpGetString(const std::string& url, long timeoutSec, std::string* err)
 {
     CURL* curl = curl_easy_init();
     if (!curl)
+    {
+        if (err)
+            *err = "curl_easy_init failed";
         return "";
+    }
 
     std::string buffer;
+    char errBuf[CURL_ERROR_SIZE] = {0};
+
     SetupCurlEasy(curl, url, timeoutSec);
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuf);
     curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteStringCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
 
     CURLcode res = curl_easy_perform(curl);
+
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
     curl_easy_cleanup(curl);
 
-    if (res == CURLE_OK)
-        return buffer;
+    if (res != CURLE_OK)
+    {
+        if (err)
+            *err = FormatCurlError(res, errBuf);
+        return "";
+    }
 
-    return "";
+    if (httpCode != 200)
+    {
+        if (err)
+            *err = "HTTP " + std::to_string(httpCode);
+        return "";
+    }
+
+    return buffer;
 }
 
-std::vector<uint8_t> WebClient::PerformHttpGetBytes(const std::string& url, long timeoutSec)
+std::vector<uint8_t> WebClient::PerformHttpGetBytes(const std::string& url, long timeoutSec, std::string* err)
 {
-    CURL* curl = curl_easy_init();
     std::vector<uint8_t> buffer;
+
+    CURL* curl = curl_easy_init();
     if (!curl)
+    {
+        if (err)
+            *err = "curl_easy_init failed";
         return buffer;
+    }
+
+    char errBuf[CURL_ERROR_SIZE] = {0};
 
     SetupCurlEasy(curl, url, timeoutSec);
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuf);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteVectorCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
 
     CURLcode res = curl_easy_perform(curl);
+
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
     curl_easy_cleanup(curl);
 
-    if (res == CURLE_OK)
-        return buffer;
+    if (res != CURLE_OK)
+    {
+        if (err)
+            *err = FormatCurlError(res, errBuf);
+        return std::vector<uint8_t>();
+    }
 
-    return std::vector<uint8_t>();
+    if (httpCode != 200)
+    {
+        if (err)
+            *err = "HTTP " + std::to_string(httpCode);
+        return std::vector<uint8_t>();
+    }
+
+    return buffer;
 }
 
 std::string WebClient::ExtractXmlTag(const std::string& xml, const std::string& tag)
@@ -195,7 +251,12 @@ void WebClient::PerformUpdateCheck()
 
     std::string localSha = CleanHash(rawLocalSha);
     std::string url = "https://api.github.com/repos/Elinsrc/Axion/commits?per_page=100";
-    std::string readBuffer = PerformHttpGetString(url, 7);
+
+    std::string netErr;
+    std::string readBuffer = PerformHttpGetString(url, 7, &netErr);
+
+    if (readBuffer.empty())
+        LogErrorOnce("update_check", "[WebClient] Update check failed: " + netErr);
 
     if (!readBuffer.empty())
     {
@@ -239,6 +300,10 @@ void WebClient::PerformUpdateCheck()
                 }
             }
         }
+        else
+        {
+            LogErrorOnce("update_parse", "[WebClient] Update check failed: unexpected GitHub response");
+        }
     }
 
     m_updateFinished.store(true);
@@ -268,6 +333,26 @@ void WebClient::PushCompleted(const DownloadedAvatar& data)
 {
     std::lock_guard<std::mutex> lock(m_completedMutex);
     m_completedAvatars.push_back(data);
+}
+
+void WebClient::LogErrorOnce(const std::string& key, const std::string& msg)
+{
+    std::lock_guard<std::mutex> lock(m_logMutex);
+    if (!m_loggedKeys.insert(key).second)
+        return;
+    m_pendingLogs.push_back(msg);
+}
+
+void WebClient::FlushLogs()
+{
+    std::vector<std::string> logs;
+    {
+        std::lock_guard<std::mutex> lock(m_logMutex);
+        logs.swap(m_pendingLogs);
+    }
+
+    for (const auto& s : logs)
+        gEngfuncs.Con_Printf("%s\n", s.c_str());
 }
 
 void WebClient::StaticAvatarWorkerLoop()
@@ -301,19 +386,38 @@ void WebClient::StaticAvatarWorkerLoop()
         result.success = false;
         result.isAnimated = false;
 
-        std::string xmlUrl = "https://steamcommunity.com/profiles/" + std::to_string(task.steam64) + "?xml=1";
-        std::string xmlBuffer = PerformHttpGetString(xmlUrl, 5);
+        std::string failReason;
+        std::string netErr;
 
-        if (!xmlBuffer.empty())
+        std::string xmlUrl = "https://steamcommunity.com/profiles/" + std::to_string(task.steam64) + "?xml=1";
+        std::string xmlBuffer = PerformHttpGetString(xmlUrl, 5, &netErr);
+
+        if (xmlBuffer.empty())
+        {
+            failReason = "can't get profile info: " + netErr;
+        }
+        else
         {
             std::string avatarUrl = ExtractXmlTag(xmlBuffer, "avatarMedium");
 
-            if (!avatarUrl.empty())
+            if (avatarUrl.empty())
             {
-                result.imageData = PerformHttpGetBytes(avatarUrl, 5);
+                failReason = "avatar url not found (private/invalid profile?)";
+            }
+            else
+            {
+                result.imageData = PerformHttpGetBytes(avatarUrl, 5, &netErr);
                 if (!result.imageData.empty())
                     result.success = true;
+                else
+                    failReason = "image download failed: " + netErr;
             }
+        }
+
+        if (!result.success && !failReason.empty())
+        {
+            LogErrorOnce("avatar_" + std::to_string(task.steam64),
+                         "[WebClient] Avatar " + std::to_string(task.steam64) + ": " + failReason);
         }
 
         if (result.success)
@@ -481,6 +585,8 @@ void WebClient::AnimatedAvatarWorkerLoop()
 
 bool WebClient::PopCompletedAvatar(DownloadedAvatar& outData)
 {
+    FlushLogs();
+
     std::lock_guard<std::mutex> lock(m_completedMutex);
     if (m_completedAvatars.empty())
         return false;

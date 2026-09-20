@@ -53,12 +53,14 @@ private:
     void StaticAvatarWorkerLoop();
     void AnimatedAvatarWorkerLoop();
     void PushCompleted(const DownloadedAvatar& data);
+    void LogErrorOnce(const std::string& key, const std::string& msg);
+    void FlushLogs();
 
     static size_t WriteStringCallback(void* contents, size_t size, size_t nmemb, void* userp);
     static size_t WriteVectorCallback(void* contents, size_t size, size_t nmemb, void* userp);
     void SetupCurlEasy(CURL* curl, const std::string& url, long timeoutSec);
-    std::string PerformHttpGetString(const std::string& url, long timeoutSec);
-    std::vector<uint8_t> PerformHttpGetBytes(const std::string& url, long timeoutSec);
+    std::string PerformHttpGetString(const std::string& url, long timeoutSec, std::string* err = nullptr);
+    std::vector<uint8_t> PerformHttpGetBytes(const std::string& url, long timeoutSec, std::string* err = nullptr);
     std::string ExtractXmlTag(const std::string& xml, const std::string& tag);
     std::string ExtractAnimatedAvatarUrl(const std::string& html);
     std::string CleanHash(const std::string& rawHash) const;
@@ -88,6 +90,10 @@ private:
     std::mutex m_downloadedMutex;
 
     std::atomic<bool> m_running{true};
+
+    std::vector<std::string> m_pendingLogs;
+    std::unordered_set<std::string> m_loggedKeys;
+    std::mutex m_logMutex;
 };
 
 extern WebClient g_WebClient;
