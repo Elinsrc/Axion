@@ -133,7 +133,7 @@ bool CImGuiCommands::CursorRequired()
 
 bool CImGuiCommands::HandleKey(bool keyDown, int keyNumber, const char *bindName)
 {
-    if (keyNumber == K_ESCAPE && keyDown && m_ShowCommands)
+    if (keyNumber == K_ESCAPE)
     {
         m_ShowCommands = false;
         return true;

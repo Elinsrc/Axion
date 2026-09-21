@@ -134,10 +134,12 @@ public:
 	int Draw( float flTime );
 #if USE_IMGUI
 	void ImGui_DrawWList( float flTime );
-	void ImGui_AmmoBar();
+	void ImGui_AmmoBar( void );
 	void ImGui_DrawAmmoBar(WEAPON *p, float x, float y, float width, float height);
 	float ImGui_DrawBar(float x, float y, float width, float height, float f);
 #endif
+	void UpdateCrosshair( void ); 
+
 	void Think( void );
 	void Reset( void );
 	int DrawWList( float flTime );
@@ -170,6 +172,8 @@ private:
 	WEAPON *m_pWeapon;
 	int m_HUD_bucket0;
 	int m_HUD_selection;
+	int m_fOnTarget;
+
 };
 
 //

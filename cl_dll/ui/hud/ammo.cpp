@@ -40,6 +40,7 @@ extern cvar_t *cl_cross;
 
 cvar_t *vis_reload;
 cvar_t *vis_reload_color;
+cvar_t *pCrosshair;
 
 extern bool bIsReloading;
 
@@ -299,6 +300,7 @@ int CHudAmmo::Init( void )
 
 	vis_reload = CVAR_CREATE("vis_reload", "1", FCVAR_ARCHIVE);
 	vis_reload_color = CVAR_CREATE("vis_reload_color", "250 250 250", FCVAR_ARCHIVE);
+	pCrosshair = gEngfuncs.pfnGetCvarPointer( "crosshair" );
 
 	m_iFlags |= HUD_ACTIVE; //!!!
 
@@ -320,9 +322,9 @@ void CHudAmmo::Reset( void )
 	gHR.Reset();
 
 	//VidInit();
-	wrect_t nullrc = {0,};
-	SetCrosshair( 0, nullrc, 0, 0, 0 ); // reset crosshair
-	m_pWeapon = NULL; // reset last weapon
+	m_pWeapon = NULL;
+	m_fOnTarget = FALSE;
+	UpdateCrosshair();
 }
 
 int CHudAmmo::VidInit( void )
@@ -358,11 +360,58 @@ int CHudAmmo::VidInit( void )
 }
 
 //
+// The single place that decides which crosshair to display
+//
+void CHudAmmo::UpdateCrosshair( void )
+{
+	wrect_t nullrc = {0,};
+
+	bool bCrossOff = pCrosshair && !pCrosshair->value;
+
+	bool bHidden = !m_pWeapon || gHUD.m_fPlayerDead || bCrossOff || ( gHUD.m_iHideHUDDisplay & ( HIDEHUD_WEAPONS | HIDEHUD_ALL ) );
+
+#if USE_IMGUI
+	bool bImGui = ( cl_cross && cl_cross->value );
+
+	g_ImGuiCrosshairs.m_ShowCrosshairs = bImGui && !bHidden;
+
+	if( bImGui )
+	{
+		SetCrosshair( 0, nullrc, 0, 0, 0 );
+		return;
+	}
+#endif
+
+	if( bHidden )
+	{
+		SetCrosshair( 0, nullrc, 0, 0, 0 );
+		return;
+	}
+
+	if( gHUD.m_iFOV >= 90 )
+	{
+		if( m_fOnTarget && m_pWeapon->hAutoaim )
+			SetCrosshair( m_pWeapon->hAutoaim, m_pWeapon->rcAutoaim, 255, 255, 255 );
+		else
+			SetCrosshair( m_pWeapon->hCrosshair, m_pWeapon->rcCrosshair, 255, 255, 255 );
+	}
+	else
+	{
+		if( m_fOnTarget && m_pWeapon->hZoomedAutoaim )
+			SetCrosshair( m_pWeapon->hZoomedAutoaim, m_pWeapon->rcZoomedAutoaim, 255, 255, 255 );
+		else
+			SetCrosshair( m_pWeapon->hZoomedCrosshair, m_pWeapon->rcZoomedCrosshair, 255, 255, 255 );
+	}
+}
+
+//
 // Think:
 //  Used for selection of weapon menu item.
 //
 void CHudAmmo::Think( void )
 {
+	UpdateCrosshair();
+
 	if( gHUD.m_fPlayerDead )
 		return;
 
@@ -556,16 +605,9 @@ int CHudAmmo::MsgFunc_HideWeapon( const char *pszName, int iSize, void *pbuf )
 		return 1;
 
 	if( gHUD.m_iHideHUDDisplay & ( HIDEHUD_WEAPONS | HIDEHUD_ALL ) )
-	{
-		wrect_t nullrc = {0,};
 		gpActiveSel = NULL;
-		SetCrosshair( 0, nullrc, 0, 0, 0 );
-	}
-	else
-	{
-		if( m_pWeapon )
-			SetCrosshair( m_pWeapon->hCrosshair, m_pWeapon->rcCrosshair, 255, 255, 255 );
-	}
+
+	UpdateCrosshair();
 
 	return 1;
 }
@@ -577,7 +619,6 @@ int CHudAmmo::MsgFunc_HideWeapon( const char *pszName, int iSize, void *pbuf )
 //
 int CHudAmmo::MsgFunc_CurWeapon( const char *pszName, int iSize, void *pbuf )
 {
-	wrect_t nullrc = {0,};
 	int fOnTarget = FALSE;
 
 	BEGIN_READ( pbuf, iSize );
@@ -594,9 +635,9 @@ int CHudAmmo::MsgFunc_CurWeapon( const char *pszName, int iSize, void *pbuf )
 
 	if( iId < 1 )
 	{
-		SetCrosshair( 0, nullrc, 0, 0, 0 );
 		// Clear out the weapon so we don't keep drawing the last active weapon's ammo. - Solokiller
 		m_pWeapon = 0;
+		UpdateCrosshair();
 		return 0;
 	}
 
@@ -626,42 +667,9 @@ int CHudAmmo::MsgFunc_CurWeapon( const char *pszName, int iSize, void *pbuf )
 		return 1;
 
 	m_pWeapon = pWeapon;
+	m_fOnTarget = fOnTarget;
+	UpdateCrosshair();
 
-
-#if USE_IMGUI
-	if (cl_cross->value)
-	{
-		g_ImGuiCrosshairs.m_ShowCrosshairs = true;
-		SetCrosshair( 0, nullrc, 0, 0, 0 );
-	}
-	else
-	{
-#endif
-		if( !( gHUD.m_iHideHUDDisplay & ( HIDEHUD_WEAPONS | HIDEHUD_ALL ) ) )
-		{
-#if USE_IMGUI
-			g_ImGuiCrosshairs.m_ShowCrosshairs = false;
-#endif
-			if( gHUD.m_iFOV >= 90 )
-			{
-				// normal crosshairs
-				if( fOnTarget && m_pWeapon->hAutoaim )
-					SetCrosshair( m_pWeapon->hAutoaim, m_pWeapon->rcAutoaim, 255, 255, 255 );
-				else
-					SetCrosshair( m_pWeapon->hCrosshair, m_pWeapon->rcCrosshair, 255, 255, 255 );
-			}
-			else
-			{
-				// zoomed crosshairs
-				if( fOnTarget && m_pWeapon->hZoomedAutoaim )
-					SetCrosshair( m_pWeapon->hZoomedAutoaim, m_pWeapon->rcZoomedAutoaim, 255, 255, 255 );
-				else
-					SetCrosshair( m_pWeapon->hZoomedCrosshair, m_pWeapon->rcZoomedCrosshair, 255, 255, 255 );
-			}
-		}
-#if USE_IMGUI
-	}
-#endif
 	m_fFade = 200.0f; //!!!
 	m_iFlags |= HUD_ACTIVE;
 
