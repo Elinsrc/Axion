@@ -33,6 +33,7 @@ WebClient::WebClient()
     curl_global_init(CURL_GLOBAL_DEFAULT);
     m_staticThread   = std::thread(&WebClient::StaticAvatarWorkerLoop, this);
     m_animatedThread = std::thread(&WebClient::AnimatedAvatarWorkerLoop, this);
+    m_fontThread = std::thread(&WebClient::FontWorkerLoop, this);
 }
 
 WebClient::~WebClient()
@@ -40,6 +41,7 @@ WebClient::~WebClient()
     m_running.store(false);
     m_staticCv.notify_all();
     m_animatedCv.notify_all();
+    m_fontQueue.push(std::string());
 
     if (m_staticThread.joinable())
         m_staticThread.join();
@@ -49,6 +51,9 @@ WebClient::~WebClient()
 
     if (m_updateThread.joinable())
         m_updateThread.join();
+
+    if (m_fontThread.joinable())
+        m_fontThread.join();
 
     curl_global_cleanup();
 }
@@ -128,7 +133,7 @@ std::string WebClient::PerformHttpGetString(const std::string& url, long timeout
     return buffer;
 }
 
-std::vector<uint8_t> WebClient::PerformHttpGetBytes(const std::string& url, long timeoutSec, std::string* err)
+std::vector<uint8_t> WebClient::PerformHttpGetBytes(const std::string& url, long timeoutSec, std::string* err, curl_xferinfo_callback xferCb, void* xferData, bool followRedirects, bool failOnError, long connectTimeoutSec, long lowSpeedLimit, long lowSpeedTime)
 {
     std::vector<uint8_t> buffer;
 
@@ -147,6 +152,24 @@ std::vector<uint8_t> WebClient::PerformHttpGetBytes(const std::string& url, long
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteVectorCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
 
+    if (followRedirects)
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    if (failOnError)
+        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+    if (connectTimeoutSec > 0)
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, connectTimeoutSec);
+    if (lowSpeedLimit > 0)
+    {
+        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, lowSpeedLimit);
+        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, lowSpeedTime);
+    }
+    if (xferCb)
+    {
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, xferCb);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, xferData);
+    }
+
     CURLcode res = curl_easy_perform(curl);
 
     long httpCode = 0;
@@ -160,7 +183,7 @@ std::vector<uint8_t> WebClient::PerformHttpGetBytes(const std::string& url, long
         return std::vector<uint8_t>();
     }
 
-    if (httpCode != 200)
+    if (!failOnError && httpCode != 200)
     {
         if (err)
             *err = "HTTP " + std::to_string(httpCode);
@@ -416,8 +439,7 @@ void WebClient::StaticAvatarWorkerLoop()
 
         if (!result.success && !failReason.empty())
         {
-            LogErrorOnce("avatar_" + std::to_string(task.steam64),
-                         "[WebClient] Avatar " + std::to_string(task.steam64) + ": " + failReason);
+            LogErrorOnce("avatar_" + std::to_string(task.steam64), "[WebClient] Avatar " + std::to_string(task.steam64) + ": " + failReason);
         }
 
         if (result.success)
@@ -543,10 +565,21 @@ void WebClient::AnimatedAvatarWorkerLoop()
                     float sx = (x + 0.5f) * scaleX - 0.5f;
                     float sy = (y + 0.5f) * scaleY - 0.5f;
 
-                    int x0 = (int)sx; if (x0 < 0) x0 = 0;
-                    int y0 = (int)sy; if (y0 < 0) y0 = 0;
-                    int x1 = x0 + 1; if (x1 >= width)  x1 = width  - 1;
-                    int y1 = y0 + 1; if (y1 >= height) y1 = height - 1;
+                    int x0 = (int)sx; 
+                    if (x0 < 0)
+                         x0 = 0;
+                    
+                    int y0 = (int)sy; 
+                    if (y0 < 0) 
+                        y0 = 0;
+                    
+                    int x1 = x0 + 1;
+                    if (x1 >= width)  
+                        x1 = width  - 1;
+                    
+                    int y1 = y0 + 1;
+                    if (y1 >= height) 
+                        y1 = height - 1;
 
                     float fx = sx - (float)x0;
                     float fy = sy - (float)y0;
@@ -594,4 +627,71 @@ bool WebClient::PopCompletedAvatar(DownloadedAvatar& outData)
     outData = m_completedAvatars.back();
     m_completedAvatars.pop_back();
     return true;
+}
+
+int WebClient::FontXferInfo(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t, curl_off_t)
+{
+    auto* self = static_cast<WebClient*>(clientp);
+    std::lock_guard<std::mutex> lock(self->m_fontProgressMutex);
+    self->m_fontProgress.now = (long long)dlnow;
+    self->m_fontProgress.total = (long long)dltotal;
+    return self->m_running.load() ? 0 : 1;
+}
+
+void WebClient::QueueFontDownload(const std::string& file)
+{
+    m_fontQueue.push(file);
+}
+
+bool WebClient::PopCompletedFont(DownloadedFont& out)
+{
+    std::lock_guard<std::mutex> lock(m_fontDoneMutex);
+    if (m_fontDone.empty())
+        return false;
+
+    out = std::move(m_fontDone.front());
+    m_fontDone.erase(m_fontDone.begin());
+    return true;
+}
+
+bool WebClient::GetFontProgress(std::string& file, long long& downloaded, long long& total)
+{
+    std::lock_guard<std::mutex> lock(m_fontProgressMutex);
+    if (!m_fontProgress.active)
+        return false;
+
+    file = m_fontProgress.file;
+    downloaded = m_fontProgress.now;
+    total = m_fontProgress.total;
+    return true;
+}
+
+void WebClient::FontWorkerLoop()
+{
+    while (m_running.load())
+    {
+        std::string file;
+        if (!m_fontQueue.pop(file, m_running))
+            break;
+
+        if (file.empty())
+            continue;
+
+        {
+            std::lock_guard<std::mutex> lock(m_fontProgressMutex);
+            m_fontProgress = {file, 0, 0, true};
+        }
+
+        DownloadedFont out;
+        out.file = file;
+        out.data = PerformHttpGetBytes(std::string(FONT_BASE_URL) + file, 0, &out.error, &WebClient::FontXferInfo, this, true, true, 10, 1024, 20);
+
+        {
+            std::lock_guard<std::mutex> lock(m_fontProgressMutex);
+            m_fontProgress.active = false;
+        }
+
+        std::lock_guard<std::mutex> lock(m_fontDoneMutex);
+        m_fontDone.push_back(std::move(out));
+    }
 }

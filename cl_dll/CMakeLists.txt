@@ -172,6 +172,7 @@ if (USE_IMGUI)
 		ui/IMGUI/ui_SpectatorPanel.cpp
 		utils/imgui_utils.cpp
 		utils/avatar_cache.cpp
+		utils/fonts_manager.cpp
 		utils/web_client.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_demo.cpp
