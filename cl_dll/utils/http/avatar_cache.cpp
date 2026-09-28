@@ -526,7 +526,7 @@ void CAvatarCache::DownloadStatic(const AvatarTask& task)
     std::string error;
     if (!FetchStaticAvatar(task.steam64, m_staticWorker.StopFlag(), result.imageData, error))
     {
-        g_WebClient.LogErrorOnce("avatar_" + std::to_string(task.steam64), "[Avatars] " + std::to_string(task.steam64) + ": " + error);
+        g_WebClient.LogErrorOnce("avatar_" + std::to_string(task.steam64), "[AvatarCache] " + std::to_string(task.steam64) + ": " + error);
 
         result.failed = true;
         result.imageData.clear();

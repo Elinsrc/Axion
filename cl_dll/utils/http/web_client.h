@@ -48,6 +48,16 @@ public:
     void FlushLogs();
 
 private:
+    void EnsureCaCertificate() const;
+    std::string GetCaCertDir() const;
+    std::string GetCaCertPath() const;
+    bool DownloadCaCertificate(const std::string& path) const;
+
+    mutable std::mutex m_caCertMutex;
+    mutable std::string m_caCertPath;
+    mutable std::atomic<bool> m_caCertReady{false};
+    mutable std::atomic<long long> m_nextCaCheck{0};
+
     std::vector<std::string> m_pendingLogs;
     std::unordered_set<std::string> m_loggedKeys;
     std::mutex m_logMutex;

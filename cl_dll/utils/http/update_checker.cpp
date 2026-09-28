@@ -82,7 +82,7 @@ void CUpdateChecker::Check()
     HttpResponse res = g_WebClient.Get(req);
     if (!res.ok || res.body.empty())
     {
-        g_WebClient.LogErrorOnce("update_check", "[Update] Check failed: " + res.error);
+        g_WebClient.LogErrorOnce("update_check", "[UpdateChecker] Check failed: " + res.error);
         return;
     }
 
@@ -92,7 +92,7 @@ void CUpdateChecker::Check()
     size_t shaStart = 0;
     if (!FindJsonString(json, "sha", 0, sha, shaStart))
     {
-        g_WebClient.LogErrorOnce("update_parse", "[Update] Check failed: unexpected GitHub response");
+        g_WebClient.LogErrorOnce("update_parse", "[UpdateChecker] Check failed: unexpected GitHub response");
         return;
     }
 

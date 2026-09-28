@@ -42,7 +42,7 @@ void CFontsManager::Init()
     std::error_code ec;
     fs::create_directories(CacheDir(), ec);
     if (ec)
-        gEngfuncs.Con_Printf("[Fonts] Warning: can't create %s: %s\n", CacheDir().string().c_str(), ec.message().c_str());
+        gEngfuncs.Con_Printf("[FontsManager] Warning: can't create %s: %s\n", CacheDir().string().c_str(), ec.message().c_str());
 
     m_worker.Start();
 
@@ -82,7 +82,7 @@ bool CFontsManager::Update()
     {
         m_dirty = false;
         m_lastRebuild = now;
-        gEngfuncs.Con_Printf("[Fonts] Rebuilding font atlas\n");
+        gEngfuncs.Con_Printf("[FontsManager] Rebuilding font atlas\n");
         return true;
     }
     return false;
@@ -165,14 +165,14 @@ void CFontsManager::MergeInto(float sizePixels, const std::string &skipFile)
 
         ImFont *f = io.Fonts->AddFontFromFileTTF(PathOf(e.file).c_str(), sizePixels, &cfg);
         if (!f)
-            gEngfuncs.Con_Printf("[Fonts] Failed to load %s from fonts_cache\n", e.file.c_str());
+            gEngfuncs.Con_Printf("[FontsManager] Failed to load %s from fonts_cache\n", e.file.c_str());
     }
 }
 
 void CFontsManager::StartDownload(Entry &e)
 {
     e.downloading = true;
-    gEngfuncs.Con_Printf("[Fonts] Queued download: %s\n", e.file.c_str());
+    gEngfuncs.Con_Printf("[FontsManager] Queued download: %s\n", e.file.c_str());
 
     const std::string file = e.file;
     m_worker.Post([this, file]() { DownloadFont(file); });
@@ -229,19 +229,19 @@ void CFontsManager::ApplyResult(DownloadResult &d)
 
     if (!d.error.empty() || d.data.size() < MIN_FONT_SIZE)
     {
-        gEngfuncs.Con_Printf("[Fonts] Download failed: %s (%s)\n", d.file.c_str(), d.error.empty() ? "empty response" : d.error.c_str());
+        gEngfuncs.Con_Printf("[FontsManager] Download failed: %s (%s)\n", d.file.c_str(), d.error.empty() ? "empty response" : d.error.c_str());
         return;
     }
 
     if (!SaveFile(d.file, d.data))
     {
-        gEngfuncs.Con_Printf("[Fonts] Failed to save/validate %s\n", d.file.c_str());
+        gEngfuncs.Con_Printf("[FontsManager] Failed to save/validate %s\n", d.file.c_str());
         return;
     }
 
     e->ready = true;
     m_dirty = true;
-    gEngfuncs.Con_Printf("[Fonts] Downloaded %s (%s), saved to fonts_cache\n", d.file.c_str(), FormatSize((long long)d.data.size()).c_str());
+    gEngfuncs.Con_Printf("[FontsManager] Downloaded %s (%s), saved to fonts_cache\n", d.file.c_str(), FormatSize((long long)d.data.size()).c_str());
 }
 
 void CFontsManager::PrintProgress()
@@ -266,7 +266,7 @@ void CFontsManager::PrintProgress()
     m_lastProgress = t;
 
     if (p.total > 0)
-        gEngfuncs.Con_Printf("[Fonts] Downloading %s: %d%% (%s / %s)\n", p.file.c_str(), (int)(p.now * 100 / p.total), FormatSize(p.now).c_str(), FormatSize(p.total).c_str());
+        gEngfuncs.Con_Printf("[FontsManager] Downloading %s: %d%% (%s / %s)\n", p.file.c_str(), (int)(p.now * 100 / p.total), FormatSize(p.now).c_str(), FormatSize(p.total).c_str());
     else
-        gEngfuncs.Con_Printf("[Fonts] Downloading %s: %s\n", p.file.c_str(), FormatSize(p.now).c_str());
+        gEngfuncs.Con_Printf("[FontsManager] Downloading %s: %s\n", p.file.c_str(), FormatSize(p.now).c_str());
 }

@@ -245,10 +245,10 @@ if(WIN32)
     endif()
 endif()
 
-target_link_libraries(${CLDLL_LIBRARY} vgui libcurl)
+target_link_libraries(${CLDLL_LIBRARY} vgui)
 
-if(ANDROID)
-	target_link_libraries(${CLDLL_LIBRARY} mbedtls mbedx509 tfpsacrypto)
+if(USE_IMGUI)
+	target_link_libraries(${CLDLL_LIBRARY} libcurl mbedtls mbedx509 tfpsacrypto)
 endif()
 
 if(NOT ANDROID)
