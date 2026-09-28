@@ -13,12 +13,13 @@
 
 WebClient g_WebClient;
 
+namespace fs = std::filesystem;
+
 static const char* const CACERT_URL = "https://curl.se/ca/cacert.pem";
 static const char* const CACERT_SUBDIR = "certs";
 static const char* const CACERT_FILENAME = "cacert.pem";
 
 static constexpr long long CACERT_MAX_AGE_HOURS = 24 * 30;
-static constexpr long long CACERT_RECHECK_INTERVAL_SEC = 24 * 3600;
 
 static std::string FormatCurlError(CURLcode code, const char* errBuf)
 {
@@ -61,6 +62,87 @@ WebClient::~WebClient()
     curl_global_cleanup();
 }
 
+static void WebClientInfo_f()
+{
+    g_WebClient.PrintInfo();
+}
+
+void WebClient::RegisterCommands()
+{
+    gEngfuncs.pfnAddCommand("webclient_info", WebClientInfo_f);
+}
+
+static std::string FormatDuration(long long totalSec)
+{
+    if (totalSec < 0)
+        totalSec = 0;
+
+    const long long d = totalSec / 86400;
+    const long long h = (totalSec % 86400) / 3600;
+    const long long m = (totalSec % 3600) / 60;
+    const long long s = totalSec % 60;
+
+    char buf[64];
+
+    if (d > 0)
+        snprintf(buf, sizeof(buf), "%lld d %lld h %lld min %lld s", d, h, m, s);
+    else if (h > 0)
+        snprintf(buf, sizeof(buf), "%lld h %lld min %lld s", h, m, s);
+    else if (m > 0)
+        snprintf(buf, sizeof(buf), "%lld min %lld s", m, s);
+    else
+        snprintf(buf, sizeof(buf), "%lld s", s);
+
+    return buf;
+}
+
+void WebClient::PrintInfo() const
+{
+    const curl_version_info_data* vi = curl_version_info(CURLVERSION_NOW);
+
+    std::string caPath;
+    {
+        std::lock_guard<std::mutex> lock(m_caCertMutex);
+        caPath = m_caCertPath.empty() ? GetCaCertPath() : m_caCertPath;
+    }
+
+    long long ageSec = -1;
+    uintmax_t fileSize = 0;
+    std::error_code ec;
+
+    const auto ft = fs::last_write_time(caPath, ec);
+    if (!ec)
+    {
+        ageSec = std::chrono::duration_cast<std::chrono::seconds>(fs::file_time_type::clock::now() - ft).count();
+        fileSize = fs::file_size(caPath, ec);
+    }
+
+    const long long now = (long long)time(nullptr);
+    const long long nextCheckSec = m_nextCaCheck.load(std::memory_order_relaxed) - now;
+
+    gEngfuncs.Con_Printf("WebClient:\n");
+    gEngfuncs.Con_Printf("  curl version: %s\n", vi->version);
+    gEngfuncs.Con_Printf("  ssl version: %s\n", vi->ssl_version);
+    if (vi->libz_version)
+        gEngfuncs.Con_Printf("  zlib version: %s\n", vi->libz_version);
+    if (vi->host)
+        gEngfuncs.Con_Printf("  host: %s\n", vi->host);
+
+    gEngfuncs.Con_Printf("  ca url: %s\n", CACERT_URL);
+    gEngfuncs.Con_Printf("  ca path: %s\n", caPath.c_str());
+    gEngfuncs.Con_Printf("  ca verify: %s\n", m_caCertReady.load(std::memory_order_relaxed) ? "ON" : "OFF");
+
+    if (ageSec >= 0)
+        gEngfuncs.Con_Printf("  ca age: %s (%zu bytes)\n", FormatDuration(ageSec).c_str(), (size_t)fileSize);
+    else
+        gEngfuncs.Con_Printf("  ca file: not found\n");
+
+    if (nextCheckSec > 0)
+        gEngfuncs.Con_Printf("  ca next check: in %s\n", FormatDuration(nextCheckSec).c_str());
+    else
+        gEngfuncs.Con_Printf("  ca next check: pending\n");
+}
+
 std::string WebClient::GetCaCertDir() const
 {
     std::string base = ".";
@@ -80,8 +162,6 @@ std::string WebClient::GetCaCertPath() const
 
 bool WebClient::DownloadCaCertificate(const std::string& path) const
 {
-    namespace fs = std::filesystem;
-
     gEngfuncs.Con_Printf("[WebClient] Downloading CA certificate bundle from %s ...\n", CACERT_URL);
 
     std::error_code dirEc;
@@ -182,9 +262,7 @@ void WebClient::EnsureCaCertificate() const
     if (m_caCertPath.empty())
         m_caCertPath = GetCaCertPath();
 
-    namespace fs = std::filesystem;
     std::error_code ec;
-
     const std::string certDir = GetCaCertDir();
 
     gEngfuncs.Con_Printf("[WebClient] Checking CA certificate at '%s'...\n", m_caCertPath.c_str());
@@ -204,6 +282,9 @@ void WebClient::EnsureCaCertificate() const
 
     ec.clear();
     fileExists = fs::exists(m_caCertPath, ec) && !ec;
+
+    const long long maxAgeSec = CACERT_MAX_AGE_HOURS * 3600;
+    long long secondsUntilNextCheck = maxAgeSec;
 
     if (!fileExists)
     {
@@ -230,7 +311,8 @@ void WebClient::EnsureCaCertificate() const
             }
             else
             {
-                const auto ageHours = std::chrono::duration_cast<std::chrono::hours>(fs::file_time_type::clock::now() - ftime).count();
+                const auto ageSec = std::chrono::duration_cast<std::chrono::seconds>(fs::file_time_type::clock::now() - ftime).count();
+                const long long ageHours = ageSec / 3600;
                 const long long ageDays = ageHours / 24;
 
                 if (ageHours >= CACERT_MAX_AGE_HOURS)
@@ -241,6 +323,7 @@ void WebClient::EnsureCaCertificate() const
                 else
                 {
                     gEngfuncs.Con_Printf("[WebClient] CA certificate is up to date (%lld days old)\n", ageDays);
+                    secondsUntilNextCheck = maxAgeSec - ageSec;
                 }
             }
         }
@@ -251,6 +334,7 @@ void WebClient::EnsureCaCertificate() const
         if (DownloadCaCertificate(m_caCertPath))
         {
             gEngfuncs.Con_Printf("[WebClient] CA certificate updated successfully\n");
+            secondsUntilNextCheck = maxAgeSec;
         }
         else
         {
@@ -267,7 +351,7 @@ void WebClient::EnsureCaCertificate() const
     else
         gEngfuncs.Con_Printf("[WebClient] SSL certificate verification is DISABLED (no valid CA bundle)\n");
 
-    m_nextCaCheck.store(now + CACERT_RECHECK_INTERVAL_SEC, std::memory_order_relaxed);
+    m_nextCaCheck.store(now + secondsUntilNextCheck, std::memory_order_relaxed);
 }
 
 HttpResponse WebClient::Get(const std::string& url, long timeoutSec) const

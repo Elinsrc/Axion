@@ -41,6 +41,9 @@ public:
     WebClient(const WebClient&) = delete;
     WebClient& operator=(const WebClient&) = delete;
 
+    void RegisterCommands();
+    void PrintInfo() const;
+
     HttpResponse Get(const HttpRequest& req) const;
     HttpResponse Get(const std::string& url, long timeoutSec = 10) const;
 

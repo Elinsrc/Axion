@@ -232,7 +232,7 @@ void CAvatarCache::Initialize()
     m_staticWorker.Start();
     m_animatedWorker.Start();
 
-    gEngfuncs.pfnAddCommand("avatar_cache_info", AvatarCacheInfo_f);
+    gEngfuncs.pfnAddCommand("avatarcache_info", AvatarCacheInfo_f);
 }
 
 void CAvatarCache::VidInitialize()

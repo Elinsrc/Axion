@@ -11,6 +11,7 @@
 #include "build.h"
 #include "input_mouse.h"
 
+#include "web_client.h"
 #include "avatar_cache.h"
 #include "fonts_manager.h"
 
@@ -81,6 +82,7 @@ void CImGuiManager::InitHUD()
 
 
     g_AvatarCache.Initialize();
+    g_WebClient.RegisterCommands();
 
 }
 
