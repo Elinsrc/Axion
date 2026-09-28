@@ -171,8 +171,11 @@ if (USE_IMGUI)
 		ui/IMGUI/ui_scores.cpp
 		ui/IMGUI/ui_SpectatorPanel.cpp
 		utils/imgui_utils.cpp
-		utils/avatar_cache.cpp
-		utils/web_client.cpp
+		utils/http/avatar_cache.cpp
+		utils/http/fonts_manager.cpp
+		utils/http/update_checker.cpp
+		utils/http/web_client.cpp
+		utils/http/web_worker.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_demo.cpp
 		${CMAKE_SOURCE_DIR}/external/imgui/imgui_draw.cpp
@@ -206,7 +209,7 @@ if (USE_IMGUI AND (ANDROID OR CMAKE_SIZEOF_VOID_P EQUAL 8))
     )
 endif()
 
-include_directories (. hl/ events/ input/ render/ ui ui/hud ui/hud/OpenAG/ utils/ ${CMAKE_SOURCE_DIR}/dlls ${CMAKE_SOURCE_DIR}/dlls/wpn_shared ${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/engine ${CMAKE_SOURCE_DIR}/pm_shared ${CMAKE_SOURCE_DIR}/game_shared ${CMAKE_SOURCE_DIR}/public)
+include_directories (. hl/ events/ input/ render/ ui ui/hud ui/hud/OpenAG/ utils/ utils/http ${CMAKE_SOURCE_DIR}/dlls ${CMAKE_SOURCE_DIR}/dlls/wpn_shared ${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/engine ${CMAKE_SOURCE_DIR}/pm_shared ${CMAKE_SOURCE_DIR}/game_shared ${CMAKE_SOURCE_DIR}/public)
 
 if (WIN32)
 	include_directories (../external/)
@@ -242,10 +245,10 @@ if(WIN32)
     endif()
 endif()
 
-target_link_libraries(${CLDLL_LIBRARY} vgui libcurl)
+target_link_libraries(${CLDLL_LIBRARY} vgui)
 
-if(ANDROID)
-	target_link_libraries(${CLDLL_LIBRARY} mbedtls mbedx509 tfpsacrypto)
+if(USE_IMGUI)
+	target_link_libraries(${CLDLL_LIBRARY} libcurl mbedtls mbedx509 tfpsacrypto)
 endif()
 
 if(NOT ANDROID)

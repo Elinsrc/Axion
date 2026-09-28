@@ -12,7 +12,7 @@
 #include "input_mouse.h"
 
 #include "avatar_cache.h"
-
+#include "fonts_manager.h"
 
 extern int g_ImGuiMouse;
 
@@ -28,6 +28,7 @@ void CImGuiManager::Initialize()
 {
     ImGui::CreateContext();
     SetupConfig();
+    g_FontsManager.Init();
     LoadFonts();
     ApplyStyles();
     SetupKeyboardMapping();
@@ -57,6 +58,9 @@ void CImGuiManager::Terminate()
 
 void CImGuiManager::NewFrame()
 {
+    if (g_FontsManager.Update())
+        LoadFonts();
+
     m_pBackend->NewFrame();
     UpdateMouseState();
     ImGui::NewFrame();
@@ -123,13 +127,28 @@ void CImGuiManager::LoadFonts()
     ImGuiIO &io = ImGui::GetIO();
     io.Fonts->Clear();
 
-    const ImWchar* ranges = io.Fonts->GetGlyphRangesCyrillic();
+    static const char *BASE_FONT = "NotoSans-Regular.ttf";
 
-    m_pDefaultFont = io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, 16.0f, NULL, ranges);
+    ImFontConfig cfg;
+    cfg.FontDataOwnedByAtlas = false;
+
+    auto loadBase = [&](float size) -> ImFont*
+    {
+        if (g_FontsManager.IsReady(BASE_FONT))
+        {
+            ImFont *f = io.Fonts->AddFontFromFileTTF(g_FontsManager.PathOf(BASE_FONT).c_str(), size);
+            if (f)
+            return f;
+        }
+        return io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, size, &cfg);
+    };
+    
+    m_pDefaultFont = loadBase(16.0f);
+    g_FontsManager.MergeInto(16.0f, BASE_FONT);
     io.FontDefault = m_pDefaultFont;
-
-    m_pHudFont = io.Fonts->AddFontFromMemoryTTF(Roboto_ttf, Roboto_ttf_len, 26.0f, NULL, ranges);
+    m_pHudFont = loadBase(26.0f);
 }
+
 void CImGuiManager::ApplyStyles()
 {
     ImGui::StyleColorsDark();

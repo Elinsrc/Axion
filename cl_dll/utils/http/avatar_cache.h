@@ -2,10 +2,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <mutex>
+#include <unordered_set>
 #include <vector>
 #include "imgui.h"
 
 #include "custom_utils.h"
+#include "web_worker.h"
 
 #define MAX_AVATAR_PLAYERS 33
 
@@ -24,6 +27,7 @@ struct AvatarEntry
     float lastRequestTime  = 0.0f;
     bool loaded = false;
     bool requested = false;
+    bool failed = false;
     bool isAnimated = false;
 
     std::vector<AvatarFrame> frames;
@@ -41,6 +45,27 @@ struct AvatarEntry
     bool isPending = false;
 };
 
+struct DownloadedAvatar
+{
+    int playerIndex = 0;
+    SteamID64 steam64 = 0;
+    bool isAnimated = false;
+    bool failed = false;
+
+    std::vector<uint8_t> imageData;
+
+    std::vector<std::vector<uint8_t>> gifFrames;
+    std::vector<float> gifDelays;
+    int gifWidth = 0;
+    int gifHeight = 0;
+};
+
+struct AvatarTask
+{
+    int playerIndex;
+    SteamID64 steam64;
+};
+
 class CAvatarCache
 {
     CustomUtils m_CustomUtils;
@@ -48,7 +73,7 @@ public:
     void Initialize();
     void VidInitialize();
     void Shutdown();
-    
+
     void Update();
 
     void PrintCacheInfo();
@@ -67,8 +92,29 @@ private:
     void DeleteTexture(ImTextureID tex);
 
     void ProcessDownloadedAvatars();
+    void ApplyStatic(AvatarEntry& entry, DownloadedAvatar& data);
+    void ApplyAnimated(AvatarEntry& entry, DownloadedAvatar& data);
     void ProcessPendingTextures();
     bool LoadAvatar(int playerIndex, SteamID64 steam64);
+
+    void QueueStatic(const AvatarTask& task);
+    void DownloadStatic(const AvatarTask& task);
+    void DownloadAnimated(const AvatarTask& task);
+
+    void PushCompleted(DownloadedAvatar&& data);
+    bool IsDownloaded(bool animated, SteamID64 id);
+    void MarkDownloaded(bool animated, SteamID64 id);
+    void InvalidateDownloaded(SteamID64 id);
+
+    WebWorker m_staticWorker;
+    WebWorker m_animatedWorker;
+
+    std::vector<DownloadedAvatar> m_completed;
+    std::mutex m_completedMutex;
+
+    std::unordered_set<SteamID64> m_downloadedStatic;
+    std::unordered_set<SteamID64> m_downloadedAnimated;
+    std::mutex m_downloadedMutex;
 
     inline bool IsValidPlayerIndex(int playerIndex) const
     {
