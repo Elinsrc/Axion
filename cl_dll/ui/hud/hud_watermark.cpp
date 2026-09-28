@@ -5,7 +5,7 @@
 #include "build_info.h"
 
 #if USE_IMGUI
-#include "web_client.h"
+#include "update_checker.h"
 #endif
 
 int CHudWatermark::Init()
@@ -58,16 +58,16 @@ int CHudWatermark::Draw(float time)
 	gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 5, str, r, g, b);
 
 #if USE_IMGUI
-    if (g_WebClient.IsUpdateChecked() && g_WebClient.HasUpdate())
+    if (g_UpdateChecker.IsChecked() && g_UpdateChecker.HasUpdate())
 	{
 		snprintf(str, sizeof(str), "^2Axion^7: ^1New update available!");
 		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 7, str, r, g, b);
 		
-		std::string remoteHash = g_WebClient.GetRemoteHash();
+		std::string remoteHash = g_UpdateChecker.GetRemoteHash();
 		snprintf(str, sizeof(str), "^7Commit: ^2%s", remoteHash.c_str());
 		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 8, str, r, g, b);
 		
-		std::string commitMsg = g_WebClient.GetCommitMessage();
+		std::string commitMsg = g_UpdateChecker.GetCommitMessage();
 		snprintf(str, sizeof(str), "^3%s", commitMsg.c_str());
 		gHUD.DrawHudStringWithColorTags(ScreenWidth / 20, gHUD.m_scrinfo.iCharHeight * 9, str, r, g, b);
 	}

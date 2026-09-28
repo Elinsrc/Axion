@@ -34,7 +34,7 @@ using namespace vgui;
 #if USE_IMGUI
 #include "imgui_manager.h"
 #include "imgui_viewport.h"
-#include "web_client.h"
+#include "update_checker.h"
 int g_ImGuiMouse = 0;
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
 #include "gl_local.h"
@@ -201,7 +201,7 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 	}
 
 #if USE_IMGUI
-    g_WebClient.CheckUpdateAsync();
+    g_UpdateChecker.CheckAsync();
 #endif
 
 	if( gEngfuncs.pfnGetCvarPointer( "cl_filterstuffcmd" ) == 0 )
@@ -361,11 +361,11 @@ int DLLEXPORT HUD_Redraw( float time, int intermission )
 
     static bool bPrinted = false;
 
-	if (!bPrinted && g_WebClient.IsUpdateChecked() && g_WebClient.HasUpdate())
+	if (!bPrinted && g_UpdateChecker.IsChecked() && g_UpdateChecker.HasUpdate())
 	{
 		gEngfuncs.Con_Printf("\nAxion: New update available!\n");
-		gEngfuncs.Con_Printf("Commit: %s\n", g_WebClient.GetRemoteHash().c_str());
-		gEngfuncs.Con_Printf("%s\n\n", g_WebClient.GetCommitMessage().c_str());
+		gEngfuncs.Con_Printf("Commit: %s\n", g_UpdateChecker.GetRemoteHash().c_str());
+		gEngfuncs.Con_Printf("%s\n\n", g_UpdateChecker.GetCommitMessage().c_str());
 		bPrinted = true;
 	}
 #endif
