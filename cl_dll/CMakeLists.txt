@@ -227,7 +227,6 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/external/stb
     ${CMAKE_SOURCE_DIR}/external/curl/include
     ${CMAKE_CURRENT_SOURCE_DIR}/external/mbedtls/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/mbedtls/crypto/include
     utils/images
     ui/IMGUI
 )
@@ -248,7 +247,7 @@ endif()
 target_link_libraries(${CLDLL_LIBRARY} vgui)
 
 if(USE_IMGUI)
-	target_link_libraries(${CLDLL_LIBRARY} libcurl mbedtls mbedx509 tfpsacrypto)
+	target_link_libraries(${CLDLL_LIBRARY} libcurl mbedtls mbedx509 mbedcrypto)
 endif()
 
 if(NOT ANDROID)
