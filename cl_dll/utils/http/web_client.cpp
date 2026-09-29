@@ -123,10 +123,24 @@ void WebClient::PrintInfo() const
     gEngfuncs.Con_Printf("WebClient:\n");
     gEngfuncs.Con_Printf("  curl version: %s\n", vi->version);
     gEngfuncs.Con_Printf("  ssl version: %s\n", vi->ssl_version);
+   
     if (vi->libz_version)
         gEngfuncs.Con_Printf("  zlib version: %s\n", vi->libz_version);
+   
     if (vi->host)
         gEngfuncs.Con_Printf("  host: %s\n", vi->host);
+    
+    if (vi->protocols)
+    {
+        std::string p;
+        for (const char* const* s = vi->protocols; *s; ++s)
+        {
+            if (!p.empty())
+                p += ' ';
+            p += *s;
+        }
+        gEngfuncs.Con_Printf("  protocols: %s\n", p.c_str());
+    }
 
     gEngfuncs.Con_Printf("  ca url: %s\n", CACERT_URL);
     gEngfuncs.Con_Printf("  ca path: %s\n", caPath.c_str());
