@@ -2,64 +2,148 @@
 #include "build.h"
 #include "hud.h"
 
-#include <curl/curl.h>
+#include "mHTTP.h"
 
+#include <algorithm>
 #include <chrono>
+#include <climits>
 #include <ctime>
 #include <filesystem>
-#include <fstream>
-
-#include <psa/crypto.h>
 
 WebClient g_WebClient;
 
 namespace fs = std::filesystem;
 
-static const char* const CACERT_URL = "https://curl.se/ca/cacert.pem";
+using Clock = std::chrono::steady_clock;
+
 static const char* const CACERT_SUBDIR = "certs";
 static const char* const CACERT_FILENAME = "cacert.pem";
+static const char* const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
 
 static constexpr long long CACERT_MAX_AGE_HOURS = 24 * 30;
+static constexpr long long PROGRESS_INTERVAL_MS = 100;
 
-static std::string FormatCurlError(CURLcode code, const char* errBuf)
+struct TransferCtx
 {
-    std::string s = "curl error " + std::to_string((int)code) + " (" + curl_easy_strerror(code) + ")";
-    if (errBuf && errBuf[0])
+    const HttpRequest* req = nullptr;
+    std::vector<uint8_t>* body = nullptr;
+
+    Clock::time_point start;
+    Clock::time_point lastProgress;
+    Clock::time_point windowStart;
+
+    long long bytes = 0;
+    long long windowBytes = 0;
+
+    bool timedOut = false;
+    bool tooSlow = false;
+};
+
+static std::string FormatMhttpError(mhttp_error code, const char* msg)
+{
+    std::string s = mhttp_strerror(code);
+    if (msg && msg[0])
     {
         s += ": ";
-        s += errBuf;
+        s += msg;
     }
     return s;
 }
 
-static size_t WriteBodyCallback(void* contents, size_t size, size_t nmemb, void* userp)
+static int SecToMs(long sec)
 {
-    const size_t total = size * nmemb;
-    auto* body = static_cast<std::vector<uint8_t>*>(userp);
-    const uint8_t* bytes = static_cast<const uint8_t*>(contents);
-    body->insert(body->end(), bytes, bytes + total);
-    return total;
+    const long long ms = (long long)sec * 1000;
+    return ms > INT_MAX ? INT_MAX : (int)ms;
 }
 
-static int XferInfoCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t, curl_off_t)
+static size_t WriteBodyCallback(const void* data, size_t len, void* user)
 {
-    const HttpRequest* req = static_cast<const HttpRequest*>(clientp);
+    auto* ctx = static_cast<TransferCtx*>(user);
+    const uint8_t* bytes = static_cast<const uint8_t*>(data);
+    ctx->body->insert(ctx->body->end(), bytes, bytes + len);
+    return len;
+}
 
-    if (req->onProgress)
-        req->onProgress((long long)dlnow, (long long)dltotal);
+static int ProgressCallback(int64_t now, int64_t total, void* user)
+{
+    auto* ctx = static_cast<TransferCtx*>(user);
+    ctx->bytes = now;
 
-    return (req->cancel && req->cancel->load()) ? 1 : 0;
+    if (ctx->req->onProgress)
+    {
+        const auto t = Clock::now();
+        const bool final = total > 0 && now >= total;
+
+        if (final || t - ctx->lastProgress >= std::chrono::milliseconds(PROGRESS_INTERVAL_MS))
+        {
+            ctx->lastProgress = t;
+            ctx->req->onProgress((long long)now, (long long)total);
+        }
+    }
+    return 0;
+}
+
+static int IsCancelledCallback(void* user)
+{
+    auto* ctx = static_cast<TransferCtx*>(user);
+    const HttpRequest* req = ctx->req;
+
+    if (req->cancel && req->cancel->load())
+        return 1;
+
+    const auto now = Clock::now();
+
+    if (req->timeoutSec > 0 && now - ctx->start >= std::chrono::seconds(req->timeoutSec))
+    {
+        ctx->timedOut = true;
+        return 1;
+    }
+
+    if (req->lowSpeedLimit > 0 && req->lowSpeedTimeSec > 0)
+    {
+        const double window = std::chrono::duration<double>(now - ctx->windowStart).count();
+
+        if (window >= (double)req->lowSpeedTimeSec)
+        {
+            const double speed = (double)(ctx->bytes - ctx->windowBytes) / window;
+
+            if (speed < (double)req->lowSpeedLimit)
+            {
+                ctx->tooSlow = true;
+                return 1;
+            }
+
+            ctx->windowStart = now;
+            ctx->windowBytes = ctx->bytes;
+        }
+    }
+    return 0;
+}
+
+static long long CaFileAgeSec(const std::string& path)
+{
+    std::error_code ec;
+
+    const uintmax_t size = fs::file_size(path, ec);
+    if (ec || size == 0)
+        return -1;
+
+    const auto ft = fs::last_write_time(path, ec);
+    if (ec)
+        return -1;
+
+    const long long age = (long long)std::chrono::duration_cast<std::chrono::seconds>(fs::file_time_type::clock::now() - ft).count();
+    return age > 0 ? age : 0;
 }
 
 WebClient::WebClient()
 {
-    psa_crypto_init();
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    mhttp_global_init();
 }
 
 WebClient::~WebClient()
 {
-    curl_global_cleanup();
+    mhttp_global_cleanup();
 }
 
 static void WebClientInfo_f()
@@ -98,53 +182,38 @@ static std::string FormatDuration(long long totalSec)
 
 void WebClient::PrintInfo() const
 {
-    const curl_version_info_data* vi = curl_version_info(CURLVERSION_NOW);
-
     std::string caPath;
     {
         std::lock_guard<std::mutex> lock(m_caCertMutex);
         caPath = m_caCertPath.empty() ? GetCaCertPath() : m_caCertPath;
     }
 
-    long long ageSec = -1;
-    uintmax_t fileSize = 0;
-    std::error_code ec;
+    const std::string systemSource = mhttp_ca_system_source();
+    const bool usingSystemCa = !systemSource.empty();
 
-    const auto ft = fs::last_write_time(caPath, ec);
-    if (!ec)
+    gEngfuncs.Con_Printf("WebClient:\n");
+    gEngfuncs.Con_Printf("  mHTTP version: %s\n", MHTTP_VERSION);
+    gEngfuncs.Con_Printf("  tls version: %s\n", mhttp_tls_version());
+    gEngfuncs.Con_Printf("  ca verify: %s\n", m_caCertReady.load(std::memory_order_relaxed) ? "ON" : "OFF");
+    gEngfuncs.Con_Printf("  ca certs loaded: %d\n", mhttp_ca_cert_count());
+
+    if (usingSystemCa)
     {
-        ageSec = std::chrono::duration_cast<std::chrono::seconds>(fs::file_time_type::clock::now() - ft).count();
-        fileSize = fs::file_size(caPath, ec);
+        gEngfuncs.Con_Printf("  ca source: system (%s)\n", systemSource.c_str());
+        gEngfuncs.Con_Printf("  ca next check: never (using system store)\n");
+        return;
     }
+
+    std::error_code ec;
+    const long long ageSec = CaFileAgeSec(caPath);
+    const uintmax_t fileSize = ageSec >= 0 ? fs::file_size(caPath, ec) : 0;
 
     const long long now = (long long)time(nullptr);
     const long long nextCheckSec = m_nextCaCheck.load(std::memory_order_relaxed) - now;
 
-    gEngfuncs.Con_Printf("WebClient:\n");
-    gEngfuncs.Con_Printf("  curl version: %s\n", vi->version);
-    gEngfuncs.Con_Printf("  ssl version: %s\n", vi->ssl_version);
-   
-    if (vi->libz_version)
-        gEngfuncs.Con_Printf("  zlib version: %s\n", vi->libz_version);
-   
-    if (vi->host)
-        gEngfuncs.Con_Printf("  host: %s\n", vi->host);
-    
-    if (vi->protocols)
-    {
-        std::string p;
-        for (const char* const* s = vi->protocols; *s; ++s)
-        {
-            if (!p.empty())
-                p += ' ';
-            p += *s;
-        }
-        gEngfuncs.Con_Printf("  protocols: %s\n", p.c_str());
-    }
-
-    gEngfuncs.Con_Printf("  ca url: %s\n", CACERT_URL);
+    gEngfuncs.Con_Printf("  ca source: downloaded bundle\n");
+    gEngfuncs.Con_Printf("  ca url: %s\n", mhttp_ca_download_url());
     gEngfuncs.Con_Printf("  ca path: %s\n", caPath.c_str());
-    gEngfuncs.Con_Printf("  ca verify: %s\n", m_caCertReady.load(std::memory_order_relaxed) ? "ON" : "OFF");
 
     if (ageSec >= 0)
         gEngfuncs.Con_Printf("  ca age: %s (%zu bytes)\n", FormatDuration(ageSec).c_str(), (size_t)fileSize);
@@ -174,94 +243,6 @@ std::string WebClient::GetCaCertPath() const
     return GetCaCertDir() + "/" + CACERT_FILENAME;
 }
 
-bool WebClient::DownloadCaCertificate(const std::string& path) const
-{
-    gEngfuncs.Con_Printf("[WebClient] Downloading CA certificate bundle from %s ...\n", CACERT_URL);
-
-    std::error_code dirEc;
-    fs::path parentDir = fs::path(path).parent_path();
-    if (!parentDir.empty())
-    {
-        fs::create_directories(parentDir, dirEc);
-        if (dirEc)
-        {
-            gEngfuncs.Con_Printf("[WebClient] Failed to create directory '%s': %s\n", parentDir.string().c_str(), dirEc.message().c_str());
-        }
-    }
-
-    CURL* curl = curl_easy_init();
-    if (!curl)
-    {
-        gEngfuncs.Con_Printf("[WebClient] curl_easy_init failed while downloading CA certificate\n");
-        return false;
-    }
-
-    std::vector<uint8_t> body;
-    char errBuf[CURL_ERROR_SIZE] = {0};
-
-    curl_easy_setopt(curl, CURLOPT_URL, CACERT_URL);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuf);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteBodyCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-
-    CURLcode code = curl_easy_perform(curl);
-    long status = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-    curl_easy_cleanup(curl);
-
-    if (code != CURLE_OK || status != 200 || body.empty())
-    {
-        gEngfuncs.Con_Printf("[WebClient] Failed to download CA certificate: %s (HTTP %ld)\n", FormatCurlError(code, errBuf).c_str(), status);
-        return false;
-    }
-
-    const std::string tmpPath = path + ".tmp";
-    {
-        std::ofstream out(tmpPath, std::ios::binary | std::ios::trunc);
-        if (!out.is_open())
-        {
-            gEngfuncs.Con_Printf("[WebClient] Failed to open temp file '%s' for writing\n", tmpPath.c_str());
-            return false;
-        }
-
-        out.write(reinterpret_cast<const char*>(body.data()), (std::streamsize)body.size());
-        if (!out.good())
-        {
-            out.close();
-            std::error_code rmEc;
-            fs::remove(tmpPath, rmEc);
-            gEngfuncs.Con_Printf("[WebClient] Failed to write CA certificate data to disk\n");
-            return false;
-        }
-    }
-
-    std::error_code ec;
-    fs::rename(tmpPath, path, ec);
-    if (ec)
-    {
-        ec.clear();
-        fs::copy_file(tmpPath, path, fs::copy_options::overwrite_existing, ec);
-        std::error_code rmEc;
-        fs::remove(tmpPath, rmEc);
-        if (ec)
-        {
-            gEngfuncs.Con_Printf("[WebClient] Failed to move CA certificate into place: %s\n", ec.message().c_str());
-            return false;
-        }
-    }
-
-    gEngfuncs.Con_Printf("[WebClient] CA certificate bundle saved to '%s' (%zu bytes)\n", path.c_str(), body.size());
-    return true;
-}
-
 void WebClient::EnsureCaCertificate() const
 {
     const long long now = (long long)time(nullptr);
@@ -276,94 +257,35 @@ void WebClient::EnsureCaCertificate() const
     if (m_caCertPath.empty())
         m_caCertPath = GetCaCertPath();
 
-    std::error_code ec;
-    const std::string certDir = GetCaCertDir();
+    gEngfuncs.Con_Printf("[WebClient] Checking CA certificate...\n");
 
-    gEngfuncs.Con_Printf("[WebClient] Checking CA certificate at '%s'...\n", m_caCertPath.c_str());
-
-    if (!fs::exists(certDir, ec) || ec)
+    if (mhttp_load_system_ca() == MHTTP_OK)
     {
-        ec.clear();
-        gEngfuncs.Con_Printf("[WebClient] Certificate directory '%s' does not exist, creating...\n", certDir.c_str());
-        if (!fs::create_directories(certDir, ec) && ec)
-        {
-            gEngfuncs.Con_Printf("[WebClient] Failed to create directory '%s': %s\n", certDir.c_str(), ec.message().c_str());
-        }
+        m_caCertReady.store(true, std::memory_order_relaxed);
+
+        gEngfuncs.Con_Printf("[WebClient] Using system CA certificates from: %s\n", mhttp_ca_system_source());
+        gEngfuncs.Con_Printf("[WebClient] SSL certificate verification is ENABLED\n");
+
+        m_nextCaCheck.store(LLONG_MAX, std::memory_order_relaxed);
+        return;
     }
 
-    bool needDownload = false;
-    bool fileExists = false;
-
-    ec.clear();
-    fileExists = fs::exists(m_caCertPath, ec) && !ec;
+    gEngfuncs.Con_Printf("[WebClient] System CA certificate store is unavailable, using downloaded CA bundle at '%s'\n", m_caCertPath.c_str());
 
     const long long maxAgeSec = CACERT_MAX_AGE_HOURS * 3600;
-    long long secondsUntilNextCheck = maxAgeSec;
 
-    if (!fileExists)
-    {
-        gEngfuncs.Con_Printf("[WebClient] CA certificate not found, will download a fresh copy\n");
-        needDownload = true;
-    }
-    else
-    {
-        ec.clear();
-        const uintmax_t sz = fs::file_size(m_caCertPath, ec);
-        if (ec || sz == 0)
-        {
-            gEngfuncs.Con_Printf("[WebClient] CA certificate file is empty or unreadable, will re-download\n");
-            needDownload = true;
-        }
-        else
-        {
-            ec.clear();
-            const auto ftime = fs::last_write_time(m_caCertPath, ec);
-            if (ec)
-            {
-                gEngfuncs.Con_Printf("[WebClient] Failed to read CA certificate timestamp, will re-download\n");
-                needDownload = true;
-            }
-            else
-            {
-                const auto ageSec = std::chrono::duration_cast<std::chrono::seconds>(fs::file_time_type::clock::now() - ftime).count();
-                const long long ageHours = ageSec / 3600;
-                const long long ageDays = ageHours / 24;
+    const mhttp_error err = mhttp_ca_update(m_caCertPath.c_str(), (int)maxAgeSec);
+    const bool ready = (err == MHTTP_OK) && mhttp_ca_ready();
 
-                if (ageHours >= CACERT_MAX_AGE_HOURS)
-                {
-                    gEngfuncs.Con_Printf("[WebClient] CA certificate is %lld days old (limit %lld days), re-downloading...\n", ageDays, (long long)(CACERT_MAX_AGE_HOURS / 24));
-                    needDownload = true;
-                }
-                else
-                {
-                    gEngfuncs.Con_Printf("[WebClient] CA certificate is up to date (%lld days old)\n", ageDays);
-                    secondsUntilNextCheck = maxAgeSec - ageSec;
-                }
-            }
-        }
-    }
-
-    if (needDownload)
-    {
-        if (DownloadCaCertificate(m_caCertPath))
-        {
-            gEngfuncs.Con_Printf("[WebClient] CA certificate updated successfully\n");
-            secondsUntilNextCheck = maxAgeSec;
-        }
-        else
-        {
-            gEngfuncs.Con_Printf("[WebClient] Could not obtain CA certificate bundle, SSL verification will be relaxed\n");
-        }
-    }
-
-    ec.clear();
-    const bool ready = fs::exists(m_caCertPath, ec) && !ec && fs::file_size(m_caCertPath, ec) > 0 && !ec;
     m_caCertReady.store(ready, std::memory_order_relaxed);
 
     if (ready)
         gEngfuncs.Con_Printf("[WebClient] SSL certificate verification is ENABLED using '%s'\n", m_caCertPath.c_str());
     else
         gEngfuncs.Con_Printf("[WebClient] SSL certificate verification is DISABLED (no valid CA bundle)\n");
+
+    const long long ageSec = CaFileAgeSec(m_caCertPath);
+    const long long secondsUntilNextCheck = (ageSec >= 0 && ageSec < maxAgeSec) ? (maxAgeSec - ageSec) : maxAgeSec;
 
     m_nextCaCheck.store(now + secondsUntilNextCheck, std::memory_order_relaxed);
 }
@@ -382,59 +304,60 @@ HttpResponse WebClient::Get(const HttpRequest& req) const
 
     EnsureCaCertificate();
 
-    CURL* curl = curl_easy_init();
-    if (!curl)
+    TransferCtx ctx;
+    ctx.req = &req;
+    ctx.body = &res.body;
+    ctx.start = Clock::now();
+    ctx.windowStart = ctx.start;
+
+    mhttp_request mreq;
+    mhttp_request_init(&mreq, req.url.c_str());
+
+    mreq.user_agent = USER_AGENT;
+    mreq.follow_redirects = req.followRedirects ? 1 : 0;
+    mreq.insecure = m_caCertReady.load(std::memory_order_relaxed) ? 0 : 1;
+    mreq.max_body_size = 0;
+
+    if (req.lowSpeedLimit > 0 && req.lowSpeedTimeSec > 0)
+        mreq.timeout_ms = SecToMs(req.lowSpeedTimeSec);
+    else if (req.timeoutSec > 0)
+        mreq.timeout_ms = SecToMs(req.timeoutSec);
+    else
+        mreq.timeout_ms = 0;
+
+    if (req.connectTimeoutSec > 0)
+        mreq.connect_timeout_ms = SecToMs(req.connectTimeoutSec);
+
+    mreq.on_data = WriteBodyCallback;
+    mreq.on_data_user = &ctx;
+    mreq.on_progress = ProgressCallback;
+    mreq.on_progress_user = &ctx;
+    mreq.is_cancelled = IsCancelledCallback;
+    mreq.is_cancelled_user = &ctx;
+
+    mhttp_response mres;
+    const mhttp_error err = mhttp_perform(&mreq, &mres);
+
+    res.status = mres.status;
+    const std::string mhttpError = mres.error;
+    mhttp_response_free(&mres);
+
+    if (err == MHTTP_ERR_HTTP)
     {
-        res.error = "curl_easy_init failed";
+        res.error = "HTTP " + std::to_string(res.status);
+        res.body.clear();
         return res;
     }
 
-    char errBuf[CURL_ERROR_SIZE] = {0};
-
-    curl_easy_setopt(curl, CURLOPT_URL, req.url.c_str());
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuf);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteBodyCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &res.body);
-
-    if (m_caCertReady.load(std::memory_order_relaxed) && !m_caCertPath.empty())
+    if (err != MHTTP_OK)
     {
-        curl_easy_setopt(curl, CURLOPT_CAINFO, m_caCertPath.c_str());
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-    }
-    else
-    {
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-    }
+        if (ctx.timedOut)
+            res.error = "timeout after " + std::to_string(req.timeoutSec) + " s";
+        else if (ctx.tooSlow)
+            res.error = "transfer speed below " + std::to_string(req.lowSpeedLimit) + " B/s for " + std::to_string(req.lowSpeedTimeSec) + " s";
+        else
+            res.error = FormatMhttpError(err, mhttpError.c_str());
 
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, XferInfoCallback);
-    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &req);
-
-    if (req.timeoutSec > 0)
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, req.timeoutSec);
-    if (req.connectTimeoutSec > 0)
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, req.connectTimeoutSec);
-    if (req.lowSpeedLimit > 0)
-    {
-        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, req.lowSpeedLimit);
-        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, req.lowSpeedTimeSec);
-    }
-    if (req.followRedirects)
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    if (req.http11)
-        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-
-    CURLcode code = curl_easy_perform(curl);
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &res.status);
-    curl_easy_cleanup(curl);
-
-    if (code != CURLE_OK)
-    {
-        res.error = FormatCurlError(code, errBuf);
         res.body.clear();
         return res;
     }

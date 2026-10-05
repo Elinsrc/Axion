@@ -4,15 +4,12 @@
 [submodule "external/stb"]
 	path = external/stb
 	url = https://github.com/nothings/stb
-[submodule "external/curl"]
-	path = external/curl
-	url = https://github.com/curl/curl
 [submodule "external/pcre2"]
 	path = external/pcre2
 	url = https://github.com/PCRE2Project/pcre2
 [submodule "freevgui"]
 	path = freevgui
 	url = https://github.com/FWGS/freevgui
-[submodule "external/mbedtls"]
-	path = external/mbedtls
-	url = https://github.com/Mbed-TLS/mbedtls
+[submodule "external/mHTTP"]
+	path = external/mHTTP
+	url = https://github.com/Elinsrc/mHTTP

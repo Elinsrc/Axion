@@ -54,7 +54,6 @@ private:
     void EnsureCaCertificate() const;
     std::string GetCaCertDir() const;
     std::string GetCaCertPath() const;
-    bool DownloadCaCertificate(const std::string& path) const;
 
     mutable std::mutex m_caCertMutex;
     mutable std::string m_caCertPath;
