@@ -3,32 +3,45 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <mutex>
-#include <unordered_set>
 #include <vector>
-#include "imgui.h"
+#include <string>
+#include <atomic>
+#include <filesystem>
 
+#include "imgui.h"
+#include "imgui_utils.h"
 #include "custom_utils.h"
 #include "web_worker.h"
+#include "web_client.h"
 
-#define MAX_AVATAR_PLAYERS 33
+static constexpr int MAX_AVATAR_PLAYERS = 33;
+static constexpr int AVATAR_TARGET_SIZE = 64;
+static constexpr int FRAMES_PER_TICK = 1;
+
+static constexpr const char* AVATAR_CACHE_DIRNAME = "avatar_cache";
+static constexpr const char* AVATAR_CACHE_MAGIC = "AVC1";
+static constexpr uint32_t AVATAR_CACHE_VERSION = 1u;
+static constexpr int AVATAR_CACHE_MAX_UNUSED_DAYS = 7;
 
 typedef uint64_t SteamID64;
 
 struct AvatarFrame
 {
-    ImTextureID texture;
-    float delayMs;
+    ImTextureID texture = 0;
+    float delayMs = 0.0f;
 };
 
 struct AvatarEntry
 {
     ImTextureID texture = 0;
     SteamID64 steamId = 0;
-    float lastRequestTime  = 0.0f;
     bool loaded = false;
     bool requested = false;
     bool failed = false;
     bool isAnimated = false;
+
+    bool diskAttempted = false;
+    std::string diskAvatarHash;
 
     std::vector<AvatarFrame> frames;
     float totalDurationMs = 0.0f;
@@ -62,49 +75,82 @@ struct DownloadedAvatar
 
 struct AvatarTask
 {
-    int playerIndex;
-    SteamID64 steam64;
+    int playerIndex = 0;
+    SteamID64 steam64 = 0;
+    std::string knownHash;
 };
+
+#pragma pack(push, 1)
+struct AvcFileHeader
+{
+    char magic[4];
+    uint32_t version;
+    uint8_t isAnimated;
+    uint16_t hashLen;
+};
+#pragma pack(pop)
 
 class CAvatarCache
 {
-    CustomUtils m_CustomUtils;
 public:
     void Initialize();
     void VidInitialize();
     void Shutdown();
 
     void Update();
-
     void PrintCacheInfo();
 
     ImTextureID GetAvatar(int playerIndex);
     void ClearAvatar(int playerIndex);
     void ClearAll();
 
-    static SteamID64 SteamIdToSteam64(const char* steamId);
-
 private:
-    AvatarEntry m_avatars[MAX_AVATAR_PLAYERS];
+    enum class GifFetch
+    {
+        Failed,
+        NoAnimation,
+        Ok
+    };
 
-    ImTextureID CreateTextureFromMemory(const uint8_t* buffer, size_t bufSize);
-    ImTextureID CreateTextureFromRGBA(const uint8_t* rgba, int w, int h);
-    void DeleteTexture(ImTextureID tex);
+    static std::string ProfileUrl(SteamID64 id);
+    static std::string ExtractXmlTag(const std::string& xml, const std::string& tag);
+    static std::string ExtractAnimatedAvatarUrl(const std::string& html);
+    static std::string ExtractAvatarHash(const std::string& url);
+    static HttpRequest MakeRequest(const std::string& url, long timeoutSec, const std::atomic<bool>& cancel);
+
+    GifFetch FetchAnimatedGif(SteamID64 id, const std::atomic<bool>& cancel, std::vector<uint8_t>& out);
+
+    bool WriteAvcFile(const std::filesystem::path& path, bool isAnimated, const std::string& hash, const DownloadedAvatar& data);
+    bool ReadAvcFile(const std::filesystem::path& path, DownloadedAvatar& out, std::string& hashOut, bool& isAnimatedOut);
+
+    static void AvatarCacheInfo_f();
 
     void ProcessDownloadedAvatars();
     void ApplyStatic(AvatarEntry& entry, DownloadedAvatar& data);
     void ApplyAnimated(AvatarEntry& entry, DownloadedAvatar& data);
     void ProcessPendingTextures();
-    bool LoadAvatar(int playerIndex, SteamID64 steam64);
 
     void QueueStatic(const AvatarTask& task);
     void DownloadStatic(const AvatarTask& task);
-    void DownloadAnimated(const AvatarTask& task);
-
+    void DownloadAnimated(const AvatarTask& task, const std::string& staticHash);
     void PushCompleted(DownloadedAvatar&& data);
-    bool IsDownloaded(bool animated, SteamID64 id);
-    void MarkDownloaded(bool animated, SteamID64 id);
-    void InvalidateDownloaded(SteamID64 id);
+
+    static std::filesystem::path AvatarsCacheDir();
+    std::filesystem::path GetAvcPath(SteamID64 steam64) const;
+
+    void InitDiskCache();
+    void RunStartupCleanup();
+    bool TryLoadFromDisk(int playerIndex, SteamID64 steam64);
+    void TouchAvcFile(SteamID64 steam64);
+
+    static bool IsValidPlayerIndex(int playerIndex)
+    {
+        return playerIndex >= 1 && playerIndex < MAX_AVATAR_PLAYERS;
+    }
+
+private:
+    CustomUtils m_CustomUtils;
+    AvatarEntry m_avatars[MAX_AVATAR_PLAYERS];
 
     WebWorker m_staticWorker;
     WebWorker m_animatedWorker;
@@ -112,14 +158,7 @@ private:
     std::vector<DownloadedAvatar> m_completed;
     std::mutex m_completedMutex;
 
-    std::unordered_set<SteamID64> m_downloadedStatic;
-    std::unordered_set<SteamID64> m_downloadedAnimated;
-    std::mutex m_downloadedMutex;
-
-    inline bool IsValidPlayerIndex(int playerIndex) const
-    {
-        return playerIndex >= 1 && playerIndex < MAX_AVATAR_PLAYERS;
-    }
+    std::mutex m_diskMutex;
 };
 
 extern CAvatarCache g_AvatarCache;

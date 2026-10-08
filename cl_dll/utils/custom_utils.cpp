@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 
 #include "custom_utils.h"
 
@@ -14,8 +15,7 @@
 #include <time.h>
 #endif
 
-uint64_t g_PlayerSteamID64[MAX_PLAYERS + 1]; 
-
+uint64_t g_PlayerSteamID64[MAX_PLAYERS + 1];
 bool g_PlayerIsBot[MAX_PLAYERS + 1];
 
 float CustomUtils::GetCurrentSysTime()
@@ -42,7 +42,6 @@ float CustomUtils::GetCurrentSysTime()
 #endif
 }
 
-
 float CustomUtils::GetFrameTime()
 {
     float calc;
@@ -51,11 +50,11 @@ float CustomUtils::GetFrameTime()
     static double framerate = 0;
     static int framecount = 0;
 
-    if( newtime >= nexttime )
+    if (newtime >= nexttime)
     {
         framerate = framecount / (newtime - lasttime);
         lasttime = newtime;
-        nexttime = Q_max( nexttime + 1.0, lasttime - 1.0 );
+        nexttime = Q_max(nexttime + 1.0, lasttime - 1.0);
         framecount = 0;
     }
 
@@ -64,7 +63,6 @@ float CustomUtils::GetFrameTime()
 
     return calc;
 }
-
 
 const char* CustomUtils::FormatTime(float totalSeconds)
 {
@@ -92,8 +90,8 @@ const char* CustomUtils::FormatTime(float totalSeconds)
     return buffer;
 }
 
-
-bool CustomUtils::CalcScreen(float *Origin, float *VecScreen) {
+bool CustomUtils::CalcScreen(float *Origin, float *VecScreen)
+{
     int iResult = gEngfuncs.pTriAPI->WorldToScreen(Origin, VecScreen);
 
     if (VecScreen[0] < 1 && VecScreen[1] < 1 && VecScreen[0] > -1 && VecScreen[1] > -1 && !iResult)
@@ -107,11 +105,10 @@ bool CustomUtils::CalcScreen(float *Origin, float *VecScreen) {
     return false;
 }
 
-
-bool CustomUtils::CheckForPlayer(cl_entity_s *pEnt) {
+bool CustomUtils::CheckForPlayer(cl_entity_s *pEnt)
+{
     return pEnt && pEnt->model && pEnt->model->name && pEnt->player;
 }
-
 
 vec3_t CustomUtils::GetEntityVelocityApprox(cl_entity_t *entity, int approxStep)
 {
@@ -122,14 +119,14 @@ vec3_t CustomUtils::GetEntityVelocityApprox(cl_entity_t *entity, int approxStep)
         position_history_t &prevState = entity->ph[(currIndex - approxStep) & HISTORY_MASK];
         float timeDelta = currState.animtime - prevState.animtime;
 
-        if (fabs(timeDelta) > 0.0f) {
+        if (fabs(timeDelta) > 0.0f)
+        {
             vec3_t originDelta = currState.origin - prevState.origin;
             return originDelta / timeDelta;
         }
     }
     return vec3_t(0, 0, 0);
 }
-
 
 void CustomUtils::TraceLine(vec3_t &origin, vec3_t &dir, float lineLen, pmtrace_t *traceData)
 {
@@ -152,7 +149,6 @@ void CustomUtils::TraceLine(vec3_t &origin, vec3_t &dir, float lineLen, pmtrace_
     gEngfuncs.pEventAPI->EV_PopPMStates();
 }
 
-
 int CustomUtils::TraceEntity(vec3_t origin, vec3_t dir, float distance, vec3_t &intersect)
 {
     pmtrace_t traceData;
@@ -166,7 +162,6 @@ int CustomUtils::TraceEntity(vec3_t origin, vec3_t dir, float distance, vec3_t &
     }
     return 0;
 }
-
 
 const char *CustomUtils::GetMovetypeName(int moveType)
 {
@@ -188,7 +183,6 @@ const char *CustomUtils::GetMovetypeName(int moveType)
     }
 }
 
-
 const char *CustomUtils::GetRenderModeName(int renderMode)
 {
     switch (renderMode)
@@ -202,7 +196,6 @@ const char *CustomUtils::GetRenderModeName(int renderMode)
         default:                    return "Unknown";
     }
 }
-
 
 const char *CustomUtils::GetRenderFxName(int renderFx)
 {
@@ -234,7 +227,6 @@ const char *CustomUtils::GetRenderFxName(int renderFx)
     }
 }
 
-
 void CustomUtils::DrawBox(int x, int y, int w, int h, int linewidth, int r, int g, int b, int a)
 {
     FillRGBABlend(x, y, w, linewidth, r, g, b, a);
@@ -243,14 +235,12 @@ void CustomUtils::DrawBox(int x, int y, int w, int h, int linewidth, int r, int 
     FillRGBABlend(x + linewidth, y + h - linewidth, w - linewidth * 2, linewidth, r, g, b, a);
 }
 
-
 void CustomUtils::DrawBoxOutline(float x, float y, float w, float h, float linewidth, int r, int g, int b, int a)
 {
     DrawBox(x, y, w, h, linewidth, r, g, b, a);
     DrawBox(x - 1, y - 1, w + 2, h + 2, 1, 0, 0, 0, a);
     DrawBox(x + linewidth, y + linewidth, w - linewidth * 2, h - linewidth * 2, 1, 0, 0, 0, a);
 }
-
 
 void CustomUtils::DrawBoxCorner(int x, int y, int w, int h, int linewidth, int r, int g, int b, int a)
 {
@@ -264,7 +254,6 @@ void CustomUtils::DrawBoxCorner(int x, int y, int w, int h, int linewidth, int r
     FillRGBABlend(x + w - w / 4, y + h - linewidth, w / 4 - linewidth, linewidth, r, g, b, a);
 }
 
-
 void CustomUtils::DrawBoxCornerOutline(int x, int y, int w, int h, int linewidth, int r, int g, int b, int a)
 {
     DrawBoxCorner(x - 1, y + 1, w, h, linewidth, 0, 0, 0, a);
@@ -275,23 +264,25 @@ void CustomUtils::DrawBoxCornerOutline(int x, int y, int w, int h, int linewidth
     DrawBoxCorner(x, y, w, h, linewidth, r, g, b, a);
 }
 
-uint64_t ParseToSteam64(const char* sid)
+uint64_t CustomUtils::ParseToSteam64(const char* sid)
 {
-    if (!sid || !*sid) return 0;
+    if (!sid || !*sid)
+        return 0;
 
     if (sid[0] >= '0' && sid[0] <= '9')
     {
         uint64_t res = 0;
         for (const char* p = sid; *p; p++)
         {
-            if (*p < '0' || *p > '9') return 0;
+            if (*p < '0' || *p > '9')
+                return 0;
             res = res * 10 + (*p - '0');
         }
         return (res >= 76561197960265728ULL) ? res : 0;
     }
 
     unsigned int Y = 0, Z = 0;
-    if (sscanf(sid, "STEAM_%*u:%u:%u", &Y, &Z) == 2 || 
+    if (sscanf(sid, "STEAM_%*u:%u:%u", &Y, &Z) == 2 ||
         sscanf(sid, "VALVE_%*u:%u:%u", &Y, &Z) == 2 ||
         sscanf(sid, "%*u:%u:%u", &Y, &Z) == 2)
     {
@@ -319,11 +310,11 @@ void CustomUtils::UpdatePlayerInfo(int iPlayerIndex)
     }
 
     val = gEngfuncs.PlayerInfo_ValueForKey(iPlayerIndex, "*bot");
-    if (val && atoi(val) > 0) 
+    if (val && atoi(val) > 0)
     {
         g_PlayerIsBot[iPlayerIndex] = true;
-    } 
-    else 
+    }
+    else
     {
         const char* rate = gEngfuncs.PlayerInfo_ValueForKey(iPlayerIndex, "rate");
         const char* updaterate = gEngfuncs.PlayerInfo_ValueForKey(iPlayerIndex, "cl_updaterate");

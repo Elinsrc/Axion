@@ -8,7 +8,10 @@
 #include "triangleapi.h"
 #include "pmtrace.h"
 
-#include <stdint.h>
+#include <cstdint>
+
+extern uint64_t g_PlayerSteamID64[MAX_PLAYERS + 1];
+extern bool g_PlayerIsBot[MAX_PLAYERS + 1];
 
 class CustomUtils
 {
@@ -33,5 +36,6 @@ public:
     void DrawBoxCorner(int x, int y, int w, int h, int linewidth, int r, int g, int b, int a);
     void DrawBoxCornerOutline(int x, int y, int w, int h, int linewidth, int r, int g, int b, int a);
 
+    static uint64_t ParseToSteam64(const char* sid);
     void UpdatePlayerInfo(int iPlayerIndex);
 };

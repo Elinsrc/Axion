@@ -1,6 +1,7 @@
 #include <string>
 #include <cmath>
-    
+#include <cstring>
+
 #include "build.h"
 
 #if XASH_MOBILE_PLATFORM || XASH_64BIT
@@ -25,7 +26,7 @@ CImguiUtils m_ImguiUtils;
 
 ImVec4 CImguiUtils::ColorFromCode(char code)
 {
-    switch(code)
+    switch (code)
     {
         case '0': return ImVec4(0.0f, 0.0f, 0.0f, 1.0f); // Black
         case '1': return ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
@@ -108,9 +109,9 @@ void CImguiUtils::TextWithColorCodesCentered(const char *text)
     float availWidth = ImGui::GetContentRegionAvail().x;
 
     std::string plain;
-    for(const char *c = text; *c; c++)
+    for (const char *c = text; *c; c++)
     {
-        if( *c == '^' && *(c+1) )
+        if (*c == '^' && *(c + 1))
         {
             c++;
             continue;
@@ -118,9 +119,9 @@ void CImguiUtils::TextWithColorCodesCentered(const char *text)
         plain += *c;
     }
 
-    float textW = ImGui::CalcTextSize( plain.c_str() ).x;
-    float offsetX = ( availWidth - textW ) * 0.5f;
-    if( offsetX < 0.0f ) 
+    float textW = ImGui::CalcTextSize(plain.c_str()).x;
+    float offsetX = (availWidth - textW) * 0.5f;
+    if (offsetX < 0.0f)
         offsetX = 0.0f;
 
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
@@ -133,9 +134,9 @@ void CImguiUtils::TextWithColorCodesCentered(const char *text)
     ImVec4 color = defColor;
 
     const char *ptr = text;
-    while(*ptr)
+    while (*ptr)
     {
-        if(*ptr == '\n')
+        if (*ptr == '\n')
         {
             cursor.x = pos.x;
             cursor.y += lineH;
@@ -144,26 +145,26 @@ void CImguiUtils::TextWithColorCodesCentered(const char *text)
             continue;
         }
 
-        if(*ptr == '^' && *(ptr+1))
+        if (*ptr == '^' && *(ptr + 1))
         {
-            color = ColorFromCode(*(ptr+1));
+            color = ColorFromCode(*(ptr + 1));
             ptr += 2;
             continue;
         }
 
         const char *start = ptr;
-        while(*ptr && *ptr != '\n' && !(*ptr == '^' && *(ptr+1)))
+        while (*ptr && *ptr != '\n' && !(*ptr == '^' && *(ptr + 1)))
             ptr++;
 
-        std::string seg( start, ptr - start );
-        if(!seg.empty())
+        std::string seg(start, ptr - start);
+        if (!seg.empty())
         {
             draw->AddText(cursor, ImGui::ColorConvertFloat4ToU32(color), seg.c_str());
-            cursor.x += ImGui::CalcTextSize( seg.c_str() ).x;
+            cursor.x += ImGui::CalcTextSize(seg.c_str()).x;
         }
     }
 
-    ImGui::Dummy(ImVec2( 0, cursor.y - pos.y + lineH ));
+    ImGui::Dummy(ImVec2(0, cursor.y - pos.y + lineH));
 }
 
 float CImguiUtils::CalcTextWidthWithColorCodes(const char* text, float fontSize)
@@ -205,7 +206,7 @@ float CImguiUtils::DrawTextWithColorCodesAt(const ImVec2& pos, const char* text,
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
 
     ImVec2 cursor = pos;
-    ImVec4 color  = defaultColor;
+    ImVec4 color = defaultColor;
 
     color.w *= alphaMul;
     const char* ptr = text;
@@ -242,6 +243,7 @@ void CImguiUtils::DrawCallback_SetAdditive(const ImDrawList* parent_list, const 
 {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 }
+
 void CImguiUtils::DrawCallback_SetNormal(const ImDrawList* parent_list, const ImDrawCmd* cmd)
 {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -267,7 +269,7 @@ float CImguiUtils::ImGuiSpriteIcon(HLSPRITE hSprite, const wrect_t& rc, float x,
         return x;
 
     GLint texW = 0, texH = 0;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &texW);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &texW);
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &texH);
     if (texW <= 0 || texH <= 0)
         return x;
@@ -298,32 +300,38 @@ void CImguiUtils::HUEtoRGB(float hue, RGBColor &color)
     float h = hue / 255.0f;
     float r, g, b;
 
-    if (h < 1.0f/6.0f) {
+    if (h < 1.0f/6.0f)
+    {
         r = 1.0f;
         g = h * 6.0f;
         b = 0.0f;
     }
-    else if (h < 2.0f/6.0f) {
+    else if (h < 2.0f/6.0f)
+    {
         r = 1.0f - (h - 1.0f/6.0f) * 6.0f;
         g = 1.0f;
         b = 0.0f;
     }
-    else if (h < 3.0f/6.0f) {
+    else if (h < 3.0f/6.0f)
+    {
         r = 0.0f;
         g = 1.0f;
         b = (h - 2.0f/6.0f) * 6.0f;
     }
-    else if (h < 4.0f/6.0f) {
+    else if (h < 4.0f/6.0f)
+    {
         r = 0.0f;
         g = 1.0f - (h - 3.0f/6.0f) * 6.0f;
         b = 1.0f;
     }
-    else if (h < 5.0f/6.0f) {
+    else if (h < 5.0f/6.0f)
+    {
         r = (h - 4.0f/6.0f) * 6.0f;
         g = 0.0f;
         b = 1.0f;
     }
-    else {
+    else
+    {
         r = 1.0f;
         g = 0.0f;
         b = 1.0f - (h - 5.0f/6.0f) * 6.0f;
@@ -390,6 +398,52 @@ void CImguiUtils::SetCvarColor(const char* name, const float color[3])
     gEngfuncs.pfnClientCmd(cmd);
 }
 
+uint32_t CImguiUtils::CreateGLTexture(const unsigned char* rgba, int width, int height)
+{
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+    return texture;
+}
+
+void CImguiUtils::ResizeBilinearRGBA(const uint8_t* src, int srcW, int srcH, uint8_t* dst, int dstSize)
+{
+    const float scaleX = (float)srcW / (float)dstSize;
+    const float scaleY = (float)srcH / (float)dstSize;
+
+    for (int y = 0; y < dstSize; y++)
+    {
+        for (int x = 0; x < dstSize; x++)
+        {
+            const float sx = (x + 0.5f) * scaleX - 0.5f;
+            const float sy = (y + 0.5f) * scaleY - 0.5f;
+
+            const int x0 = Q_max((int)sx, 0);
+            const int y0 = Q_max((int)sy, 0);
+            const int x1 = Q_min(x0 + 1, srcW - 1);
+            const int y1 = Q_min(y0 + 1, srcH - 1);
+
+            const float fx = sx - (float)x0;
+            const float fy = sy - (float)y0;
+
+            for (int c = 0; c < 4; c++)
+            {
+                const float p00 = src[(y0 * srcW + x0) * 4 + c];
+                const float p10 = src[(y0 * srcW + x1) * 4 + c];
+                const float p01 = src[(y1 * srcW + x0) * 4 + c];
+                const float p11 = src[(y1 * srcW + x1) * 4 + c];
+
+                const float val = p00 * (1 - fx) * (1 - fy) + p10 * fx * (1 - fy) + p01 * (1 - fx) * fy + p11 * fx * fy;
+
+                dst[(y * dstSize + x) * 4 + c] = (uint8_t)(val + 0.5f);
+            }
+        }
+    }
+}
+
 ImGuiImage CImguiUtils::LoadImageFromFile(const char* filename)
 {
     ImGuiImage result;
@@ -400,12 +454,7 @@ ImGuiImage CImguiUtils::LoadImageFromFile(const char* filename)
     int channels;
     unsigned char* data = stbi_load(Path, &result.width, &result.height, &channels, 4);
 
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, result.width, result.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    GLuint texture = CreateGLTexture(data, result.width, result.height);
     stbi_image_free(data);
 
     result.texture = (ImTextureID)(intptr_t)texture;
@@ -419,12 +468,7 @@ ImGuiImage CImguiUtils::LoadImageFromMemory(const unsigned char* buffer, int buf
     int channels;
     unsigned char* data = stbi_load_from_memory(buffer, bufferSize, &result.width, &result.height, &channels, 4);
 
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, result.width, result.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    GLuint texture = CreateGLTexture(data, result.width, result.height);
     stbi_image_free(data);
 
     result.texture = (ImTextureID)(intptr_t)texture;
@@ -434,19 +478,49 @@ ImGuiImage CImguiUtils::LoadImageFromMemory(const unsigned char* buffer, int buf
 ImGuiImage CImguiUtils::LoadImageFromRGBA(const unsigned char* rgba, int width, int height)
 {
     ImGuiImage result;
-    result.width  = width;
+    result.width = width;
     result.height = height;
-    result.texture = (ImTextureID)0;
 
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
-
+    GLuint texture = CreateGLTexture(rgba, width, height);
     result.texture = (ImTextureID)(intptr_t)texture;
     return result;
+}
+
+bool CImguiUtils::LoadGifFromMemory(const unsigned char* buffer, int bufferSize, int targetSize, ImGuiGifImage& out, float defaultDelayMs)
+{
+    int width = 0, height = 0, frameCount = 0, channels = 0;
+    int* delays = nullptr;
+
+    uint8_t* raw = stbi_load_gif_from_memory(buffer, bufferSize, &delays, &width, &height, &frameCount, &channels, 4);
+
+    if (!raw || frameCount <= 1 || width <= 0 || height <= 0)
+    {
+        if (raw)
+            stbi_image_free(raw);
+        if (delays)
+            stbi_image_free(delays);
+        return false;
+    }
+
+    const size_t srcBytes = (size_t)width * height * 4;
+    const size_t dstBytes = (size_t)targetSize * targetSize * 4;
+
+    out.width = targetSize;
+    out.height = targetSize;
+    out.frames.resize(frameCount);
+
+    for (int f = 0; f < frameCount; f++)
+    {
+        out.frames[f].pixels.resize(dstBytes);
+        ResizeBilinearRGBA(raw + (size_t)f * srcBytes, width, height, out.frames[f].pixels.data(), targetSize);
+
+        float d = delays ? (float)delays[f] : defaultDelayMs;
+        out.frames[f].delayMs = (d > 0.0f) ? d : defaultDelayMs;
+    }
+
+    stbi_image_free(raw);
+    stbi_image_free(delays);
+    return true;
 }
 
 float CImguiUtils::DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r, int g, int b, int alpha)
@@ -460,7 +534,7 @@ float CImguiUtils::DrawImage(const ImGuiImage& image, float x, float y, float ro
 
     ImU32 col = IM_COL32(r, g, b, alpha);
 
-    dl->AddImage(image.texture, p_min, p_max, ImVec2(0,0), ImVec2(1,1), col);
+    dl->AddImage(image.texture, p_min, p_max, ImVec2(0, 0), ImVec2(1, 1), col);
 
     return x + width;
 }
@@ -476,19 +550,29 @@ void CImguiUtils::FreeImage(ImGuiImage& image)
     }
 }
 
+void CImguiUtils::FreeTexture(ImTextureID tex)
+{
+    if (!tex)
+        return;
+
+    ImGuiImage tmp;
+    tmp.texture = tex;
+    FreeImage(tmp);
+}
+
 void CImguiUtils::RenderColorCodeText(float fontSize, const ImVec2& pos, const char* text, ImVec4 color, bool shadow)
 {
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     ImFont* font = ImGui::GetFont();
 
-    ImVec2 cursor = pos; 
+    ImVec2 cursor = pos;
     const char* ptr = text;
 
     while (*ptr)
     {
         if (*ptr == '^' && *(ptr + 1))
         {
-            if (!shadow) 
+            if (!shadow)
                 color = ColorFromCode(*(ptr + 1));
             ptr += 2;
             continue;
@@ -501,9 +585,9 @@ void CImguiUtils::RenderColorCodeText(float fontSize, const ImVec2& pos, const c
         if (ptr > start)
         {
             ImU32 colU32 = shadow ? IM_COL32(0, 0, 0, 200) : ImGui::ColorConvertFloat4ToU32(color);
-            
+
             dl->AddText(font, fontSize, cursor, colU32, start, ptr);
-            
+
             cursor.x += font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, start, ptr).x;
         }
     }

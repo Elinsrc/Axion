@@ -1,11 +1,8 @@
 #include "avatar_cache.h"
-#include "web_client.h"
 
 #include "build.h"
-
 #include "hud.h"
 #include "cl_util.h"
-#include "imgui_utils.h"
 
 #ifdef XASH_WIN32
 #include <winsani_in.h>
@@ -13,33 +10,24 @@
 #include <winsani_out.h>
 #endif
 
-#include <algorithm>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstring>
+#include <fstream>
+#include <ctime>
+#include <chrono>
 
-#include "stb_image.h"
 #include "noavatar.h"
 
-#define AVATAR_TARGET_SIZE 64
-#define DEFAULT_GIF_DELAY_MS 40.0f
-#define FRAMES_PER_TICK 1
+namespace fs = std::filesystem;
 
 ImGuiImage m_pNoAvatar;
-
 CAvatarCache g_AvatarCache;
 
-static void AvatarCacheInfo_f()
-{
-    g_AvatarCache.PrintCacheInfo();
-}
-
-static std::string ProfileUrl(SteamID64 id)
+std::string CAvatarCache::ProfileUrl(SteamID64 id)
 {
     return "https://steamcommunity.com/profiles/" + std::to_string(id);
 }
 
-static std::string ExtractXmlTag(const std::string& xml, const std::string& tag)
+std::string CAvatarCache::ExtractXmlTag(const std::string& xml, const std::string& tag)
 {
     const std::string openTag = "<" + tag + ">";
     const std::string closeTag = "</" + tag + ">";
@@ -67,7 +55,7 @@ static std::string ExtractXmlTag(const std::string& xml, const std::string& tag)
     return val;
 }
 
-static std::string ExtractAnimatedAvatarUrl(const std::string& html)
+std::string CAvatarCache::ExtractAnimatedAvatarUrl(const std::string& html)
 {
     size_t avatarBlock = html.find("playerAvatar");
     if (avatarBlock == std::string::npos)
@@ -90,7 +78,23 @@ static std::string ExtractAnimatedAvatarUrl(const std::string& html)
     return html.substr(urlStart, (gifPos + 4) - urlStart);
 }
 
-static HttpRequest MakeRequest(const std::string& url, long timeoutSec, const std::atomic<bool>& cancel)
+std::string CAvatarCache::ExtractAvatarHash(const std::string& url)
+{
+    size_t slash = url.find_last_of('/');
+    std::string file = (slash == std::string::npos) ? url : url.substr(slash + 1);
+
+    size_t dot = file.find_last_of('.');
+    if (dot != std::string::npos)
+        file = file.substr(0, dot);
+
+    size_t us = file.find_last_of('_');
+    if (us != std::string::npos)
+        file = file.substr(0, us);
+
+    return file;
+}
+
+HttpRequest CAvatarCache::MakeRequest(const std::string& url, long timeoutSec, const std::atomic<bool>& cancel)
 {
     HttpRequest req;
     req.url = url;
@@ -99,41 +103,7 @@ static HttpRequest MakeRequest(const std::string& url, long timeoutSec, const st
     return req;
 }
 
-static bool FetchStaticAvatar(SteamID64 id, const std::atomic<bool>& cancel, std::vector<uint8_t>& out, std::string& error)
-{
-    HttpResponse xml = g_WebClient.Get(MakeRequest(ProfileUrl(id) + "?xml=1", 5, cancel));
-    if (!xml.ok)
-    {
-        error = "can't get profile info: " + xml.error;
-        return false;
-    }
-
-    std::string avatarUrl = ExtractXmlTag(xml.Text(), "avatarMedium");
-    if (avatarUrl.empty())
-    {
-        error = "avatar url not found (invalid profile?)";
-        return false;
-    }
-
-    HttpResponse img = g_WebClient.Get(MakeRequest(avatarUrl, 5, cancel));
-    if (!img.ok || img.body.empty())
-    {
-        error = "image download failed: " + (img.ok ? std::string("empty response") : img.error);
-        return false;
-    }
-
-    out = std::move(img.body);
-    return true;
-}
-
-enum class GifFetch 
-{ 
-    Failed, 
-    NoAnimation, 
-    Ok 
-};
-
-static GifFetch FetchAnimatedGif(SteamID64 id, const std::atomic<bool>& cancel, std::vector<uint8_t>& out)
+CAvatarCache::GifFetch CAvatarCache::FetchAnimatedGif(SteamID64 id, const std::atomic<bool>& cancel, std::vector<uint8_t>& out)
 {
     HttpResponse page = g_WebClient.Get(MakeRequest(ProfileUrl(id), 7, cancel));
     if (!page.ok || page.body.empty())
@@ -151,77 +121,133 @@ static GifFetch FetchAnimatedGif(SteamID64 id, const std::atomic<bool>& cancel, 
     return GifFetch::Ok;
 }
 
-static void ResizeBilinearRGBA(const uint8_t* src, int srcW, int srcH, uint8_t* dst, int dstSize)
+bool CAvatarCache::WriteAvcFile(const fs::path& path, bool isAnimated, const std::string& hash, const DownloadedAvatar& data)
 {
-    const float scaleX = (float)srcW / (float)dstSize;
-    const float scaleY = (float)srcH / (float)dstSize;
+    fs::path tmpPath = path;
+    tmpPath += ".tmp";
 
-    for (int y = 0; y < dstSize; y++)
+    std::ofstream f(tmpPath, std::ios::binary | std::ios::trunc);
+    if (!f)
+        return false;
+
+    AvcFileHeader hdr{};
+    memcpy(hdr.magic, AVATAR_CACHE_MAGIC, 4);
+    hdr.version = AVATAR_CACHE_VERSION;
+    hdr.isAnimated = isAnimated ? 1 : 0;
+    hdr.hashLen = (uint16_t)hash.size();
+
+    f.write(reinterpret_cast<const char*>(&hdr), sizeof(hdr));
+    f.write(hash.data(), (std::streamsize)hash.size());
+
+    if (!isAnimated)
     {
-        for (int x = 0; x < dstSize; x++)
+        uint32_t size = (uint32_t)data.imageData.size();
+        f.write(reinterpret_cast<const char*>(&size), sizeof(size));
+        f.write(reinterpret_cast<const char*>(data.imageData.data()), size);
+    }
+    else
+    {
+        uint32_t w = (uint32_t)data.gifWidth;
+        uint32_t h = (uint32_t)data.gifHeight;
+        uint32_t frameCount = (uint32_t)data.gifFrames.size();
+        f.write(reinterpret_cast<const char*>(&w), sizeof(w));
+        f.write(reinterpret_cast<const char*>(&h), sizeof(h));
+        f.write(reinterpret_cast<const char*>(&frameCount), sizeof(frameCount));
+
+        for (size_t i = 0; i < data.gifFrames.size(); i++)
         {
-            const float sx = (x + 0.5f) * scaleX - 0.5f;
-            const float sy = (y + 0.5f) * scaleY - 0.5f;
-
-            const int x0 = Q_max((int)sx, 0);
-            const int y0 = Q_max((int)sy, 0);
-            const int x1 = Q_min(x0 + 1, srcW - 1);
-            const int y1 = Q_min(y0 + 1, srcH - 1);
-
-            const float fx = sx - (float)x0;
-            const float fy = sy - (float)y0;
-
-            for (int c = 0; c < 4; c++)
-            {
-                const float p00 = src[(y0 * srcW + x0) * 4 + c];
-                const float p10 = src[(y0 * srcW + x1) * 4 + c];
-                const float p01 = src[(y1 * srcW + x0) * 4 + c];
-                const float p11 = src[(y1 * srcW + x1) * 4 + c];
-
-                const float val = p00 * (1 - fx) * (1 - fy) + p10 * fx * (1 - fy) + p01 * (1 - fx) * fy + p11 * fx * fy;
-
-                dst[(y * dstSize + x) * 4 + c] = (uint8_t)(val + 0.5f);
-            }
+            float delay = data.gifDelays[i];
+            uint32_t dataSize = (uint32_t)data.gifFrames[i].size();
+            f.write(reinterpret_cast<const char*>(&delay), sizeof(delay));
+            f.write(reinterpret_cast<const char*>(&dataSize), sizeof(dataSize));
+            f.write(reinterpret_cast<const char*>(data.gifFrames[i].data()), dataSize);
         }
     }
-}
 
-static bool DecodeGif(const std::vector<uint8_t>& bytes, DownloadedAvatar& out)
-{
-    int width = 0, height = 0, frameCount = 0, channels = 0;
-    int* delays = nullptr;
-
-    uint8_t* raw = stbi_load_gif_from_memory(bytes.data(), (int)bytes.size(), &delays, &width, &height, &frameCount, &channels, 4);
-
-    if (!raw || frameCount <= 1 || width <= 0 || height <= 0)
+    f.close();
+    if (!f)
     {
-        if (raw)
-            stbi_image_free(raw);
-        if (delays)
-            stbi_image_free(delays);
+        std::error_code ec;
+        fs::remove(tmpPath, ec);
         return false;
     }
 
-    const size_t srcBytes = (size_t)width * height * 4;
-    const size_t dstBytes = (size_t)AVATAR_TARGET_SIZE * AVATAR_TARGET_SIZE * 4;
-
-    out.gifWidth = AVATAR_TARGET_SIZE;
-    out.gifHeight = AVATAR_TARGET_SIZE;
-    out.gifFrames.resize(frameCount);
-    out.gifDelays.resize(frameCount);
-
-    for (int f = 0; f < frameCount; f++)
+    std::error_code ec;
+    fs::rename(tmpPath, path, ec);
+    if (ec)
     {
-        out.gifFrames[f].resize(dstBytes);
-        ResizeBilinearRGBA(raw + f * srcBytes, width, height, out.gifFrames[f].data(), AVATAR_TARGET_SIZE);
-
-        float d = delays ? (float)delays[f] : DEFAULT_GIF_DELAY_MS;
-        out.gifDelays[f] = (d > 0.0f) ? d : DEFAULT_GIF_DELAY_MS;
+        fs::remove(tmpPath, ec);
+        return false;
     }
 
-    stbi_image_free(raw);
-    stbi_image_free(delays);
     return true;
+}
+
+bool CAvatarCache::ReadAvcFile(const fs::path& path, DownloadedAvatar& out, std::string& hashOut, bool& isAnimatedOut)
+{
+    std::ifstream f(path, std::ios::binary);
+    if (!f)
+        return false;
+
+    AvcFileHeader hdr{};
+    f.read(reinterpret_cast<char*>(&hdr), sizeof(hdr));
+    if (!f || memcmp(hdr.magic, AVATAR_CACHE_MAGIC, 4) != 0 || hdr.version != AVATAR_CACHE_VERSION)
+        return false;
+
+    hashOut.resize(hdr.hashLen);
+    if (hdr.hashLen)
+        f.read(hashOut.data(), hdr.hashLen);
+
+    isAnimatedOut = hdr.isAnimated != 0;
+
+    if (!isAnimatedOut)
+    {
+        uint32_t size = 0;
+        f.read(reinterpret_cast<char*>(&size), sizeof(size));
+        if (!f || size == 0 || size > 16 * 1024 * 1024)
+            return false;
+
+        out.imageData.resize(size);
+        f.read(reinterpret_cast<char*>(out.imageData.data()), size);
+    }
+    else
+    {
+        uint32_t w = 0, h = 0, frameCount = 0;
+        f.read(reinterpret_cast<char*>(&w), sizeof(w));
+        f.read(reinterpret_cast<char*>(&h), sizeof(h));
+        f.read(reinterpret_cast<char*>(&frameCount), sizeof(frameCount));
+
+        if (!f || frameCount == 0 || frameCount > 4096 || w == 0 || h == 0)
+            return false;
+
+        out.gifWidth = (int)w;
+        out.gifHeight = (int)h;
+        out.gifFrames.resize(frameCount);
+        out.gifDelays.resize(frameCount);
+
+        for (uint32_t i = 0; i < frameCount; i++)
+        {
+            float delay = 0.0f;
+            uint32_t dataSize = 0;
+            f.read(reinterpret_cast<char*>(&delay), sizeof(delay));
+            f.read(reinterpret_cast<char*>(&dataSize), sizeof(dataSize));
+
+            if (!f || dataSize != w * h * 4)
+                return false;
+
+            out.gifFrames[i].resize(dataSize);
+            f.read(reinterpret_cast<char*>(out.gifFrames[i].data()), dataSize);
+            out.gifDelays[i] = delay;
+        }
+    }
+
+    out.isAnimated = isAnimatedOut;
+    return true;
+}
+
+void CAvatarCache::AvatarCacheInfo_f()
+{
+    g_AvatarCache.PrintCacheInfo();
 }
 
 void CAvatarCache::Initialize()
@@ -229,8 +255,12 @@ void CAvatarCache::Initialize()
     for (int i = 0; i < MAX_AVATAR_PLAYERS; i++)
         m_avatars[i] = AvatarEntry{};
 
+    InitDiskCache();
+
     m_staticWorker.Start();
     m_animatedWorker.Start();
+
+    m_staticWorker.Post([this]() { RunStartupCleanup(); });
 
     gEngfuncs.pfnAddCommand("avatarcache_info", AvatarCacheInfo_f);
 }
@@ -248,6 +278,110 @@ void CAvatarCache::Shutdown()
 
     ClearAll();
     m_ImguiUtils.FreeImage(m_pNoAvatar);
+}
+
+fs::path CAvatarCache::AvatarsCacheDir()
+{
+    return fs::path(gEngfuncs.pfnGetGameDirectory()) / AVATAR_CACHE_DIRNAME;
+}
+
+fs::path CAvatarCache::GetAvcPath(SteamID64 steam64) const
+{
+    return AvatarsCacheDir() / (std::to_string(steam64) + ".avc");
+}
+
+void CAvatarCache::InitDiskCache()
+{
+    std::error_code ec;
+    fs::create_directories(AvatarsCacheDir(), ec);
+}
+
+void CAvatarCache::RunStartupCleanup()
+{
+    std::lock_guard<std::mutex> lock(m_diskMutex);
+
+    std::error_code ec;
+    const fs::path dir = AvatarsCacheDir();
+
+    if (!fs::exists(dir, ec))
+        return;
+
+    const auto fsNow = fs::file_time_type::clock::now();
+    int removed = 0;
+
+    for (auto it = fs::directory_iterator(dir, ec); !ec && it != fs::directory_iterator(); it.increment(ec))
+    {
+        const auto& path = it->path();
+
+        if (!it->is_regular_file() || path.extension() != ".avc")
+            continue;
+
+        std::error_code wtEc;
+        const auto mtime = fs::last_write_time(path, wtEc);
+        if (wtEc)
+            continue;
+
+        const int64_t unusedDays = std::chrono::duration_cast<std::chrono::hours>(fsNow - mtime).count() / 24;
+
+        if (unusedDays >= AVATAR_CACHE_MAX_UNUSED_DAYS)
+        {
+            std::error_code rmEc;
+            fs::remove(path, rmEc);
+            if (!rmEc)
+                removed++;
+        }
+    }
+
+    if (removed > 0)
+        gEngfuncs.Con_DPrintf("[AvatarCache] startup cleanup: removed %d unused cache files\n", removed);
+}
+
+bool CAvatarCache::TryLoadFromDisk(int playerIndex, SteamID64 steam64)
+{
+    const fs::path path = GetAvcPath(steam64);
+
+    DownloadedAvatar data;
+    std::string hash;
+    bool isAnimated = false;
+
+    {
+        std::lock_guard<std::mutex> lock(m_diskMutex);
+
+        std::error_code ec;
+        if (!fs::exists(path, ec))
+            return false;
+
+        if (!ReadAvcFile(path, data, hash, isAnimated))
+        {
+            fs::remove(path, ec);
+            return false;
+        }
+    }
+
+    AvatarEntry& entry = m_avatars[playerIndex];
+    if (entry.steamId != steam64)
+        return false;
+
+    data.playerIndex = playerIndex;
+    data.steam64 = steam64;
+
+    if (isAnimated)
+        ApplyAnimated(entry, data);
+    else
+        ApplyStatic(entry, data);
+
+    entry.diskAvatarHash = hash;
+
+    TouchAvcFile(steam64);
+    return true;
+}
+
+void CAvatarCache::TouchAvcFile(SteamID64 steam64)
+{
+    std::lock_guard<std::mutex> lock(m_diskMutex);
+
+    std::error_code ec;
+    fs::last_write_time(GetAvcPath(steam64), fs::file_time_type::clock::now(), ec);
 }
 
 void CAvatarCache::Update()
@@ -276,28 +410,30 @@ void CAvatarCache::Update()
             entry.steamId = steam64;
         }
 
-        if (!entry.loaded && !entry.requested && !entry.isPending)
+        if (!entry.diskAttempted)
+        {
+            entry.diskAttempted = true;
+            TryLoadFromDisk(i, steam64);
+        }
+
+        if (!entry.requested)
         {
             entry.requested = true;
-            LoadAvatar(i, steam64);
+            QueueStatic({i, steam64, entry.diskAvatarHash});
         }
     }
 }
 
 void CAvatarCache::PrintCacheInfo()
 {
-    int staticCount = 0;
-    int animatedCount = 0;
-    int pendingCount = 0;
-    int loadingCount = 0;
-    int failedCount = 0;
-    int totalFrames = 0;
+    int staticCount = 0, animatedCount = 0, pendingCount = 0;
+    int loadingCount = 0, failedCount = 0, totalFrames = 0;
     size_t totalMem = 0;
 
     for (int i = 1; i < MAX_AVATAR_PLAYERS; i++)
     {
         const AvatarEntry& entry = m_avatars[i];
-        if (entry.steamId == 0) 
+        if (entry.steamId == 0)
             continue;
 
         if (entry.isPending)
@@ -325,14 +461,34 @@ void CAvatarCache::PrintCacheInfo()
         }
     }
 
+    size_t diskFiles = 0;
+    uintmax_t diskBytes = 0;
+
+    {
+        std::lock_guard<std::mutex> lock(m_diskMutex);
+
+        std::error_code ec;
+        for (auto it = fs::directory_iterator(AvatarsCacheDir(), ec); !ec && it != fs::directory_iterator(); it.increment(ec))
+        {
+            if (!it->is_regular_file() || it->path().extension() != ".avc")
+                continue;
+
+            diskFiles++;
+            std::error_code sizeEc;
+            diskBytes += fs::file_size(it->path(), sizeEc);
+        }
+    }
+
     gEngfuncs.Con_Printf("AvatarCache:\n");
-    gEngfuncs.Con_Printf("  static: %d\n", staticCount);
-    gEngfuncs.Con_Printf("  animated: %d\n", animatedCount);
-    gEngfuncs.Con_Printf("  loading: %d\n", loadingCount);
-    gEngfuncs.Con_Printf("  failed: %d\n", failedCount);
-    gEngfuncs.Con_Printf("  pending: %d\n", pendingCount);
-    gEngfuncs.Con_Printf("  frames: %d\n", totalFrames);
-    gEngfuncs.Con_Printf("  memory: %.2f MB\n", totalMem / (1024.0 * 1024.0));
+    gEngfuncs.Con_Printf("  Players with static avatar: %d\n", staticCount);
+    gEngfuncs.Con_Printf("  Players with animated avatar: %d\n", animatedCount);
+    gEngfuncs.Con_Printf("  Total animation frames in memory: %d\n", totalFrames);
+    gEngfuncs.Con_Printf("  Avatars waiting for download: %d\n", loadingCount);
+    gEngfuncs.Con_Printf("  Avatars uploading to GPU: %d\n", pendingCount);
+    gEngfuncs.Con_Printf("  Failed avatar downloads: %d\n", failedCount);
+    gEngfuncs.Con_Printf("  Video memory used by avatars: %.2f MB\n", totalMem / (1024.0 * 1024.0));
+    gEngfuncs.Con_Printf("  Avatars saved on disk (.avc): %zu\n", diskFiles);
+    gEngfuncs.Con_Printf("  Disk cache size: %.2f MB\n", diskBytes / (1024.0 * 1024.0));
 }
 
 void CAvatarCache::ClearAll()
@@ -348,45 +504,11 @@ void CAvatarCache::ClearAvatar(int playerIndex)
 
     AvatarEntry& entry = m_avatars[playerIndex];
 
-    if (entry.steamId != 0)
-        InvalidateDownloaded(entry.steamId);
-
-    DeleteTexture(entry.texture);
-
+    m_ImguiUtils.FreeTexture(entry.texture);
     for (auto& f : entry.frames)
-        DeleteTexture(f.texture);
+        m_ImguiUtils.FreeTexture(f.texture);
 
     entry = AvatarEntry{};
-}
-
-ImTextureID CAvatarCache::CreateTextureFromMemory(const uint8_t* buffer, size_t bufSize)
-{
-    if (!buffer || bufSize == 0)
-        return 0;
-
-    ImGuiImage img = m_ImguiUtils.LoadImageFromMemory(buffer, static_cast<int>(bufSize));
-    return img.texture;
-}
-
-ImTextureID CAvatarCache::CreateTextureFromRGBA(const uint8_t* rgba, int w, int h)
-{
-    if (!rgba || w <= 0 || h <= 0)
-        return 0;
-
-    ImGuiImage img = m_ImguiUtils.LoadImageFromRGBA(rgba, w, h);
-    return img.texture;
-}
-
-void CAvatarCache::DeleteTexture(ImTextureID tex)
-{
-    if (!tex)
-        return;
-
-    ImGuiImage tempImg;
-    memset(&tempImg, 0, sizeof(tempImg));
-    tempImg.texture = tex;
-
-    m_ImguiUtils.FreeImage(tempImg);
 }
 
 void CAvatarCache::ProcessDownloadedAvatars()
@@ -408,7 +530,8 @@ void CAvatarCache::ProcessDownloadedAvatars()
 
         if (data.failed)
         {
-            entry.failed = true;
+            if (!entry.loaded)
+                entry.failed = true;
             continue;
         }
 
@@ -424,8 +547,10 @@ void CAvatarCache::ApplyStatic(AvatarEntry& entry, DownloadedAvatar& data)
     if (data.imageData.empty())
         return;
 
-    DeleteTexture(entry.texture);
-    entry.texture = CreateTextureFromMemory(data.imageData.data(), data.imageData.size());
+    m_ImguiUtils.FreeTexture(entry.texture);
+
+    ImGuiImage img = m_ImguiUtils.LoadImageFromMemory(data.imageData.data(), (int)data.imageData.size());
+    entry.texture = img.texture;
     entry.loaded = (entry.texture != 0);
 }
 
@@ -435,7 +560,7 @@ void CAvatarCache::ApplyAnimated(AvatarEntry& entry, DownloadedAvatar& data)
         return;
 
     for (auto& f : entry.frames)
-        DeleteTexture(f.texture);
+        m_ImguiUtils.FreeTexture(f.texture);
     entry.frames.clear();
 
     entry.pendingFrameData = std::move(data.gifFrames);
@@ -454,7 +579,6 @@ void CAvatarCache::ProcessPendingTextures()
     for (int i = 0; i < MAX_AVATAR_PLAYERS; i++)
     {
         AvatarEntry& entry = m_avatars[i];
-
         if (!entry.isPending)
             continue;
 
@@ -463,12 +587,15 @@ void CAvatarCache::ProcessPendingTextures()
         {
             const int fi = entry.pendingFrameIndex;
 
-            AvatarFrame af;
-            af.delayMs = entry.pendingDelays[fi];
-            af.texture = CreateTextureFromRGBA(entry.pendingFrameData[fi].data(), entry.pendingWidth, entry.pendingHeight);
+            ImGuiImage img = m_ImguiUtils.LoadImageFromRGBA(entry.pendingFrameData[fi].data(), entry.pendingWidth, entry.pendingHeight);
 
-            if (af.texture)
+            if (img.texture)
+            {
+                AvatarFrame af;
+                af.texture = img.texture;
+                af.delayMs = entry.pendingDelays[fi];
                 entry.frames.push_back(af);
+            }
 
             entry.pendingFrameIndex++;
             uploaded++;
@@ -497,76 +624,93 @@ void CAvatarCache::ProcessPendingTextures()
     }
 }
 
-bool CAvatarCache::LoadAvatar(int playerIndex, SteamID64 steam64)
-{
-    if (steam64 == 0)
-        return false;
-
-    QueueStatic({playerIndex, steam64});
-    return true;
-}
-
 void CAvatarCache::QueueStatic(const AvatarTask& task)
 {
-    if (IsDownloaded(false, task.steam64))
-        return;
-
     m_staticWorker.Post([this, task]() { DownloadStatic(task); });
 }
 
 void CAvatarCache::DownloadStatic(const AvatarTask& task)
 {
-    if (IsDownloaded(false, task.steam64))
+    HttpResponse xml = g_WebClient.Get(MakeRequest(ProfileUrl(task.steam64) + "?xml=1", 5, m_staticWorker.StopFlag()));
+    if (!xml.ok)
+    {
+        g_WebClient.LogErrorOnce("avatar_" + std::to_string(task.steam64), "[AvatarCache] " + std::to_string(task.steam64) + ": can't get profile info: " + xml.error);
+
+        DownloadedAvatar fail;
+        fail.playerIndex = task.playerIndex;
+        fail.steam64 = task.steam64;
+        fail.failed = true;
+        PushCompleted(std::move(fail));
         return;
+    }
+
+    std::string avatarUrl = ExtractXmlTag(xml.Text(), "avatarMedium");
+    if (avatarUrl.empty())
+        return;
+
+    const std::string hash = ExtractAvatarHash(avatarUrl);
+
+    if (!hash.empty() && hash == task.knownHash)
+    {
+        TouchAvcFile(task.steam64);
+        return;
+    }
+
+    HttpResponse img = g_WebClient.Get(MakeRequest(avatarUrl, 5, m_staticWorker.StopFlag()));
+    if (!img.ok || img.body.empty())
+    {
+        g_WebClient.LogErrorOnce("avatar_" + std::to_string(task.steam64),
+            "[AvatarCache] " + std::to_string(task.steam64) + ": image download failed");
+        return;
+    }
 
     DownloadedAvatar result;
     result.playerIndex = task.playerIndex;
     result.steam64 = task.steam64;
+    result.imageData = std::move(img.body);
 
-    std::string error;
-    if (!FetchStaticAvatar(task.steam64, m_staticWorker.StopFlag(), result.imageData, error))
     {
-        g_WebClient.LogErrorOnce("avatar_" + std::to_string(task.steam64), "[AvatarCache] " + std::to_string(task.steam64) + ": " + error);
-
-        result.failed = true;
-        result.imageData.clear();
-        PushCompleted(std::move(result));
-        return;
+        std::lock_guard<std::mutex> lock(m_diskMutex);
+        WriteAvcFile(GetAvcPath(task.steam64), false, hash, result);
     }
 
-    MarkDownloaded(false, task.steam64);
     PushCompleted(std::move(result));
 
-    if (!IsDownloaded(true, task.steam64))
-        m_animatedWorker.Post([this, task]() { DownloadAnimated(task); });
+    m_animatedWorker.Post([this, task, hash]() { DownloadAnimated(task, hash); });
 }
 
-void CAvatarCache::DownloadAnimated(const AvatarTask& task)
+void CAvatarCache::DownloadAnimated(const AvatarTask& task, const std::string& staticHash)
 {
-    if (IsDownloaded(true, task.steam64))
-        return;
-
     std::vector<uint8_t> gif;
     GifFetch fetch = FetchAnimatedGif(task.steam64, m_animatedWorker.StopFlag(), gif);
 
-    if (fetch == GifFetch::Failed)
+    if (fetch != GifFetch::Ok)
         return;
 
-    if (fetch == GifFetch::NoAnimation)
-    {
-        MarkDownloaded(true, task.steam64);
+    ImGuiGifImage gifImage;
+    if (!m_ImguiUtils.LoadGifFromMemory(gif.data(), (int)gif.size(), AVATAR_TARGET_SIZE, gifImage))
         return;
-    }
 
     DownloadedAvatar result;
     result.playerIndex = task.playerIndex;
     result.steam64 = task.steam64;
     result.isAnimated = true;
+    result.gifWidth = gifImage.width;
+    result.gifHeight = gifImage.height;
+    result.gifFrames.reserve(gifImage.frames.size());
+    result.gifDelays.reserve(gifImage.frames.size());
 
-    if (!DecodeGif(gif, result))
-        return;
+    for (auto& f : gifImage.frames)
+    {
+        result.gifFrames.push_back(std::move(f.pixels));
+        result.gifDelays.push_back(f.delayMs);
+    }
 
-    MarkDownloaded(true, task.steam64);
+    {
+        std::lock_guard<std::mutex> lock(m_diskMutex);
+        WriteAvcFile(GetAvcPath(task.steam64), true, staticHash, result);
+    }
+
     PushCompleted(std::move(result));
 }
 
@@ -574,25 +718,6 @@ void CAvatarCache::PushCompleted(DownloadedAvatar&& data)
 {
     std::lock_guard<std::mutex> lock(m_completedMutex);
     m_completed.push_back(std::move(data));
-}
-
-bool CAvatarCache::IsDownloaded(bool animated, SteamID64 id)
-{
-    std::lock_guard<std::mutex> lock(m_downloadedMutex);
-    return (animated ? m_downloadedAnimated : m_downloadedStatic).count(id) != 0;
-}
-
-void CAvatarCache::MarkDownloaded(bool animated, SteamID64 id)
-{
-    std::lock_guard<std::mutex> lock(m_downloadedMutex);
-    (animated ? m_downloadedAnimated : m_downloadedStatic).insert(id);
-}
-
-void CAvatarCache::InvalidateDownloaded(SteamID64 id)
-{
-    std::lock_guard<std::mutex> lock(m_downloadedMutex);
-    m_downloadedStatic.erase(id);
-    m_downloadedAnimated.erase(id);
 }
 
 ImTextureID CAvatarCache::GetAvatar(int playerIndex)
