@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <atomic>
+#include <sstream>
 #include <filesystem>
 
 #include "imgui.h"
@@ -27,6 +28,7 @@ static constexpr const char* CUSTOM_AVATAR_DIRNAME = "avatar";
 static constexpr const char* CUSTOM_AVATAR_HOST = "https://files.catbox.moe/";
 static constexpr const char* CUSTOM_AVATAR_UPLOAD_URL = "https://catbox.moe/user/api.php";
 static constexpr size_t CUSTOM_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+static constexpr size_t CUSTOM_AVC_MAX_BYTES = 4 * 1024 * 1024;
 static constexpr int CUSTOM_AVATAR_MAX_SIZE = 512;
 
 typedef uint64_t SteamID64;
@@ -138,6 +140,10 @@ private:
 
     GifFetch FetchAnimatedGif(SteamID64 id, const std::atomic<bool>& cancel, std::vector<uint8_t>& out);
 
+    static bool WriteAvcStream(std::ostream& f, bool isAnimated, const std::string& hash, const DownloadedAvatar& data);
+    static bool ReadAvcStream(std::istream& f, DownloadedAvatar& out, std::string& hashOut, bool& isAnimatedOut);
+    static bool ValidateCustomAvatar(const DownloadedAvatar& d);
+
     bool WriteAvcFile(const std::filesystem::path& path, bool isAnimated, const std::string& hash, const DownloadedAvatar& data);
     bool ReadAvcFile(const std::filesystem::path& path, DownloadedAvatar& out, std::string& hashOut, bool& isAnimatedOut);
 
@@ -163,7 +169,6 @@ private:
     void QueuePublish(const std::string& name);
     void ApplyPublish();
 
-    // local avatar (shown immediately from the file on disk)
     bool DecodeCustom(const std::vector<uint8_t>& data, bool isGif, DownloadedAvatar& out);
     void QueueLocal(DownloadedAvatar&& data, bool has);
     void ApplyLocal(AvatarEntry& entry, bool allowCustom);

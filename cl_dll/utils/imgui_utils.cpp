@@ -523,6 +523,30 @@ bool CImguiUtils::LoadGifFromMemory(const unsigned char* buffer, int bufferSize,
     return true;
 }
 
+bool CImguiUtils::LoadStaticFromMemory(const unsigned char* buffer, int bufferSize, int targetSize, ImGuiGifImage& out)
+{
+    int width = 0, height = 0, channels = 0;
+    unsigned char* raw = stbi_load_from_memory(buffer, bufferSize, &width, &height, &channels, 4);
+
+    if (!raw || width <= 0 || height <= 0)
+    {
+        if (raw)
+            stbi_image_free(raw);
+        return false;
+    }
+
+    out.width = targetSize;
+    out.height = targetSize;
+    out.frames.resize(1);
+    out.frames[0].pixels.resize((size_t)targetSize * targetSize * 4);
+    out.frames[0].delayMs = 100.0f;
+
+    ResizeBilinearRGBA(raw, width, height, out.frames[0].pixels.data(), targetSize);
+
+    stbi_image_free(raw);
+    return true;
+}
+
 float CImguiUtils::DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r, int g, int b, int alpha)
 {
     ImDrawList* dl = ImGui::GetBackgroundDrawList();

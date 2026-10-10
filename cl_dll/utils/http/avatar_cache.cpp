@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 #include <ctime>
 #include <chrono>
 #include <initializer_list>
@@ -60,14 +61,14 @@ namespace
         return buf;
     }
 
-    std::string BuildMultipart(const std::string& boundary, const std::string& filename, const std::vector<uint8_t>& data)
+    std::string BuildMultipart(const std::string& boundary, const std::string& filename, const std::string& data)
     {
         std::string body;
         body.reserve(data.size() + 512);
 
         body += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"reqtype\"\r\n\r\nfileupload\r\n";
         body += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"fileToUpload\"; filename=\"" + filename + "\"\r\nContent-Type: application/octet-stream\r\n\r\n";
-        body.append(reinterpret_cast<const char*>(data.data()), data.size());
+        body += data;
         body += "\r\n--" + boundary + "--\r\n";
 
         return body;
@@ -201,15 +202,8 @@ CAvatarCache::GifFetch CAvatarCache::FetchAnimatedGif(SteamID64 id, const std::a
     return GifFetch::Ok;
 }
 
-bool CAvatarCache::WriteAvcFile(const fs::path& path, bool isAnimated, const std::string& hash, const DownloadedAvatar& data)
+bool CAvatarCache::WriteAvcStream(std::ostream& f, bool isAnimated, const std::string& hash, const DownloadedAvatar& data)
 {
-    fs::path tmpPath = path;
-    tmpPath += ".tmp";
-
-    std::ofstream f(tmpPath, std::ios::binary | std::ios::trunc);
-    if (!f)
-        return false;
-
     AvcFileHeader hdr{};
     memcpy(hdr.magic, AVATAR_CACHE_MAGIC, 4);
     hdr.version = AVATAR_CACHE_VERSION;
@@ -244,15 +238,28 @@ bool CAvatarCache::WriteAvcFile(const fs::path& path, bool isAnimated, const std
         }
     }
 
-    f.close();
+    return (bool)f;
+}
+
+bool CAvatarCache::WriteAvcFile(const fs::path& path, bool isAnimated, const std::string& hash, const DownloadedAvatar& data)
+{
+    fs::path tmpPath = path;
+    tmpPath += ".tmp";
+
+    std::ofstream f(tmpPath, std::ios::binary | std::ios::trunc);
     if (!f)
+        return false;
+
+    const bool ok = WriteAvcStream(f, isAnimated, hash, data);
+    f.close();
+
+    std::error_code ec;
+    if (!ok || !f)
     {
-        std::error_code ec;
         fs::remove(tmpPath, ec);
         return false;
     }
 
-    std::error_code ec;
     fs::rename(tmpPath, path, ec);
     if (ec)
     {
@@ -263,12 +270,8 @@ bool CAvatarCache::WriteAvcFile(const fs::path& path, bool isAnimated, const std
     return true;
 }
 
-bool CAvatarCache::ReadAvcFile(const fs::path& path, DownloadedAvatar& out, std::string& hashOut, bool& isAnimatedOut)
+bool CAvatarCache::ReadAvcStream(std::istream& f, DownloadedAvatar& out, std::string& hashOut, bool& isAnimatedOut)
 {
-    std::ifstream f(path, std::ios::binary);
-    if (!f)
-        return false;
-
     AvcFileHeader hdr{};
     f.read(reinterpret_cast<char*>(&hdr), sizeof(hdr));
     if (!f || memcmp(hdr.magic, AVATAR_CACHE_MAGIC, 4) != 0 || hdr.version != AVATAR_CACHE_VERSION)
@@ -276,7 +279,11 @@ bool CAvatarCache::ReadAvcFile(const fs::path& path, DownloadedAvatar& out, std:
 
     hashOut.resize(hdr.hashLen);
     if (hdr.hashLen)
+    {
         f.read(hashOut.data(), hdr.hashLen);
+        if (!f)
+            return false;
+    }
 
     isAnimatedOut = hdr.isAnimated != 0;
 
@@ -289,6 +296,8 @@ bool CAvatarCache::ReadAvcFile(const fs::path& path, DownloadedAvatar& out, std:
 
         out.imageData.resize(size);
         f.read(reinterpret_cast<char*>(out.imageData.data()), size);
+        if (!f)
+            return false;
     }
     else
     {
@@ -297,7 +306,10 @@ bool CAvatarCache::ReadAvcFile(const fs::path& path, DownloadedAvatar& out, std:
         f.read(reinterpret_cast<char*>(&h), sizeof(h));
         f.read(reinterpret_cast<char*>(&frameCount), sizeof(frameCount));
 
-        if (!f || frameCount == 0 || frameCount > 4096 || w == 0 || h == 0)
+        if (!f || frameCount == 0 || frameCount > 4096 || w == 0 || h == 0 || w > 256 || h > 256)
+            return false;
+
+        if ((uint64_t)w * h * 4 * frameCount > 32ull * 1024 * 1024)
             return false;
 
         out.gifWidth = (int)w;
@@ -312,17 +324,56 @@ bool CAvatarCache::ReadAvcFile(const fs::path& path, DownloadedAvatar& out, std:
             f.read(reinterpret_cast<char*>(&delay), sizeof(delay));
             f.read(reinterpret_cast<char*>(&dataSize), sizeof(dataSize));
 
-            if (!f || dataSize != w * h * 4)
+            if (!f || (uint64_t)dataSize != (uint64_t)w * h * 4)
                 return false;
 
             out.gifFrames[i].resize(dataSize);
             f.read(reinterpret_cast<char*>(out.gifFrames[i].data()), dataSize);
+            if (!f)
+                return false;
+
+            if (!(delay >= 10.0f))
+                delay = 10.0f;
+            if (delay > 10000.0f)
+                delay = 10000.0f;
+
             out.gifDelays[i] = delay;
         }
     }
 
     out.isAnimated = isAnimatedOut;
     return true;
+}
+
+bool CAvatarCache::ReadAvcFile(const fs::path& path, DownloadedAvatar& out, std::string& hashOut, bool& isAnimatedOut)
+{
+    std::ifstream f(path, std::ios::binary);
+    if (!f)
+        return false;
+
+    return ReadAvcStream(f, out, hashOut, isAnimatedOut);
+}
+
+bool CAvatarCache::ValidateCustomAvatar(const DownloadedAvatar& d)
+{
+    if (d.isAnimated)
+    {
+        return d.gifWidth > 0 && d.gifHeight > 0
+            && d.gifWidth <= AVATAR_TARGET_SIZE && d.gifHeight <= AVATAR_TARGET_SIZE
+            && !d.gifFrames.empty()
+            && (int)d.gifFrames.size() <= CUSTOM_AVATAR_MAX_FRAMES
+            && d.gifDelays.size() == d.gifFrames.size();
+    }
+
+    const auto& b = d.imageData;
+    if (b.size() < 16 || b.size() > 256 * 1024)
+        return false;
+
+    int w = 0, h = 0;
+    if (!CustomUtils::PngSize(b.data(), b.size(), w, h) && !CustomUtils::JpegSize(b.data(), b.size(), w, h))
+        return false;
+
+    return w > 0 && h > 0 && w <= AVATAR_TARGET_SIZE && h <= AVATAR_TARGET_SIZE;
 }
 
 void CAvatarCache::AvatarCacheInfo_f()
@@ -392,7 +443,7 @@ fs::path CAvatarCache::GetAvcPath(SteamID64 steam64) const
 
 fs::path CAvatarCache::GetCustomAvcPath(const std::string& name) const
 {
-    return AvatarsCacheDir() / (name + ".avc");
+    return AvatarsCacheDir() / name;
 }
 
 bool CAvatarCache::IsValidCustomName(const std::string& s)
@@ -408,8 +459,7 @@ bool CAvatarCache::IsValidCustomName(const std::string& s)
             return false;
     }
 
-    const std::string ext = s.substr(dot + 1);
-    return ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "gif";
+    return s.substr(dot + 1) == "avc";
 }
 
 void CAvatarCache::InitDiskCache()
@@ -544,29 +594,25 @@ void CAvatarCache::ApplyPublish()
 
 bool CAvatarCache::DecodeCustom(const std::vector<uint8_t>& data, bool isGif, DownloadedAvatar& out)
 {
-    if (isGif)
-    {
-        ImGuiGifImage gif;
-        if (!m_ImguiUtils.LoadGifFromMemory(data.data(), (int)data.size(), AVATAR_TARGET_SIZE, gif)
-            || gif.frames.empty()
-            || (int)gif.frames.size() > CUSTOM_AVATAR_MAX_FRAMES)
-            return false;
+    ImGuiGifImage gif;
 
-        out.isAnimated = true;
-        out.gifWidth = gif.width;
-        out.gifHeight = gif.height;
-        out.gifFrames.reserve(gif.frames.size());
-        out.gifDelays.reserve(gif.frames.size());
+    const bool ok = isGif
+        ? m_ImguiUtils.LoadGifFromMemory(data.data(), (int)data.size(), AVATAR_TARGET_SIZE, gif)
+        : m_ImguiUtils.LoadStaticFromMemory(data.data(), (int)data.size(), AVATAR_TARGET_SIZE, gif);
 
-        for (auto& f : gif.frames)
-        {
-            out.gifFrames.push_back(std::move(f.pixels));
-            out.gifDelays.push_back(f.delayMs);
-        }
-    }
-    else
+    if (!ok || gif.frames.empty() || (int)gif.frames.size() > CUSTOM_AVATAR_MAX_FRAMES)
+        return false;
+
+    out.isAnimated = true;
+    out.gifWidth = gif.width;
+    out.gifHeight = gif.height;
+    out.gifFrames.reserve(gif.frames.size());
+    out.gifDelays.reserve(gif.frames.size());
+
+    for (auto& f : gif.frames)
     {
-        out.imageData = data;
+        out.gifFrames.push_back(std::move(f.pixels));
+        out.gifDelays.push_back(f.delayMs);
     }
 
     return true;
@@ -675,27 +721,45 @@ void CAvatarCache::UploadCustomAvatar()
         return;
     }
 
-    const std::vector<uint8_t> data = ReadWholeFile(file);
+    const std::vector<uint8_t> original = ReadWholeFile(file);
 
     bool isGif = false;
-    if (!ValidateCustomImage(data, isGif))
+    if (!ValidateCustomImage(original, isGif))
     {
         g_WebClient.LogErrorOnce(logKey, "[AvatarCache] avatar file is invalid: png/jpg/gif, up to 2 MB, up to 512x512" + std::string(isGif ? ", up to 200 frames" : ""));
         return;
     }
 
+    DownloadedAvatar local;
+
+    if (!DecodeCustom(original, isGif, local))
+    {
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] failed to decode avatar");
+        return;
+    }
+
     char hashBuf[17];
-    snprintf(hashBuf, sizeof(hashBuf), "%016llx", (unsigned long long)Fnv1a64(data));
+    snprintf(hashBuf, sizeof(hashBuf), "%016llx", (unsigned long long)Fnv1a64(original));
     const std::string hash = hashBuf;
+
+    std::ostringstream ss(std::ios::binary);
+    if (!WriteAvcStream(ss, local.isAnimated, hash, local))
+    {
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] failed to build .avc");
+        return;
+    }
+
+    const std::string avc = ss.str();
+    if (avc.size() > CUSTOM_AVC_MAX_BYTES)
+    {
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] avatar is too large after conversion (reduce frame count)");
+        return;
+    }
 
     if (hash != m_localHash)
     {
-        DownloadedAvatar local;
-        if (DecodeCustom(data, isGif, local))
-        {
-            m_localHash = hash;
-            QueueLocal(std::move(local), true);
-        }
+        m_localHash = hash;
+        QueueLocal(std::move(local), true);
     }
 
     std::string recHash, recName;
@@ -712,10 +776,10 @@ void CAvatarCache::UploadCustomAvatar()
 
     const std::string boundary = "----avatar" + hash;
 
-    HttpRequest req = MakeRequest(CUSTOM_AVATAR_UPLOAD_URL, 30, m_uploadWorker.StopFlag());
+    HttpRequest req = MakeRequest(CUSTOM_AVATAR_UPLOAD_URL, 120, m_uploadWorker.StopFlag());
     req.method = "POST";
     req.headers.push_back("Content-Type: multipart/form-data; boundary=" + boundary);
-    req.postBody = BuildMultipart(boundary, "avatar" + file.extension().string(), data);
+    req.postBody = BuildMultipart(boundary, "avatar.avc", avc);
     req.maxBytes = 4096;
     req.followRedirects = false;
 
@@ -1233,34 +1297,31 @@ void CAvatarCache::DownloadCustom(int playerIndex, const std::string& name)
 
     const std::string logKey = "avatar_" + name;
 
-    HttpRequest req = MakeRequest(std::string(CUSTOM_AVATAR_HOST) + name, 10, m_customWorker.StopFlag());
-    req.maxBytes = CUSTOM_AVATAR_MAX_BYTES;
+    HttpRequest req = MakeRequest(std::string(CUSTOM_AVATAR_HOST) + name, 30, m_customWorker.StopFlag());
+    req.maxBytes = CUSTOM_AVC_MAX_BYTES;
     req.followRedirects = false;
 
     HttpResponse resp = g_WebClient.Get(req);
-    if (!resp.ok || resp.body.empty())
+    if (!resp.ok || resp.body.empty() || resp.body.size() > CUSTOM_AVC_MAX_BYTES)
     {
         g_WebClient.LogErrorOnce(logKey, "[AvatarCache] custom avatar " + name + ": download failed: " + resp.error);
         return;
     }
 
-    bool isGif = false;
-    if (!ValidateCustomImage(resp.body, isGif))
+    DownloadedAvatar result;
+    std::string storedHash;
+    bool storedAnimated = false;
+
+    std::istringstream in(std::string(resp.body.begin(), resp.body.end()), std::ios::binary);
+    if (!ReadAvcStream(in, result, storedHash, storedAnimated) || !ValidateCustomAvatar(result))
     {
-        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] custom avatar " + name + ": rejected (invalid format, size or frame count)");
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] custom avatar " + name + ": rejected (invalid .avc)");
         return;
     }
 
-    DownloadedAvatar result;
     result.playerIndex = playerIndex;
     result.custom = true;
     result.customName = name;
-
-    if (!DecodeCustom(resp.body, isGif, result))
-    {
-        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] custom avatar " + name + ": decode failed");
-        return;
-    }
 
     {
         std::lock_guard<std::mutex> lock(m_diskMutex);

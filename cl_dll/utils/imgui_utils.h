@@ -51,6 +51,7 @@ public:
     ImGuiImage LoadImageFromMemory(const unsigned char* buffer, int bufferSize);
     ImGuiImage LoadImageFromRGBA(const unsigned char* rgba, int width, int height);
     bool LoadGifFromMemory(const unsigned char* buffer, int bufferSize, int targetSize, ImGuiGifImage& out, float defaultDelayMs = DEFAULT_GIF_FRAME_DELAY_MS);
+    bool LoadStaticFromMemory(const unsigned char* buffer, int bufferSize, int targetSize, ImGuiGifImage& out);
 
     float DrawImage(const ImGuiImage& image, float x, float y, float rowHeight, float width, float height, int r = 255, int g = 255, int b = 255, int alpha = 255);
     void FreeImage(ImGuiImage& image);
