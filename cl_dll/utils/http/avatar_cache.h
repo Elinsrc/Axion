@@ -23,6 +23,12 @@ static constexpr const char* AVATAR_CACHE_MAGIC = "AVC1";
 static constexpr uint32_t AVATAR_CACHE_VERSION = 1u;
 static constexpr int AVATAR_CACHE_MAX_UNUSED_DAYS = 7;
 
+static constexpr const char* CUSTOM_AVATAR_DIRNAME = "avatar";
+static constexpr const char* CUSTOM_AVATAR_HOST = "https://files.catbox.moe/";
+static constexpr const char* CUSTOM_AVATAR_UPLOAD_URL = "https://catbox.moe/user/api.php";
+static constexpr size_t CUSTOM_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+static constexpr int CUSTOM_AVATAR_MAX_SIZE = 512;
+
 typedef uint64_t SteamID64;
 
 struct AvatarFrame
@@ -42,6 +48,13 @@ struct AvatarEntry
 
     bool diskAttempted = false;
     std::string diskAvatarHash;
+
+    std::string customName;
+    bool customActive = false;
+    bool customRequested = false;
+
+    bool localActive = false;
+    int localVersion = 0;
 
     std::vector<AvatarFrame> frames;
     float totalDurationMs = 0.0f;
@@ -64,6 +77,9 @@ struct DownloadedAvatar
     SteamID64 steam64 = 0;
     bool isAnimated = false;
     bool failed = false;
+
+    bool custom = false;
+    std::string customName;
 
     std::vector<uint8_t> imageData;
 
@@ -100,6 +116,8 @@ public:
     void Update();
     void PrintCacheInfo();
 
+    void SyncCustomAvatar();
+
     ImTextureID GetAvatar(int playerIndex);
     void ClearAvatar(int playerIndex);
     void ClearAll();
@@ -124,19 +142,37 @@ private:
     bool ReadAvcFile(const std::filesystem::path& path, DownloadedAvatar& out, std::string& hashOut, bool& isAnimatedOut);
 
     static void AvatarCacheInfo_f();
+    static void AvatarUpload_f();
 
     void ProcessDownloadedAvatars();
     void ApplyStatic(AvatarEntry& entry, DownloadedAvatar& data);
     void ApplyAnimated(AvatarEntry& entry, DownloadedAvatar& data);
+    void ApplyCustom(AvatarEntry& entry, DownloadedAvatar& data);
     void ProcessPendingTextures();
+    void ResetVisuals(AvatarEntry& entry);
 
     void QueueStatic(const AvatarTask& task);
     void DownloadStatic(const AvatarTask& task);
     void DownloadAnimated(const AvatarTask& task, const std::string& staticHash);
+    void QueueCustom(int playerIndex, const std::string& name);
+    void DownloadCustom(int playerIndex, const std::string& name);
     void PushCompleted(DownloadedAvatar&& data);
 
+    void UpdateCustomState(int playerIndex, AvatarEntry& entry, SteamID64 steam64, bool allowCustom, int localIndex);
+    void UploadCustomAvatar();
+    void QueuePublish(const std::string& name);
+    void ApplyPublish();
+
+    // local avatar (shown immediately from the file on disk)
+    bool DecodeCustom(const std::vector<uint8_t>& data, bool isGif, DownloadedAvatar& out);
+    void QueueLocal(DownloadedAvatar&& data, bool has);
+    void ApplyLocal(AvatarEntry& entry, bool allowCustom);
+
+    static bool IsValidCustomName(const std::string& s);
+    static std::filesystem::path CustomAvatarDir();
     static std::filesystem::path AvatarsCacheDir();
     std::filesystem::path GetAvcPath(SteamID64 steam64) const;
+    std::filesystem::path GetCustomAvcPath(const std::string& name) const;
 
     void InitDiskCache();
     void RunStartupCleanup();
@@ -154,11 +190,26 @@ private:
 
     WebWorker m_staticWorker;
     WebWorker m_animatedWorker;
+    WebWorker m_customWorker;
+    WebWorker m_uploadWorker;
 
     std::vector<DownloadedAvatar> m_completed;
     std::mutex m_completedMutex;
 
     std::mutex m_diskMutex;
+
+    std::mutex m_publishMutex;
+    bool m_publishPending = false;
+    std::string m_publishName;
+
+    std::mutex m_localMutex;
+    DownloadedAvatar m_localData;
+    bool m_hasLocal = false;
+    int m_localVersion = 0;
+    std::string m_localHash;
+
+    std::atomic<bool> m_uploading{false};
+    std::atomic<int> m_uploadSeq{0};
 };
 
 extern CAvatarCache g_AvatarCache;

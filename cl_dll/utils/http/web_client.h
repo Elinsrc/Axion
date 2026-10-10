@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <mutex>
@@ -11,12 +12,17 @@
 struct HttpRequest
 {
     std::string url;
-    long timeoutSec = 10;
+    long timeoutSec = 20;
     long connectTimeoutSec = 0;
     long lowSpeedLimit = 0;
     long lowSpeedTimeSec = 0;
     bool followRedirects = false;
     bool http11 = true;
+
+    std::string method;
+    std::vector<std::string> headers;
+    std::string postBody;
+    size_t maxBytes = 0;
 
     const std::atomic<bool>* cancel = nullptr;
     std::function<void(long long now, long long total)> onProgress;
@@ -46,11 +52,14 @@ public:
 
     HttpResponse Get(const HttpRequest& req) const;
     HttpResponse Get(const std::string& url, long timeoutSec = 10) const;
+    HttpResponse Post(const HttpRequest& req) const;
 
     void LogErrorOnce(const std::string& key, const std::string& msg);
     void FlushLogs();
 
 private:
+    HttpResponse Perform(const HttpRequest& req) const;
+
     void EnsureCaCertificate() const;
     std::string GetCaCertDir() const;
     std::string GetCaCertPath() const;

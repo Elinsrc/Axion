@@ -13,6 +13,8 @@
 extern uint64_t g_PlayerSteamID64[MAX_PLAYERS + 1];
 extern bool g_PlayerIsBot[MAX_PLAYERS + 1];
 
+static constexpr int CUSTOM_AVATAR_MAX_FRAMES = 200;
+
 class CustomUtils
 {
     float m_frameTime;
@@ -38,4 +40,9 @@ public:
 
     static uint64_t ParseToSteam64(const char* sid);
     void UpdatePlayerInfo(int iPlayerIndex);
+
+    static bool PngSize(const uint8_t* d, size_t n, int& w, int& h);
+    static bool JpegSize(const uint8_t* d, size_t n, int& w, int& h);
+    static bool GifSize(const uint8_t* d, size_t n, int& w, int& h);
+    static int CountGifFrames(const uint8_t* d, size_t n);
 };

@@ -324,3 +324,135 @@ void CustomUtils::UpdatePlayerInfo(int iPlayerIndex)
             g_PlayerIsBot[iPlayerIndex] = true;
     }
 }
+
+bool CustomUtils::PngSize(const uint8_t* d, size_t n, int& w, int& h)
+{
+    static const uint8_t sig[8] = { 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
+
+    if (n < 24 || memcmp(d, sig, 8) != 0 || memcmp(d + 12, "IHDR", 4) != 0)
+        return false;
+
+    const uint32_t wu = ((uint32_t)d[16] << 24) | ((uint32_t)d[17] << 16) | ((uint32_t)d[18] << 8) | (uint32_t)d[19];
+    const uint32_t hu = ((uint32_t)d[20] << 24) | ((uint32_t)d[21] << 16) | ((uint32_t)d[22] << 8) | (uint32_t)d[23];
+
+    if (wu == 0 || hu == 0 || wu > 65535 || hu > 65535)
+        return false;
+
+    w = (int)wu;
+    h = (int)hu;
+    return true;
+}
+
+bool CustomUtils::JpegSize(const uint8_t* d, size_t n, int& w, int& h)
+{
+    if (n < 4 || d[0] != 0xFF || d[1] != 0xD8)
+        return false;
+
+    size_t i = 2;
+    while (i + 9 < n)
+    {
+        if (d[i] != 0xFF)
+        {
+            i++;
+            continue;
+        }
+
+        const uint8_t m = d[i + 1];
+
+        if (m == 0xFF)
+        {
+            i++;
+            continue;
+        }
+
+        if (m == 0x00 || m == 0x01 || (m >= 0xD0 && m <= 0xD8))
+        {
+            i += 2;
+            continue;
+        }
+
+        if (m == 0xD9)
+            return false;
+
+        if (m >= 0xC0 && m <= 0xCF && m != 0xC4 && m != 0xC8 && m != 0xCC)
+        {
+            h = (d[i + 5] << 8) | d[i + 6];
+            w = (d[i + 7] << 8) | d[i + 8];
+            return true;
+        }
+
+        const size_t len = ((size_t)d[i + 2] << 8) | d[i + 3];
+        if (len < 2)
+            return false;
+
+        i += 2 + len;
+    }
+
+    return false;
+}
+
+bool CustomUtils::GifSize(const uint8_t* d, size_t n, int& w, int& h)
+{
+    if (n < 13)
+        return false;
+
+    w = d[6] | (d[7] << 8);
+    h = d[8] | (d[9] << 8);
+    return true;
+}
+
+int CustomUtils::CountGifFrames(const uint8_t* d, size_t n)
+{
+    if (n < 13)
+        return 0;
+
+    size_t i = 13;
+    if (d[10] & 0x80)
+        i += 3u * (1u << ((d[10] & 7) + 1));
+
+    int frames = 0;
+
+    while (i < n)
+    {
+        const uint8_t b = d[i++];
+
+        if (b == 0x3B)
+            break;
+
+        if (b == 0x21)
+        {
+            if (i >= n)
+                return 0;
+
+            i++;
+            while (i < n && d[i])
+                i += (size_t)d[i] + 1;
+            i++;
+        }
+        else if (b == 0x2C)
+        {
+            if (i + 9 > n)
+                return 0;
+
+            const uint8_t packed = d[i + 8];
+            i += 9;
+
+            if (packed & 0x80)
+                i += 3u * (1u << ((packed & 7) + 1));
+
+            i++;
+            while (i < n && d[i])
+                i += (size_t)d[i] + 1;
+            i++;
+
+            if (++frames > CUSTOM_AVATAR_MAX_FRAMES)
+                return frames;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    return frames;
+}

@@ -35,8 +35,11 @@ struct TransferCtx
     long long bytes = 0;
     long long windowBytes = 0;
 
+    size_t maxBytes = 0;
+
     bool timedOut = false;
     bool tooSlow = false;
+    bool tooBig = false;
 };
 
 static std::string FormatMhttpError(mhttp_error code, const char* msg)
@@ -59,6 +62,18 @@ static int SecToMs(long sec)
 static size_t WriteBodyCallback(const void* data, size_t len, void* user)
 {
     auto* ctx = static_cast<TransferCtx*>(user);
+
+    if (ctx->tooBig)
+        return len;
+
+    if (ctx->maxBytes && ctx->body->size() + len > ctx->maxBytes)
+    {
+        ctx->tooBig = true;
+        ctx->body->clear();
+        ctx->body->shrink_to_fit();
+        return len;
+    }
+
     const uint8_t* bytes = static_cast<const uint8_t*>(data);
     ctx->body->insert(ctx->body->end(), bytes, bytes + len);
     return len;
@@ -87,6 +102,9 @@ static int IsCancelledCallback(void* user)
 {
     auto* ctx = static_cast<TransferCtx*>(user);
     const HttpRequest* req = ctx->req;
+
+    if (ctx->tooBig)
+        return 1;
 
     if (req->cancel && req->cancel->load())
         return 1;
@@ -300,6 +318,16 @@ HttpResponse WebClient::Get(const std::string& url, long timeoutSec) const
 
 HttpResponse WebClient::Get(const HttpRequest& req) const
 {
+    return Perform(req);
+}
+
+HttpResponse WebClient::Post(const HttpRequest& req) const
+{
+    return Perform(req);
+}
+
+HttpResponse WebClient::Perform(const HttpRequest& req) const
+{
     HttpResponse res;
 
     EnsureCaCertificate();
@@ -307,6 +335,7 @@ HttpResponse WebClient::Get(const HttpRequest& req) const
     TransferCtx ctx;
     ctx.req = &req;
     ctx.body = &res.body;
+    ctx.maxBytes = req.maxBytes;
     ctx.start = Clock::now();
     ctx.windowStart = ctx.start;
 
@@ -316,7 +345,7 @@ HttpResponse WebClient::Get(const HttpRequest& req) const
     mreq.user_agent = USER_AGENT;
     mreq.follow_redirects = req.followRedirects ? 1 : 0;
     mreq.insecure = m_caCertReady.load(std::memory_order_relaxed) ? 0 : 1;
-    mreq.max_body_size = 0;
+    mreq.max_body_size = req.maxBytes;
 
     if (req.lowSpeedLimit > 0 && req.lowSpeedTimeSec > 0)
         mreq.timeout_ms = SecToMs(req.lowSpeedTimeSec);
@@ -327,6 +356,24 @@ HttpResponse WebClient::Get(const HttpRequest& req) const
 
     if (req.connectTimeoutSec > 0)
         mreq.connect_timeout_ms = SecToMs(req.connectTimeoutSec);
+
+    std::vector<const char*> headerPtrs;
+
+    if (!req.method.empty() || !req.postBody.empty())
+    {
+        mreq.method = req.method.empty() ? "POST" : req.method.c_str();
+        mreq.body = req.postBody.data();
+        mreq.body_len = req.postBody.size();
+    }
+
+    if (!req.headers.empty())
+    {
+        for (const auto& h : req.headers)
+            headerPtrs.push_back(h.c_str());
+
+        headerPtrs.push_back(nullptr);
+        mreq.headers = headerPtrs.data();
+    }
 
     mreq.on_data = WriteBodyCallback;
     mreq.on_data_user = &ctx;
@@ -341,6 +388,13 @@ HttpResponse WebClient::Get(const HttpRequest& req) const
     res.status = mres.status;
     const std::string mhttpError = mres.error;
     mhttp_response_free(&mres);
+
+    if (ctx.tooBig || err == MHTTP_ERR_TOO_BIG)
+    {
+        res.error = "response larger than " + std::to_string(req.maxBytes) + " bytes";
+        res.body.clear();
+        return res;
+    }
 
     if (err == MHTTP_ERR_HTTP)
     {

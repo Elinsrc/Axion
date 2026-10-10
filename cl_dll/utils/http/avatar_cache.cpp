@@ -10,17 +10,97 @@
 #include <winsani_out.h>
 #endif
 
+#include <cctype>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <ctime>
 #include <chrono>
+#include <initializer_list>
 
 #include "noavatar.h"
+
+#include "custom_utils.h"
 
 namespace fs = std::filesystem;
 
 ImGuiImage m_pNoAvatar;
 CAvatarCache g_AvatarCache;
+
+namespace
+{
+    uint64_t Fnv1a64(const std::vector<uint8_t>& d)
+    {
+        uint64_t h = 0xcbf29ce484222325ull;
+        for (uint8_t b : d)
+        {
+            h ^= b;
+            h *= 1099511628211ull;
+        }
+        return h;
+    }
+
+    std::vector<uint8_t> ReadWholeFile(const fs::path& p)
+    {
+        std::ifstream f(p, std::ios::binary | std::ios::ate);
+        if (!f)
+            return {};
+
+        const std::streamsize n = f.tellg();
+        if (n <= 0 || (size_t)n > CUSTOM_AVATAR_MAX_BYTES)
+            return {};
+
+        std::vector<uint8_t> buf((size_t)n);
+        f.seekg(0);
+        f.read(reinterpret_cast<char*>(buf.data()), n);
+
+        if (!f)
+            return {};
+
+        return buf;
+    }
+
+    std::string BuildMultipart(const std::string& boundary, const std::string& filename, const std::vector<uint8_t>& data)
+    {
+        std::string body;
+        body.reserve(data.size() + 512);
+
+        body += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"reqtype\"\r\n\r\nfileupload\r\n";
+        body += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"fileToUpload\"; filename=\"" + filename + "\"\r\nContent-Type: application/octet-stream\r\n\r\n";
+        body.append(reinterpret_cast<const char*>(data.data()), data.size());
+        body += "\r\n--" + boundary + "--\r\n";
+
+        return body;
+    }
+
+    bool ValidateCustomImage(const std::vector<uint8_t>& d, bool& isGif)
+    {
+        isGif = false;
+
+        if (d.size() < 16 || d.size() > CUSTOM_AVATAR_MAX_BYTES)
+            return false;
+
+        int w = 0, h = 0;
+
+        if (memcmp(d.data(), "GIF8", 4) == 0)
+        {
+            isGif = true;
+
+            if (!CustomUtils::GifSize(d.data(), d.size(), w, h))
+                return false;
+
+            const int frames = CustomUtils::CountGifFrames(d.data(), d.size());
+            if (frames < 1 || frames > CUSTOM_AVATAR_MAX_FRAMES)
+                return false;
+        }
+        else if (!CustomUtils::PngSize(d.data(), d.size(), w, h) && !CustomUtils::JpegSize(d.data(), d.size(), w, h))
+        {
+            return false;
+        }
+
+        return w > 0 && h > 0 && w <= CUSTOM_AVATAR_MAX_SIZE && h <= CUSTOM_AVATAR_MAX_SIZE;
+    }
+}
 
 std::string CAvatarCache::ProfileUrl(SteamID64 id)
 {
@@ -250,6 +330,11 @@ void CAvatarCache::AvatarCacheInfo_f()
     g_AvatarCache.PrintCacheInfo();
 }
 
+void CAvatarCache::AvatarUpload_f()
+{
+    g_AvatarCache.SyncCustomAvatar();
+}
+
 void CAvatarCache::Initialize()
 {
     for (int i = 0; i < MAX_AVATAR_PLAYERS; i++)
@@ -257,12 +342,20 @@ void CAvatarCache::Initialize()
 
     InitDiskCache();
 
+    CVAR_CREATE("avatar_key", "", FCVAR_USERINFO);
+    CVAR_CREATE("cl_custom_avatars", "1", FCVAR_ARCHIVE);
+
     m_staticWorker.Start();
     m_animatedWorker.Start();
+    m_customWorker.Start();
+    m_uploadWorker.Start();
 
     m_staticWorker.Post([this]() { RunStartupCleanup(); });
 
     gEngfuncs.pfnAddCommand("avatarcache_info", AvatarCacheInfo_f);
+    gEngfuncs.pfnAddCommand("avatar_upload", AvatarUpload_f);
+
+    SyncCustomAvatar();
 }
 
 void CAvatarCache::VidInitialize()
@@ -275,6 +368,8 @@ void CAvatarCache::Shutdown()
 {
     m_staticWorker.Stop();
     m_animatedWorker.Stop();
+    m_customWorker.Stop();
+    m_uploadWorker.Stop();
 
     ClearAll();
     m_ImguiUtils.FreeImage(m_pNoAvatar);
@@ -285,9 +380,36 @@ fs::path CAvatarCache::AvatarsCacheDir()
     return fs::path(gEngfuncs.pfnGetGameDirectory()) / AVATAR_CACHE_DIRNAME;
 }
 
+fs::path CAvatarCache::CustomAvatarDir()
+{
+    return fs::path(gEngfuncs.pfnGetGameDirectory()) / CUSTOM_AVATAR_DIRNAME;
+}
+
 fs::path CAvatarCache::GetAvcPath(SteamID64 steam64) const
 {
     return AvatarsCacheDir() / (std::to_string(steam64) + ".avc");
+}
+
+fs::path CAvatarCache::GetCustomAvcPath(const std::string& name) const
+{
+    return AvatarsCacheDir() / (name + ".avc");
+}
+
+bool CAvatarCache::IsValidCustomName(const std::string& s)
+{
+    const size_t dot = s.find('.');
+    if (dot == std::string::npos || dot < 4 || dot > 12)
+        return false;
+
+    for (size_t i = 0; i < dot; i++)
+    {
+        const char c = s[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')))
+            return false;
+    }
+
+    const std::string ext = s.substr(dot + 1);
+    return ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "gif";
 }
 
 void CAvatarCache::InitDiskCache()
@@ -359,7 +481,7 @@ bool CAvatarCache::TryLoadFromDisk(int playerIndex, SteamID64 steam64)
     }
 
     AvatarEntry& entry = m_avatars[playerIndex];
-    if (entry.steamId != steam64)
+    if (entry.steamId != steam64 || entry.customActive)
         return false;
 
     data.playerIndex = playerIndex;
@@ -384,12 +506,289 @@ void CAvatarCache::TouchAvcFile(SteamID64 steam64)
     fs::last_write_time(GetAvcPath(steam64), fs::file_time_type::clock::now(), ec);
 }
 
+void CAvatarCache::SyncCustomAvatar()
+{
+    if (m_uploading.exchange(true))
+        return;
+
+    m_uploadWorker.Post([this]()
+    {
+        ++m_uploadSeq;
+        UploadCustomAvatar();
+        m_uploading = false;
+    });
+}
+
+void CAvatarCache::QueuePublish(const std::string& name)
+{
+    std::lock_guard<std::mutex> lock(m_publishMutex);
+    m_publishName = name;
+    m_publishPending = true;
+}
+
+void CAvatarCache::ApplyPublish()
+{
+    std::string name;
+
+    {
+        std::lock_guard<std::mutex> lock(m_publishMutex);
+        if (!m_publishPending)
+            return;
+
+        name = std::move(m_publishName);
+        m_publishPending = false;
+    }
+
+    gEngfuncs.PlayerInfo_SetValueForKey("avatar_key", name.c_str());
+}
+
+bool CAvatarCache::DecodeCustom(const std::vector<uint8_t>& data, bool isGif, DownloadedAvatar& out)
+{
+    if (isGif)
+    {
+        ImGuiGifImage gif;
+        if (!m_ImguiUtils.LoadGifFromMemory(data.data(), (int)data.size(), AVATAR_TARGET_SIZE, gif)
+            || gif.frames.empty()
+            || (int)gif.frames.size() > CUSTOM_AVATAR_MAX_FRAMES)
+            return false;
+
+        out.isAnimated = true;
+        out.gifWidth = gif.width;
+        out.gifHeight = gif.height;
+        out.gifFrames.reserve(gif.frames.size());
+        out.gifDelays.reserve(gif.frames.size());
+
+        for (auto& f : gif.frames)
+        {
+            out.gifFrames.push_back(std::move(f.pixels));
+            out.gifDelays.push_back(f.delayMs);
+        }
+    }
+    else
+    {
+        out.imageData = data;
+    }
+
+    return true;
+}
+
+void CAvatarCache::QueueLocal(DownloadedAvatar&& data, bool has)
+{
+    std::lock_guard<std::mutex> lock(m_localMutex);
+    m_localData = std::move(data);
+    m_hasLocal = has;
+    ++m_localVersion;
+}
+
+void CAvatarCache::ApplyLocal(AvatarEntry& entry, bool allowCustom)
+{
+    if (!allowCustom)
+    {
+        if (entry.localActive)
+        {
+            ResetVisuals(entry);
+            entry.localActive = false;
+            entry.customActive = false;
+            entry.localVersion = 0;
+
+            entry.diskAttempted = false;
+            entry.requested = false;
+        }
+        return;
+    }
+
+    DownloadedAvatar data;
+    bool has = false;
+
+    {
+        std::lock_guard<std::mutex> lock(m_localMutex);
+
+        if (entry.localVersion == m_localVersion)
+            return;
+
+        entry.localVersion = m_localVersion;
+        has = m_hasLocal;
+
+        if (has)
+            data = m_localData;
+    }
+
+    ResetVisuals(entry);
+
+    entry.localActive = false;
+    entry.customActive = false;
+    entry.customName.clear();
+    entry.customRequested = false;
+
+    entry.diskAttempted = false;
+    entry.requested = false;
+
+    if (!has)
+        return;
+
+    entry.customActive = true;
+
+    if (data.isAnimated)
+        ApplyAnimated(entry, data);
+    else
+        ApplyStatic(entry, data);
+
+    if (!entry.loaded && !entry.isPending)
+    {
+        entry.customActive = false;
+        return;
+    }
+
+    entry.localActive = true;
+}
+
+void CAvatarCache::UploadCustomAvatar()
+{
+    const std::string logKey = "avatar_up_" + std::to_string(m_uploadSeq.load());
+
+    const fs::path dir = CustomAvatarDir();
+    const fs::path recPath = dir / ".uploaded";
+
+    std::error_code ec;
+    fs::create_directories(dir, ec);
+
+    fs::path file;
+    for (const char* n : { "avatar.gif", "avatar.png", "avatar.jpg", "avatar.jpeg" })
+    {
+        if (fs::is_regular_file(dir / n, ec))
+        {
+            file = dir / n;
+            break;
+        }
+    }
+
+    if (file.empty())
+    {
+        m_localHash.clear();
+        QueueLocal(DownloadedAvatar{}, false);
+
+        if (fs::exists(recPath, ec))
+        {
+            fs::remove(recPath, ec);
+            QueuePublish("");
+        }
+        return;
+    }
+
+    const std::vector<uint8_t> data = ReadWholeFile(file);
+
+    bool isGif = false;
+    if (!ValidateCustomImage(data, isGif))
+    {
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] avatar file is invalid: png/jpg/gif, up to 2 MB, up to 512x512" + std::string(isGif ? ", up to 200 frames" : ""));
+        return;
+    }
+
+    char hashBuf[17];
+    snprintf(hashBuf, sizeof(hashBuf), "%016llx", (unsigned long long)Fnv1a64(data));
+    const std::string hash = hashBuf;
+
+    if (hash != m_localHash)
+    {
+        DownloadedAvatar local;
+        if (DecodeCustom(data, isGif, local))
+        {
+            m_localHash = hash;
+            QueueLocal(std::move(local), true);
+        }
+    }
+
+    std::string recHash, recName;
+    {
+        std::ifstream r(recPath);
+        r >> recHash >> recName;
+    }
+
+    if (recHash == hash && IsValidCustomName(recName))
+    {
+        QueuePublish(recName);
+        return;
+    }
+
+    const std::string boundary = "----avatar" + hash;
+
+    HttpRequest req = MakeRequest(CUSTOM_AVATAR_UPLOAD_URL, 30, m_uploadWorker.StopFlag());
+    req.method = "POST";
+    req.headers.push_back("Content-Type: multipart/form-data; boundary=" + boundary);
+    req.postBody = BuildMultipart(boundary, "avatar" + file.extension().string(), data);
+    req.maxBytes = 4096;
+    req.followRedirects = false;
+
+    HttpResponse resp = g_WebClient.Post(req);
+
+    std::string url = resp.Text();
+    while (!url.empty() && isspace((unsigned char)url.back()))
+        url.pop_back();
+
+    if (!resp.ok || url.rfind(CUSTOM_AVATAR_HOST, 0) != 0)
+    {
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] avatar upload failed: " + (resp.ok ? url : resp.error));
+        return;
+    }
+
+    const std::string name = url.substr(strlen(CUSTOM_AVATAR_HOST));
+    if (!IsValidCustomName(name))
+    {
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] avatar upload returned unexpected name: " + name);
+        return;
+    }
+
+    {
+        std::ofstream w(recPath, std::ios::trunc);
+        w << hash << ' ' << name;
+    }
+
+    g_WebClient.LogErrorOnce(logKey, "[AvatarCache] avatar uploaded (public link): " + url);
+    QueuePublish(name);
+}
+
+void CAvatarCache::UpdateCustomState(int playerIndex, AvatarEntry& entry, SteamID64 steam64, bool allowCustom, int localIndex)
+{
+    if (playerIndex == localIndex && entry.localActive)
+        return;
+
+    const char* raw = (playerIndex == localIndex) ? gEngfuncs.pfnGetCvarString("avatar_key") : gEngfuncs.PlayerInfo_ValueForKey(playerIndex, "avatar_key");
+
+    std::string want;
+    if (allowCustom && raw && IsValidCustomName(raw))
+        want = raw;
+
+    if (want != entry.customName)
+    {
+        if (entry.customActive)
+            ResetVisuals(entry);
+
+        entry.customName = want;
+        entry.customActive = false;
+        entry.customRequested = false;
+    }
+
+    const bool steamUnavailable = steam64 == 0 || entry.failed;
+
+    if (!entry.customName.empty() && !entry.customRequested && steamUnavailable)
+    {
+        entry.customRequested = true;
+        QueueCustom(playerIndex, entry.customName);
+    }
+}
+
 void CAvatarCache::Update()
 {
     g_WebClient.FlushLogs();
 
+    ApplyPublish();
     ProcessDownloadedAvatars();
     ProcessPendingTextures();
+
+    const bool allowCustom = gEngfuncs.pfnGetCvarFloat("cl_custom_avatars") != 0.0f;
+
+    cl_entity_t* local = gEngfuncs.GetLocalPlayer();
+    const int localIndex = local ? local->index : 0;
 
     for (int i = 1; i <= gEngfuncs.GetMaxClients(); i++)
     {
@@ -399,9 +798,6 @@ void CAvatarCache::Update()
             continue;
 
         const SteamID64 steam64 = g_PlayerSteamID64[i];
-        if (steam64 == 0)
-            continue;
-
         AvatarEntry& entry = m_avatars[i];
 
         if (entry.steamId != steam64)
@@ -409,6 +805,17 @@ void CAvatarCache::Update()
             ClearAvatar(i);
             entry.steamId = steam64;
         }
+
+        if (i == localIndex)
+            ApplyLocal(entry, allowCustom);
+
+        UpdateCustomState(i, entry, steam64, allowCustom, localIndex);
+
+        if (steam64 == 0)
+            continue;
+
+        if (entry.localActive)
+            continue;
 
         if (!entry.diskAttempted)
         {
@@ -428,13 +835,17 @@ void CAvatarCache::PrintCacheInfo()
 {
     int staticCount = 0, animatedCount = 0, pendingCount = 0;
     int loadingCount = 0, failedCount = 0, totalFrames = 0;
+    int customCount = 0;
     size_t totalMem = 0;
 
     for (int i = 1; i < MAX_AVATAR_PLAYERS; i++)
     {
         const AvatarEntry& entry = m_avatars[i];
-        if (entry.steamId == 0)
+        if (entry.steamId == 0 && entry.customName.empty() && !entry.localActive)
             continue;
+
+        if (entry.customActive)
+            customCount++;
 
         if (entry.isPending)
         {
@@ -455,7 +866,7 @@ void CAvatarCache::PrintCacheInfo()
         {
             failedCount++;
         }
-        else if (entry.requested)
+        else if (entry.requested || entry.customRequested)
         {
             loadingCount++;
         }
@@ -482,6 +893,7 @@ void CAvatarCache::PrintCacheInfo()
     gEngfuncs.Con_Printf("AvatarCache:\n");
     gEngfuncs.Con_Printf("  Players with static avatar: %d\n", staticCount);
     gEngfuncs.Con_Printf("  Players with animated avatar: %d\n", animatedCount);
+    gEngfuncs.Con_Printf("  Players with custom avatar: %d\n", customCount);
     gEngfuncs.Con_Printf("  Total animation frames in memory: %d\n", totalFrames);
     gEngfuncs.Con_Printf("  Avatars waiting for download: %d\n", loadingCount);
     gEngfuncs.Con_Printf("  Avatars uploading to GPU: %d\n", pendingCount);
@@ -511,6 +923,30 @@ void CAvatarCache::ClearAvatar(int playerIndex)
     entry = AvatarEntry{};
 }
 
+void CAvatarCache::ResetVisuals(AvatarEntry& entry)
+{
+    m_ImguiUtils.FreeTexture(entry.texture);
+    entry.texture = 0;
+
+    for (auto& f : entry.frames)
+        m_ImguiUtils.FreeTexture(f.texture);
+    entry.frames.clear();
+
+    entry.pendingFrameData.clear();
+    entry.pendingDelays.clear();
+    entry.pendingFrameCount = 0;
+    entry.pendingFrameIndex = 0;
+    entry.pendingWidth = 0;
+    entry.pendingHeight = 0;
+
+    entry.isPending = false;
+    entry.isAnimated = false;
+    entry.loaded = false;
+    entry.totalDurationMs = 0.0f;
+    entry.animFrame = 0;
+    entry.animAccumMs = 0.0f;
+}
+
 void CAvatarCache::ProcessDownloadedAvatars()
 {
     std::vector<DownloadedAvatar> done;
@@ -525,7 +961,20 @@ void CAvatarCache::ProcessDownloadedAvatars()
             continue;
 
         AvatarEntry& entry = m_avatars[data.playerIndex];
-        if (entry.steamId != data.steam64)
+
+        if (data.custom)
+        {
+            if (entry.customName != data.customName)
+                continue;
+
+            if (entry.steamId != 0 && !entry.failed)
+                continue;
+
+            ApplyCustom(entry, data);
+            continue;
+        }
+
+        if (entry.steamId != data.steam64 || entry.customActive)
             continue;
 
         if (data.failed)
@@ -574,6 +1023,20 @@ void CAvatarCache::ApplyAnimated(AvatarEntry& entry, DownloadedAvatar& data)
     entry.isPending = true;
 }
 
+void CAvatarCache::ApplyCustom(AvatarEntry& entry, DownloadedAvatar& data)
+{
+    ResetVisuals(entry);
+    entry.customActive = true;
+
+    if (data.isAnimated)
+        ApplyAnimated(entry, data);
+    else
+        ApplyStatic(entry, data);
+
+    if (!entry.loaded && !entry.isPending)
+        entry.customActive = false;
+}
+
 void CAvatarCache::ProcessPendingTextures()
 {
     for (int i = 0; i < MAX_AVATAR_PLAYERS; i++)
@@ -618,6 +1081,17 @@ void CAvatarCache::ProcessPendingTextures()
                 entry.animAccumMs = 0.0f;
                 entry.animLastTime = m_CustomUtils.GetCurrentSysTime();
             }
+            else if (entry.customActive && entry.frames.size() == 1)
+            {
+                entry.texture = entry.frames[0].texture;
+                entry.frames.clear();
+                entry.loaded = true;
+            }
+            else if (entry.customActive)
+            {
+                entry.customActive = false;
+                entry.localActive = false;
+            }
         }
 
         break;
@@ -627,6 +1101,11 @@ void CAvatarCache::ProcessPendingTextures()
 void CAvatarCache::QueueStatic(const AvatarTask& task)
 {
     m_staticWorker.Post([this, task]() { DownloadStatic(task); });
+}
+
+void CAvatarCache::QueueCustom(int playerIndex, const std::string& name)
+{
+    m_customWorker.Post([this, playerIndex, name]() { DownloadCustom(playerIndex, name); });
 }
 
 void CAvatarCache::DownloadStatic(const AvatarTask& task)
@@ -709,6 +1188,83 @@ void CAvatarCache::DownloadAnimated(const AvatarTask& task, const std::string& s
     {
         std::lock_guard<std::mutex> lock(m_diskMutex);
         WriteAvcFile(GetAvcPath(task.steam64), true, staticHash, result);
+    }
+
+    PushCompleted(std::move(result));
+}
+
+void CAvatarCache::DownloadCustom(int playerIndex, const std::string& name)
+{
+    const fs::path avc = GetCustomAvcPath(name);
+
+    DownloadedAvatar cached;
+    bool hit = false;
+
+    {
+        std::lock_guard<std::mutex> lock(m_diskMutex);
+
+        std::error_code ec;
+        if (fs::exists(avc, ec))
+        {
+            std::string storedName;
+            bool storedAnimated = false;
+
+            if (ReadAvcFile(avc, cached, storedName, storedAnimated))
+            {
+                hit = true;
+                fs::last_write_time(avc, fs::file_time_type::clock::now(), ec);
+            }
+            else
+            {
+                cached = DownloadedAvatar{};
+                fs::remove(avc, ec);
+            }
+        }
+    }
+
+    if (hit)
+    {
+        cached.playerIndex = playerIndex;
+        cached.custom = true;
+        cached.customName = name;
+        PushCompleted(std::move(cached));
+        return;
+    }
+
+    const std::string logKey = "avatar_" + name;
+
+    HttpRequest req = MakeRequest(std::string(CUSTOM_AVATAR_HOST) + name, 10, m_customWorker.StopFlag());
+    req.maxBytes = CUSTOM_AVATAR_MAX_BYTES;
+    req.followRedirects = false;
+
+    HttpResponse resp = g_WebClient.Get(req);
+    if (!resp.ok || resp.body.empty())
+    {
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] custom avatar " + name + ": download failed: " + resp.error);
+        return;
+    }
+
+    bool isGif = false;
+    if (!ValidateCustomImage(resp.body, isGif))
+    {
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] custom avatar " + name + ": rejected (invalid format, size or frame count)");
+        return;
+    }
+
+    DownloadedAvatar result;
+    result.playerIndex = playerIndex;
+    result.custom = true;
+    result.customName = name;
+
+    if (!DecodeCustom(resp.body, isGif, result))
+    {
+        g_WebClient.LogErrorOnce(logKey, "[AvatarCache] custom avatar " + name + ": decode failed");
+        return;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(m_diskMutex);
+        WriteAvcFile(avc, result.isAnimated, name, result);
     }
 
     PushCompleted(std::move(result));
