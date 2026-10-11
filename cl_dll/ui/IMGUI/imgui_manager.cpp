@@ -148,7 +148,6 @@ void CImGuiManager::LoadFonts()
     m_pDefaultFont = loadBase(16.0f);
     g_FontsManager.MergeInto(16.0f, BASE_FONT);
     io.FontDefault = m_pDefaultFont;
-    m_pHudFont = loadBase(26.0f);
 }
 
 void CImGuiManager::ApplyStyles()

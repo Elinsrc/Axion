@@ -212,9 +212,6 @@ int CVoiceStatus::VidInit()
 #if USE_IMGUI
 void CVoiceStatus::ImGui_DrawVoiceHUD()
 {
-    ImFont* hudFont = g_ImGuiManager.GetHudFont();
-    ImGui::PushFont(hudFont);
-
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
 
     float textHeight = ImGui::GetTextLineHeight();
@@ -308,8 +305,6 @@ void CVoiceStatus::ImGui_DrawVoiceHUD()
         SPR_Set(m_VoiceHeadModel, r, g, b);
         SPR_DrawAdditive(0, xpos, ypos, NULL);
     }
-
-     ImGui::PopFont();
 }
 #else
 int CVoiceStatus::Draw( float time )

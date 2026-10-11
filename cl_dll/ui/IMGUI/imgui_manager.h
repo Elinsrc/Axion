@@ -39,7 +39,6 @@ public:
 #endif
 
     ImFont* GetDefaultFont() const { return m_pDefaultFont; }
-    ImFont* GetHudFont() const { return m_pHudFont; }
 
 private:
     struct MouseButtonsState
@@ -72,7 +71,6 @@ private:
     CImGuiDebug g_ImGuiDebug;
 
     ImFont* m_pDefaultFont = nullptr;
-    ImFont* m_pHudFont     = nullptr;
 
     Scheme::SchemeCursor m_CurrentCursor = Scheme::scu_last;
 };

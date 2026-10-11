@@ -127,9 +127,6 @@ int CHudDeathNotice::VidInit( void )
 
 void CHudDeathNotice::ImGui_DeathNotice()
 {
-	ImFont* hudFont = g_ImGuiManager.GetHudFont();
-	ImGui::PushFont(hudFont);
-
 	ImDrawList* dl = ImGui::GetBackgroundDrawList();
 
 	for (int i = 0; i < MAX_DEATHNOTICES; ++i)
@@ -252,8 +249,6 @@ void CHudDeathNotice::ImGui_DeathNotice()
 			m_ImguiUtils.DrawTextWithColorCodesAt(ImVec2(x, y), rgDeathNoticeList[i].szVictim, baseColor, alphaUIF);
 		}
 	}
-
-	ImGui::PopFont();
 }
 #endif
 

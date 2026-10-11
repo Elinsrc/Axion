@@ -85,8 +85,6 @@ void CImGuiSpectatorPanel::DrawPlayerCard()
     if (!isfinite(ui_scale) || ui_scale < 1.5f)
         gEngfuncs.Cvar_SetValue("ui_imgui_scale", 1.5f);
 
-    ImGui::PushFont(g_ImGuiManager.GetHudFont());
-
     ImDrawList* drawList = ImGui::GetBackgroundDrawList();
     float lineHeight = ImGui::GetTextLineHeight();
     const float padding = 8.0f * ui_scale;
@@ -179,6 +177,4 @@ void CImGuiSpectatorPanel::DrawPlayerCard()
             1.0f * ui_scale
         );
     }
-
-    ImGui::PopFont();
 }
