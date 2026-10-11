@@ -501,8 +501,8 @@ void CImGuiCommands::DrawTabHUD()
 
     ImGui::Spacing();
 
-    DrawSliderFloatWithReset("HUD Scale", "hud_new_scale", 0.5f, 3.0f, 1.4f, "Adjusts overall scale of new ImGui HUD elements", "%.2f");
-    DrawSliderFloatWithReset("UI Scale Factor", "ui_imgui_scale", 0.5f, 3.0f, 1.0f, "UI scaling factor for ImGui elements", "%.2f");
+    DrawSliderFloatWithReset("HUD Scale", "hud_new_scale", 1.4f, 3.0f, 1.4f, "Adjusts overall scale of new ImGui HUD elements", "%.2f");
+    DrawSliderFloatWithReset("UI Scale Factor", "ui_imgui_scale", 1.5f, 3.0f, 1.5f, "UI scaling factor for ImGui elements", "%.2f");
 
     ImGui::Spacing();
     ImGui::TextDisabled("SPEED & STRAFE");

@@ -82,8 +82,8 @@ void CImGuiSpectatorPanel::Draw()
 void CImGuiSpectatorPanel::DrawPlayerCard()
 {
     float ui_scale = CVAR_GET_FLOAT("ui_imgui_scale");
-    if (!isfinite(ui_scale) || ui_scale < 1.0f)
-        gEngfuncs.Cvar_SetValue("ui_imgui_scale", 1.0f);
+    if (!isfinite(ui_scale) || ui_scale < 1.5f)
+        gEngfuncs.Cvar_SetValue("ui_imgui_scale", 1.5f);
 
     ImGui::PushFont(g_ImGuiManager.GetHudFont());
 

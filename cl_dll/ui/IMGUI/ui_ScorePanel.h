@@ -39,6 +39,11 @@ public:
     void RebuildTeams();
     void DeathMsg( int killer, int victim );
 
+    void UpdateMobileButtons(bool show);
+    void SelectPlayerStep(int dir);
+    void ToggleMuteSelected();
+    void OnMuteButton();
+
     int m_iRows;
     int m_iNumTeams;
 
@@ -51,6 +56,10 @@ public:
     int m_fLastKillTime;
 
 private:
+    void LayoutMobileButtons(float sbX, float sbY, float sbW, float sbH, float scrW, float scrH, float uiScale);
+    bool m_bBtnLayoutValid = false;
+    float m_fBtnX = 0.f, m_fBtnY = 0.f, m_fBtnSize = 0.f;
+
     typedef struct
     {
         HLSPRITE spr;
@@ -62,7 +71,9 @@ private:
     bool m_bMouseMode;
 
     int m_iSelectedPlayer = 0;
-    bool m_bShowPlayerMenu = false; 
+    bool m_bShowPlayerMenu = false;
+    bool m_bScrollToSelected = false;
+    bool m_bButtonsShown = false;
 };
 
 extern CImGuiScoreboard g_iScoreboard;

@@ -38,7 +38,10 @@ void CImGuiViewport::Initialize()
 void CImGuiViewport::ShowScoreBoard()
 {
     if( gEngfuncs.GetMaxClients() > 1 )
+    {
         g_iScoreboard.m_ShowScore = true;
+        g_iScoreboard.UpdateMobileButtons(true);
+    }
 }
 
 bool CImGuiViewport::IsScoreBoardVisible()
@@ -52,6 +55,7 @@ void CImGuiViewport::HideScoreBoard()
         return;
 
     g_iScoreboard.m_ShowScore = false;
+    g_iScoreboard.UpdateMobileButtons(false);
 }
 
 void CImGuiViewport::CreateTextWindow( int iTextToShow )
