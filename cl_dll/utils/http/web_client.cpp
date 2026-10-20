@@ -210,8 +210,8 @@ void WebClient::PrintInfo() const
     const bool usingSystemCa = !systemSource.empty();
 
     gEngfuncs.Con_Printf("WebClient:\n");
-    gEngfuncs.Con_Printf("  mHTTP version: %s\n", MHTTP_VERSION);
-    gEngfuncs.Con_Printf("  tls version: %s\n", mhttp_tls_version());
+    gEngfuncs.Con_Printf("  %s\n", MHTTP_VERSION);
+    gEngfuncs.Con_Printf("  %s\n", mhttp_tls_version());
     gEngfuncs.Con_Printf("  ca verify: %s\n", m_caCertReady.load(std::memory_order_relaxed) ? "ON" : "OFF");
     gEngfuncs.Con_Printf("  ca certs loaded: %d\n", mhttp_ca_cert_count());
 
