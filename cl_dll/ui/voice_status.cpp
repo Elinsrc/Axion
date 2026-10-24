@@ -244,6 +244,9 @@ void CVoiceStatus::ImGui_DrawVoiceHUD()
         if (i == localIndex && !CVAR_GET_FLOAT("voice_loopback"))
             continue;
 
+        if (!g_PlayerInfoList[i].name)
+            continue;
+
         int teamClr[3];
         GetPlayerTextColor(i, teamClr);
 

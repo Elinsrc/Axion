@@ -169,6 +169,9 @@ void CImguiUtils::TextWithColorCodesCentered(const char *text)
 
 float CImguiUtils::CalcTextWidthWithColorCodes(const char* text, float fontSize)
 {
+    if (!text)
+        return 0.0f;
+
     ImFont* font = ImGui::GetFont();
     float width = 0.0f;
     const char* ptr = text;
